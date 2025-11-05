@@ -35,3 +35,14 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### 설정 및 보안 파일 ###
+.env
+*.pem
+*.key
+*.crt
+*.der
+*.jks
+*.keystore
+application*.yml
+application*.properties
