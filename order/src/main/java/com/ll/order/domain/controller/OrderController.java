@@ -1,15 +1,16 @@
 package com.ll.order.domain.controller;
 
-import com.ll.order.domain.model.vo.request.OrderCreateRequest;
-import com.ll.order.domain.model.vo.response.OrderDetailResponse;
-import com.ll.order.domain.model.vo.response.OrderListApiResponse;
+import com.ll.order.domain.model.entity.Order;
+import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
+import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -24,99 +25,109 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @PostMapping
-    public ResponseEntity createOrder(
-            @RequestParam String userCode,
-            @RequestBody OrderCreateRequest request
+    @PostMapping("/cartItems")
+    public ResponseEntity createCartItemOrder(
+            @RequestBody OrderCartItemRequest request
     ) {
-        orderService.createOrder(userCode, request);
+        orderService.createCartItemOrder(request);
 
         return ResponseEntity.ok(null);
     }
 
-    @DeleteMapping("/{orderCode}")
-    public ResponseEntity deleteOrder(
-            @RequestParam String userCode,
-            @RequestParam String orderCode
+    @PostMapping("/direct")
+    public ResponseEntity<Order> createDirectOrder(
+            @RequestBody OrderDirectRequest request
     ) {
-
-        return ResponseEntity.ok(null);
-    }
-
-    @GetMapping
-    public ResponseEntity<List<OrderListApiResponse>> getOrderList(
-            @RequestParam String userCode,
-            @RequestParam int page, @RequestParam int size, @RequestParam String sort
-    ) {
-        List<OrderListApiResponse> allOrders = orderService.findAllOrders(userCode, page, size, sort);
+        Order directOrder = orderService.createDirectOrder(request);
 
         return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(allOrders);
+                .status(HttpStatus.CREATED)
+                .body(directOrder);
     }
 
-    @PostMapping
-    public ResponseEntity getPaymentRequest(
-            @RequestParam String userCode
-    ) {
-
-        return ResponseEntity.ok(null);
-    }
-
-    @GetMapping("/{orderCode}/details")
-    public ResponseEntity<OrderDetailResponse> getOrderDetails(
-            @RequestParam String orderCode
-    ) {
-        OrderDetailResponse orderDetails = orderService.findOrderDetails(orderCode);
-
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(orderDetails);
-    }
-
-    @PatchMapping("/{orderCode}/status")
-    public ResponseEntity updateOrderStatus(
-            @RequestParam String orderCode
-    ) {
-
-        return ResponseEntity.ok(null);
-    }
-
-    @PostMapping("/{orderCode}/payment/complete")
-    public ResponseEntity completePayment(
-            @RequestParam String userCode,
-            @RequestParam String orderCode
-    ) {
-
-        return ResponseEntity.ok(null);
-    }
-
-    @PostMapping("/{orderCode}/payment/validate")
-    public ResponseEntity validatePayment(
-            @RequestParam String userCode,
-            @RequestParam String orderCode
-    ) {
-
-        return ResponseEntity.ok(null);
-    }
-
-    @GetMapping("/search")
-    public ResponseEntity searchOrders(
-            @RequestParam String userCode,
-            @RequestParam String searchType, @RequestParam String searchValue,
-            @RequestParam int page, @RequestParam int size, @RequestParam String sort
-    ) {
-
-        return ResponseEntity.ok(null);
-    }
-
-    @PostMapping("/{orderCode}/complete")
-    public ResponseEntity completeOrder(
-            @RequestParam String userCode,
-            @RequestParam String orderCode
-    ) {
-
-
-        return ResponseEntity.ok(null);
-    }
+//    @DeleteMapping("/{orderCode}")
+//    public ResponseEntity deleteOrder(
+//            @RequestParam String userCode,
+//            @RequestParam String orderCode
+//    ) {
+//
+//        return ResponseEntity.ok(null);
+//    }
+//
+//    @GetMapping
+//    public ResponseEntity<List<OrderListApiResponse>> getOrderList(
+//            @RequestParam String userCode,
+//            @RequestParam int page, @RequestParam int size, @RequestParam String sort
+//    ) {
+//        List<OrderListApiResponse> allOrders = orderService.findAllOrders(userCode, page, size, sort);
+//
+//        return ResponseEntity
+//                .status(HttpStatus.OK)
+//                .body(allOrders);
+//    }
+//
+//    @PostMapping
+//    public ResponseEntity getPaymentRequest(
+//            @RequestParam String userCode
+//    ) {
+//
+//        return ResponseEntity.ok(null);
+//    }
+//
+//    @GetMapping("/{orderCode}/details")
+//    public ResponseEntity<OrderDetailResponse> getOrderDetails(
+//            @RequestParam String orderCode
+//    ) {
+//        OrderDetailResponse orderDetails = orderService.findOrderDetails(orderCode);
+//
+//        return ResponseEntity
+//                .status(HttpStatus.OK)
+//                .body(orderDetails);
+//    }
+//
+//    @PatchMapping("/{orderCode}/status")
+//    public ResponseEntity updateOrderStatus(
+//            @RequestParam String orderCode
+//    ) {
+//
+//        return ResponseEntity.ok(null);
+//    }
+//
+//    @PostMapping("/{orderCode}/payment/complete")
+//    public ResponseEntity completePayment(
+//            @RequestParam String userCode,
+//            @RequestParam String orderCode
+//    ) {
+//
+//        return ResponseEntity.ok(null);
+//    }
+//
+//    @PostMapping("/{orderCode}/payment/validate")
+//    public ResponseEntity validatePayment(
+//            @RequestParam String userCode,
+//            @RequestParam String orderCode
+//    ) {
+//
+//        return ResponseEntity.ok(null);
+//    }
+//
+//    @GetMapping("/search")
+//    public ResponseEntity searchOrders(
+//            @RequestParam String userCode,
+//            @RequestParam String searchType, @RequestParam String searchValue,
+//            @RequestParam int page, @RequestParam int size, @RequestParam String sort
+//    ) {
+//
+//        return ResponseEntity.ok(null);
+//    }
+//
+//    @PostMapping("/{orderCode}/complete")
+//    public ResponseEntity completeOrder(
+//            @RequestParam String userCode,
+//            @RequestParam String orderCode
+//    ) {
+//
+//
+//        return ResponseEntity.ok(null);
+//    }
 }

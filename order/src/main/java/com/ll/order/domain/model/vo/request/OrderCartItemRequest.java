@@ -4,9 +4,11 @@ import com.ll.order.domain.model.enums.OrderType;
 
 import java.util.List;
 
-public record OrderCreateRequest(
+public record OrderCartItemRequest(
     String userCode,
-    UserRequest user,
+    String cartCode,
+    String name,
+    String address,
     List<ProductRequest> products,
     int totalPrice,
     OrderType orderType

@@ -5,6 +5,7 @@ import com.ll.order.domain.model.enums.OrderType;
 import com.ll.order.global.baseEntity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -24,12 +25,6 @@ public class Order extends BaseEntity {
     private Long buyerId;
 
     @Column(nullable = false)
-    private Long sellerId;
-
-    @Column(nullable = false)
-    private Long cartId;
-
-    @Column(nullable = false)
     private Integer totalPrice;
 
     @Enumerated(EnumType.STRING)
@@ -43,6 +38,13 @@ public class Order extends BaseEntity {
     @Column(nullable = false)
     private String address;
 
-
-
+    @Builder
+    public Order(String orderCode, Long buyerId, Integer totalPrice, OrderType orderType, OrderStatus orderStatus, String address) {
+        this.orderCode = orderCode;
+        this.buyerId = buyerId;
+        this.totalPrice = totalPrice;
+        this.orderType = orderType;
+        this.orderStatus = orderStatus;
+        this.address = address;
+    }
 }

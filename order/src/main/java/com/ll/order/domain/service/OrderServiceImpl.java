@@ -1,8 +1,19 @@
 package com.ll.order.domain.service;
 
-import com.ll.order.domain.model.vo.request.OrderCreateRequest;
+import com.ll.order.domain.client.CartServiceClient;
+import com.ll.order.domain.client.ProductServiceClient;
+import com.ll.order.domain.client.UserServiceClient;
+import com.ll.order.domain.model.entity.Order;
+import com.ll.order.domain.model.enums.OrderStatus;
+import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
+import com.ll.order.domain.model.vo.request.OrderDirectRequest;
+import com.ll.order.domain.model.vo.response.CartResponse;
+import com.ll.order.domain.model.vo.response.ClientResponse;
 import com.ll.order.domain.model.vo.response.OrderDetailResponse;
 import com.ll.order.domain.model.vo.response.OrderListApiResponse;
+import com.ll.order.domain.model.vo.response.ProductResponse;
+import com.ll.order.domain.model.entity.OrderItem;
+import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +26,10 @@ import java.util.UUID;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderJpaRepository orderJpaRepository;
+    private final OrderItemJpaRepository orderItemJpaRepository;
+    private final UserServiceClient userServiceClient;
+    private final ProductServiceClient productServiceClient;
+    private final CartServiceClient cartServiceClient;
 
     @Override
     public List<OrderListApiResponse> findAllOrders(String userCode, int page, int size, String sort) {
@@ -23,18 +38,141 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderDetailResponse findOrderDetails(String orderCode) {
+        Order order = orderJpaRepository.findByOrderCode(orderCode);
+        if (order == null) {
+            throw new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode);
+        }
 
-        return null;
+//        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+//        
+//         for (OrderItem item : orderItems) {
+//             ProductResponse product = productServiceClient.getProductById(item.getProductId());
+//         }
+
+        return new OrderDetailResponse(
+                order.getId(),
+                order.getOrderStatus(),
+                order.getTotalPrice(),
+                new OrderDetailResponse.UserInfo(
+                        order.getBuyerId(),
+                        order.getAddress()
+                )
+        );
     }
 
     @Override
-    public void createOrder(String userCode, OrderCreateRequest request) {
-        // 기본 검증
+    public void createCartItemOrder(OrderCartItemRequest request) {
+        validateCartItemRequest(request);
+
+        ClientResponse userInfo = userServiceClient.getUserByCode(request.userCode());
+        if (userInfo == null) {
+            throw new IllegalArgumentException("구매자를 찾을 수 없습니다: " + request.userCode());
+        }
+
+        CartResponse cartInfo = cartServiceClient.getCartByCode(request.cartCode());
+        if (cartInfo == null) {
+            throw new IllegalArgumentException("장바구니를 찾을 수 없습니다: " + request.cartCode());
+        }
+
+        if (cartInfo.items() == null || cartInfo.items().isEmpty()) {
+            throw new IllegalArgumentException("장바구니가 비어있습니다: " + request.cartCode());
+        }
+
+        for (CartResponse.CartItemResponse item : cartInfo.items()) {
+            ProductResponse productInfo = productServiceClient.getProductByCode(item.productCode());
+            
+            if (productInfo == null) {
+                throw new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.productCode());
+            }
+        }
+
+        String orderCode = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        
+        Order order = Order.builder()
+                .orderCode(orderCode)
+                .buyerId(userInfo.id())
+                .totalPrice(request.totalPrice())
+                .orderType(request.orderType())
+                .orderStatus(OrderStatus.CREATED)
+                .address(request.address())
+                .build();
+
+        Order savedOrder = orderJpaRepository.save(order);
+
+        for (CartResponse.CartItemResponse cartItem : cartInfo.items()) {
+            ProductResponse productInfo = productServiceClient.getProductByCode(cartItem.productCode());
+            
+            String orderItemCode = "ORD-ITEM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            
+            OrderItem orderItem = OrderItem.builder()
+                    .orderId(savedOrder.getId())
+                    .productId(productInfo.productId())
+                    .sellerId(productInfo.sellerId())
+                    .orderItemCode(orderItemCode)
+                    .quantity(cartItem.quantity())
+                    .price(cartItem.price())
+                    .build();
+            
+            orderItemJpaRepository.save(orderItem);
+        }
+    }
+
+    @Override
+    public Order createDirectOrder(OrderDirectRequest request) {
+        validateDirectOrderRequest(request);
+
+        ClientResponse userInfo = userServiceClient.getUserByCode(request.userCode());
+        if (userInfo == null) {
+            throw new IllegalArgumentException("사용자를 찾을 수 없습니다: " + request.userCode());
+        }
+
+        ProductResponse productInfo = productServiceClient.getProductByCode(request.productCode());
+        if (productInfo == null) {
+            throw new IllegalArgumentException("상품을 찾을 수 없습니다: " + request.productCode());
+        }
+
+        String orderCode = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        
+        Integer totalPrice = productInfo.totalPrice() * request.quantity();
+        
+        // sellerId 제거 - OrderItem에서 판매자 정보 관리
+        Order order = Order.builder()
+                .orderCode(orderCode)
+                .buyerId(userInfo.id())
+                .totalPrice(totalPrice)
+                .orderType(request.orderType())
+                .orderStatus(OrderStatus.CREATED)
+                .address(request.address())
+                .build();
+
+        Order savedOrder = orderJpaRepository.save(order);
+
+        // 직접 주문 상품에 대한 OrderItem 생성 및 저장
+        String orderItemCode = "ORD-ITEM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        
+        OrderItem orderItem = OrderItem.builder()
+                .orderId(savedOrder.getId())
+                .productId(productInfo.productId())
+                .sellerId(productInfo.sellerId())
+                .orderItemCode(orderItemCode)
+                .quantity(request.quantity())
+                .price(productInfo.totalPrice())
+                .build();
+        
+        orderItemJpaRepository.save(orderItem);
+
+        return savedOrder;
+    }
+
+    private void validateCartItemRequest(OrderCartItemRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("요청이 비어 있습니다.");
         }
-        if (request.user() == null) {
-            throw new IllegalArgumentException("사용자 정보가 필요합니다.");
+        if (request.userCode() == null || request.userCode().isBlank()) {
+            throw new IllegalArgumentException("사용자 코드가 필요합니다.");
+        }
+        if (request.cartCode() == null || request.cartCode().isBlank()) {
+            throw new IllegalArgumentException("카트 코드가 필요합니다.");
         }
         if (request.totalPrice() <= 0) {
             throw new IllegalArgumentException("결제 금액이 0 이하입니다.");
@@ -42,43 +180,27 @@ public class OrderServiceImpl implements OrderService {
         if (request.orderType() == null) {
             throw new IllegalArgumentException("주문 유형이 필요합니다.");
         }
-
-        // 매핑 준비
-        String orderCode = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-
-        Long buyerId = parseLongSafely(request.user().userId(), "buyerId");
-        String address = request.user().address();
-
-        // 현 DTO에는 sellerId, cartId가 없어 저장 불가 → 임시로 검증 실패 처리
-        // 실제로는 DTO 확장 또는 조회/연계로 값을 확보해야 함
-        throwIfBlank(address, "address");
-
-        // 필요한 필드가 모두 준비된 경우에만 저장
-        // 아래는 예시로 sellerId/cartId를 외부에서 주입받는 구조가 갖춰진 후 활성화
-        // Order order = Order.builder()
-        //         .orderCode(orderCode)
-        //         .buyerId(buyerId)
-        //         .sellerId(sellerId)
-        //         .cartId(cartId)
-        //         .totalPrice(request.totalPrice())
-        //         .orderType(request.orderType())
-        //         .orderStatus(OrderStatus.CREATED)
-        //         .address(address)
-        //         .build();
-        // orderJpaRepository.save(order);
-    }
-
-    private static Long parseLongSafely(String value, String fieldName) {
-        try {
-            return value == null ? null : Long.parseLong(value);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(fieldName + "가 숫자가 아닙니다.");
+        if (request.address() == null || request.address().isBlank()) {
+            throw new IllegalArgumentException("배송지 주소가 필요합니다.");
         }
     }
 
-    private static void throwIfBlank(String value, String fieldName) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(fieldName + "가 비어 있습니다.");
+    private void validateDirectOrderRequest(OrderDirectRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("요청이 비어 있습니다.");
+        }
+        if (request.userCode() == null || request.userCode().isBlank()) {
+            throw new IllegalArgumentException("사용자 코드가 필요합니다.");
+        }
+        if (request.quantity() <= 0) {
+            throw new IllegalArgumentException("주문 수량은 1 이상이어야 합니다.");
+        }
+        if (request.address() == null || request.address().isBlank()) {
+            throw new IllegalArgumentException("배송지 주소가 필요합니다.");
+        }
+        if (request.productCode() == null || request.productCode().isBlank()) {
+            throw new IllegalArgumentException("상품 코드가 필요합니다.");
         }
     }
+
 }

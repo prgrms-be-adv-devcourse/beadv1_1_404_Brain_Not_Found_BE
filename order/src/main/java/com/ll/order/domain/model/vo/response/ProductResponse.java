@@ -4,7 +4,9 @@ import java.awt.Image;
 
 public record ProductResponse(
         Long productId,
-        Integer quentity,
+        Long sellerId,
+        int quantity,
+        int totalPrice,
         Image image
 ) {
 }

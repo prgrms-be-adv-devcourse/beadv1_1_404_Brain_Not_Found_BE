@@ -6,7 +6,7 @@ public record OrderCreateResponse(
         String accountCode,
         ClientResponse client,
         ProductResponse products,
-        Integer totalPrice,
+        int totalPrice,
         OrderType orderType
 ) {
 }

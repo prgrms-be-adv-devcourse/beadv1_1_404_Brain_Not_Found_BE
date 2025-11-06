@@ -1,6 +1,8 @@
 package com.ll.order.domain.service;
 
-import com.ll.order.domain.model.vo.request.OrderCreateRequest;
+import com.ll.order.domain.model.entity.Order;
+import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
+import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.response.OrderDetailResponse;
 import com.ll.order.domain.model.vo.response.OrderListApiResponse;
 
@@ -12,5 +14,7 @@ public interface OrderService {
 
     OrderDetailResponse findOrderDetails(String orderCode);
 
-    void createOrder(String userCode, OrderCreateRequest request);
+    void createCartItemOrder(OrderCartItemRequest request);
+
+    Order createDirectOrder(OrderDirectRequest request);
 }
