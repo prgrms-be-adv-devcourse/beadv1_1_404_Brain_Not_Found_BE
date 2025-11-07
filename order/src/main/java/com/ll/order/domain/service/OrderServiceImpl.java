@@ -18,7 +18,9 @@ import com.ll.order.domain.repository.OrderJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -44,7 +46,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
 //        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
-//        
+//
 //         for (OrderItem item : orderItems) {
 //             ProductResponse product = productServiceClient.getProductById(item.getProductId());
 //         }
@@ -78,14 +80,16 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalArgumentException("장바구니가 비어있습니다: " + request.cartCode());
         }
 
+        Map<String, ProductResponse> productMap = new HashMap<>();
         for (CartResponse.CartItemResponse item : cartInfo.items()) {
             ProductResponse productInfo = productServiceClient.getProductByCode(item.productCode());
             
             if (productInfo == null) {
                 throw new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.productCode());
             }
+            
+            productMap.put(item.productCode(), productInfo);
         }
-
         String orderCode = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         
         Order order = Order.builder()
@@ -100,7 +104,7 @@ public class OrderServiceImpl implements OrderService {
         Order savedOrder = orderJpaRepository.save(order);
 
         for (CartResponse.CartItemResponse cartItem : cartInfo.items()) {
-            ProductResponse productInfo = productServiceClient.getProductByCode(cartItem.productCode());
+            ProductResponse productInfo = productMap.get(cartItem.productCode());
             
             String orderItemCode = "ORD-ITEM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
             
@@ -135,7 +139,6 @@ public class OrderServiceImpl implements OrderService {
         
         Integer totalPrice = productInfo.totalPrice() * request.quantity();
         
-        // sellerId 제거 - OrderItem에서 판매자 정보 관리
         Order order = Order.builder()
                 .orderCode(orderCode)
                 .buyerId(userInfo.id())
@@ -147,7 +150,6 @@ public class OrderServiceImpl implements OrderService {
 
         Order savedOrder = orderJpaRepository.save(order);
 
-        // 직접 주문 상품에 대한 OrderItem 생성 및 저장
         String orderItemCode = "ORD-ITEM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         
         OrderItem orderItem = OrderItem.builder()
