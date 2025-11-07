@@ -12,7 +12,6 @@ import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.response.CartResponse;
 import com.ll.order.domain.model.vo.response.ClientResponse;
 import com.ll.order.domain.model.vo.response.ProductResponse;
-import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,9 +37,6 @@ class OrderServiceImplTest {
 
     @Mock
     private OrderJpaRepository orderJpaRepository;
-
-    @Mock
-    private OrderItemJpaRepository orderItemJpaRepository;
 
     @Mock
     private UserServiceClient userServiceClient;
@@ -91,28 +87,20 @@ class OrderServiceImplTest {
                 .orderStatus(OrderStatus.CREATED)
                 .address("서울시 강남구")
                 .build();
-        savedOrder = spy(savedOrder);
-        when(savedOrder.getId()).thenReturn(1L);
-
-        OrderItem savedOrderItem = OrderItem.builder()
-                .orderItemCode("ORD-ITEM-12345678")
-                .orderId(1L)
-                .productId(1L)
-                .sellerId(10L)
-                .quantity(2)
-                .price(10000)
-                .build();
 
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUserInfo);
         when(cartServiceClient.getCartByCode("CART-001")).thenReturn(testCartInfo);
         when(productServiceClient.getProductByCode("PROD-001")).thenReturn(testProductInfo);
         when(orderJpaRepository.save(any(Order.class))).thenReturn(savedOrder);
-        when(orderItemJpaRepository.save(any(OrderItem.class))).thenReturn(savedOrderItem);
 
         // when
-        orderService.createCartItemOrder(request);
+        Order result = orderService.createCartItemOrder(request);
 
         // then
+        // 반환값 검증
+        assertThat(result).isNotNull();
+        assertThat(result).isEqualTo(savedOrder);
+        
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderJpaRepository).save(orderCaptor.capture());
         Order capturedOrder = orderCaptor.getValue();
@@ -125,13 +113,10 @@ class OrderServiceImplTest {
         assertThat(capturedOrder.getAddress()).isEqualTo("서울시 강남구");
         assertThat(capturedOrder.getOrderCode()).startsWith("ORD-");
         
-        // OrderItem 검증
-        ArgumentCaptor<OrderItem> orderItemCaptor = ArgumentCaptor.forClass(OrderItem.class);
-        verify(orderItemJpaRepository).save(orderItemCaptor.capture());
-        OrderItem capturedOrderItem = orderItemCaptor.getValue();
-        
-        assertThat(orderItemCaptor.getAllValues()).hasSize(1);
-        assertThat(capturedOrderItem.getOrderId()).isEqualTo(1L);
+        // OrderItem 검증 (cascade로 Order에 포함되어 저장됨)
+        assertThat(capturedOrder.getOrderItems()).hasSize(1);
+        OrderItem capturedOrderItem = capturedOrder.getOrderItems().get(0);
+        assertThat(capturedOrderItem.getOrder()).isEqualTo(capturedOrder);
         assertThat(capturedOrderItem.getProductId()).isEqualTo(1L);
         assertThat(capturedOrderItem.getSellerId()).isEqualTo(10L);
         assertThat(capturedOrderItem.getQuantity()).isEqualTo(2);
@@ -189,35 +174,6 @@ class OrderServiceImplTest {
                 .orderStatus(OrderStatus.CREATED)
                 .address("서울시 강남구")
                 .build();
-        savedOrder = spy(savedOrder);
-        when(savedOrder.getId()).thenReturn(1L);
-
-        OrderItem savedOrderItem1 = OrderItem.builder()
-                .orderItemCode("ORD-ITEM-00000001")
-                .orderId(1L)
-                .productId(1L)
-                .sellerId(10L)
-                .quantity(2)
-                .price(10000)
-                .build();
-
-        OrderItem savedOrderItem2 = OrderItem.builder()
-                .orderItemCode("ORD-ITEM-00000002")
-                .orderId(1L)
-                .productId(2L)
-                .sellerId(20L)
-                .quantity(1)
-                .price(15000)
-                .build();
-
-        OrderItem savedOrderItem3 = OrderItem.builder()
-                .orderItemCode("ORD-ITEM-00000003")
-                .orderId(1L)
-                .productId(3L)
-                .sellerId(30L)
-                .quantity(3)
-                .price(5000)
-                .build();
 
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUserInfo);
         when(cartServiceClient.getCartByCode("CART-002")).thenReturn(multipleItemCart);
@@ -225,15 +181,15 @@ class OrderServiceImplTest {
         when(productServiceClient.getProductByCode("PROD-002")).thenReturn(product2);
         when(productServiceClient.getProductByCode("PROD-003")).thenReturn(product3);
         when(orderJpaRepository.save(any(Order.class))).thenReturn(savedOrder);
-        when(orderItemJpaRepository.save(any(OrderItem.class)))
-                .thenReturn(savedOrderItem1)
-                .thenReturn(savedOrderItem2)
-                .thenReturn(savedOrderItem3);
 
         // when
-        orderService.createCartItemOrder(request);
+        Order result = orderService.createCartItemOrder(request);
 
         // then
+        // 반환값 검증
+        assertThat(result).isNotNull();
+        assertThat(result).isEqualTo(savedOrder);
+        
         // Order 검증
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderJpaRepository).save(orderCaptor.capture());
@@ -245,16 +201,13 @@ class OrderServiceImplTest {
         assertThat(capturedOrder.getOrderType()).isEqualTo(OrderType.ONLINE);
         assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.CREATED);
 
-        // OrderItem이 3번 저장되었는지 검증
-        ArgumentCaptor<OrderItem> orderItemCaptor = ArgumentCaptor.forClass(OrderItem.class);
-        verify(orderItemJpaRepository, org.mockito.Mockito.times(3)).save(orderItemCaptor.capture());
-        List<OrderItem> capturedOrderItems = orderItemCaptor.getAllValues();
-
+        // OrderItem이 3개 포함되어 있는지 검증 (cascade로 Order에 포함되어 저장됨)
+        List<OrderItem> capturedOrderItems = capturedOrder.getOrderItems();
         assertThat(capturedOrderItems).hasSize(3);
 
         // 첫 번째 OrderItem 검증
         OrderItem firstItem = capturedOrderItems.get(0);
-        assertThat(firstItem.getOrderId()).isEqualTo(1L);
+        assertThat(firstItem.getOrder()).isEqualTo(capturedOrder);
         assertThat(firstItem.getProductId()).isEqualTo(1L);
         assertThat(firstItem.getSellerId()).isEqualTo(10L);
         assertThat(firstItem.getQuantity()).isEqualTo(2);
@@ -263,7 +216,7 @@ class OrderServiceImplTest {
 
         // 두 번째 OrderItem 검증
         OrderItem secondItem = capturedOrderItems.get(1);
-        assertThat(secondItem.getOrderId()).isEqualTo(1L);
+        assertThat(secondItem.getOrder()).isEqualTo(capturedOrder);
         assertThat(secondItem.getProductId()).isEqualTo(2L);
         assertThat(secondItem.getSellerId()).isEqualTo(20L);
         assertThat(secondItem.getQuantity()).isEqualTo(1);
@@ -272,7 +225,7 @@ class OrderServiceImplTest {
 
         // 세 번째 OrderItem 검증
         OrderItem thirdItem = capturedOrderItems.get(2);
-        assertThat(thirdItem.getOrderId()).isEqualTo(1L);
+        assertThat(thirdItem.getOrder()).isEqualTo(capturedOrder);
         assertThat(thirdItem.getProductId()).isEqualTo(3L);
         assertThat(thirdItem.getSellerId()).isEqualTo(30L);
         assertThat(thirdItem.getQuantity()).isEqualTo(3);
@@ -308,22 +261,10 @@ class OrderServiceImplTest {
                 .orderStatus(OrderStatus.CREATED)
                 .address("서울시 강남구")
                 .build();
-        savedOrder = spy(savedOrder);
-        when(savedOrder.getId()).thenReturn(1L);
-
-        OrderItem savedOrderItem = OrderItem.builder()
-                .orderItemCode("ORD-ITEM-12345678")
-                .orderId(1L)
-                .productId(1L)
-                .sellerId(10L)
-                .quantity(2)
-                .price(10000)
-                .build();
 
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUserInfo);
         when(productServiceClient.getProductByCode("PROD-001")).thenReturn(testProductInfo);
         when(orderJpaRepository.save(any(Order.class))).thenReturn(savedOrder);
-        when(orderItemJpaRepository.save(any(OrderItem.class))).thenReturn(savedOrderItem);
 
         // when
         Order result = orderService.createDirectOrder(request);
@@ -346,13 +287,10 @@ class OrderServiceImplTest {
         assertThat(capturedOrder.getAddress()).isEqualTo("서울시 강남구");
         assertThat(capturedOrder.getOrderCode()).startsWith("ORD-");
         
-        // OrderItem 검증
-        ArgumentCaptor<OrderItem> orderItemCaptor = ArgumentCaptor.forClass(OrderItem.class);
-        verify(orderItemJpaRepository).save(orderItemCaptor.capture());
-        OrderItem capturedOrderItem = orderItemCaptor.getValue();
-        
-        assertThat(orderItemCaptor.getAllValues()).hasSize(1);
-        assertThat(capturedOrderItem.getOrderId()).isEqualTo(1L);
+        // OrderItem 검증 (cascade로 Order에 포함되어 저장됨)
+        assertThat(capturedOrder.getOrderItems()).hasSize(1);
+        OrderItem capturedOrderItem = capturedOrder.getOrderItems().get(0);
+        assertThat(capturedOrderItem.getOrder()).isEqualTo(capturedOrder);
         assertThat(capturedOrderItem.getProductId()).isEqualTo(1L);
         assertThat(capturedOrderItem.getSellerId()).isEqualTo(10L);
         assertThat(capturedOrderItem.getQuantity()).isEqualTo(2);

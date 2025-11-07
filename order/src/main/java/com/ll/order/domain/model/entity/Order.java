@@ -9,6 +9,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -38,6 +41,9 @@ public class Order extends BaseEntity {
     @Column(nullable = false)
     private String address;
 
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> orderItems = new ArrayList<>();
+
     @Builder
     public Order(String orderCode, Long buyerId, Integer totalPrice, OrderType orderType, OrderStatus orderStatus, String address) {
         this.orderCode = orderCode;
@@ -46,5 +52,11 @@ public class Order extends BaseEntity {
         this.orderType = orderType;
         this.orderStatus = orderStatus;
         this.address = address;
+        this.orderItems = new ArrayList<>();
+    }
+    
+    public void addOrderItem(OrderItem orderItem) {
+        this.orderItems.add(orderItem);
+        orderItem.setOrder(this);
     }
 }

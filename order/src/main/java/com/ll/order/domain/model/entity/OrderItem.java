@@ -16,8 +16,9 @@ public class OrderItem extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private Long orderId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
 
     @Column(nullable = false)
     private Long productId;
@@ -35,13 +36,17 @@ public class OrderItem extends BaseEntity {
     private Integer price;
 
     @Builder
-    public OrderItem(Long orderId, Long productId, Long sellerId, String orderItemCode, Integer quantity, Integer price) {
-        this.orderId = orderId;
+    public OrderItem(Order order, Long productId, Long sellerId, String orderItemCode, Integer quantity, Integer price) {
+        this.order = order;
         this.productId = productId;
         this.sellerId = sellerId;
         this.orderItemCode = orderItemCode;
         this.quantity = quantity;
         this.price = price;
+    }
+    
+    public void setOrder(Order order) {
+        this.order = order;
     }
 }
 

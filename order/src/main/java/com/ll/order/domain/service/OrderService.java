@@ -14,7 +14,7 @@ public interface OrderService {
 
     OrderDetailResponse findOrderDetails(String orderCode);
 
-    void createCartItemOrder(OrderCartItemRequest request);
+    Order createCartItemOrder(OrderCartItemRequest request);
 
     Order createDirectOrder(OrderDirectRequest request);
 }

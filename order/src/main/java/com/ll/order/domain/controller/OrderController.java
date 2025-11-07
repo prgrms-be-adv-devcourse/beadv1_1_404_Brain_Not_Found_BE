@@ -26,12 +26,14 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping("/cartItems")
-    public ResponseEntity createCartItemOrder(
+    public ResponseEntity<Order> createCartItemOrder(
             @RequestBody OrderCartItemRequest request
     ) {
-        orderService.createCartItemOrder(request);
+        Order cartItemOrder = orderService.createCartItemOrder(request);
 
-        return ResponseEntity.ok(null);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(cartItemOrder);
     }
 
     @PostMapping("/direct")

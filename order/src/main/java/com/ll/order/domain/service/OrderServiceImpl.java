@@ -13,10 +13,11 @@ import com.ll.order.domain.model.vo.response.OrderDetailResponse;
 import com.ll.order.domain.model.vo.response.OrderListApiResponse;
 import com.ll.order.domain.model.vo.response.ProductResponse;
 import com.ll.order.domain.model.entity.OrderItem;
-import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import com.github.f4b6a3.uuid.UuidCreator;
 
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +29,6 @@ import java.util.UUID;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderJpaRepository orderJpaRepository;
-    private final OrderItemJpaRepository orderItemJpaRepository;
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
     private final CartServiceClient cartServiceClient;
@@ -63,7 +63,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public void createCartItemOrder(OrderCartItemRequest request) {
+    public Order createCartItemOrder(OrderCartItemRequest request) {
         validateCartItemRequest(request);
 
         ClientResponse userInfo = userServiceClient.getUserByCode(request.userCode());
@@ -90,7 +90,7 @@ public class OrderServiceImpl implements OrderService {
             
             productMap.put(item.productCode(), productInfo);
         }
-        String orderCode = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String orderCode = "ORD-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
         
         Order order = Order.builder()
                 .orderCode(orderCode)
@@ -101,15 +101,13 @@ public class OrderServiceImpl implements OrderService {
                 .address(request.address())
                 .build();
 
-        Order savedOrder = orderJpaRepository.save(order);
-
         for (CartResponse.CartItemResponse cartItem : cartInfo.items()) {
             ProductResponse productInfo = productMap.get(cartItem.productCode());
             
-            String orderItemCode = "ORD-ITEM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            String orderItemCode = "ORD-ITEM-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
             
             OrderItem orderItem = OrderItem.builder()
-                    .orderId(savedOrder.getId())
+                    .order(order)
                     .productId(productInfo.productId())
                     .sellerId(productInfo.sellerId())
                     .orderItemCode(orderItemCode)
@@ -117,8 +115,11 @@ public class OrderServiceImpl implements OrderService {
                     .price(cartItem.price())
                     .build();
             
-            orderItemJpaRepository.save(orderItem);
+            order.addOrderItem(orderItem);
         }
+        
+        Order savedOrder = orderJpaRepository.save(order);
+        return savedOrder;
     }
 
     @Override
@@ -135,7 +136,7 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalArgumentException("상품을 찾을 수 없습니다: " + request.productCode());
         }
 
-        String orderCode = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String orderCode = "ORD-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
         
         Integer totalPrice = productInfo.totalPrice() * request.quantity();
         
@@ -148,12 +149,10 @@ public class OrderServiceImpl implements OrderService {
                 .address(request.address())
                 .build();
 
-        Order savedOrder = orderJpaRepository.save(order);
-
-        String orderItemCode = "ORD-ITEM-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String orderItemCode = "ORD-ITEM-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
         
         OrderItem orderItem = OrderItem.builder()
-                .orderId(savedOrder.getId())
+                .order(order)
                 .productId(productInfo.productId())
                 .sellerId(productInfo.sellerId())
                 .orderItemCode(orderItemCode)
@@ -161,7 +160,9 @@ public class OrderServiceImpl implements OrderService {
                 .price(productInfo.totalPrice())
                 .build();
         
-        orderItemJpaRepository.save(orderItem);
+        order.addOrderItem(orderItem);
+        
+        Order savedOrder = orderJpaRepository.save(order);
 
         return savedOrder;
     }
