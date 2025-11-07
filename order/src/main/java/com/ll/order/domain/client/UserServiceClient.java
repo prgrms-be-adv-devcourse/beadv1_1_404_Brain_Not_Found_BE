@@ -1,54 +1,28 @@
 package com.ll.order.domain.client;
 
-import com.ll.core.model.response.BaseResponse;
-import com.ll.order.domain.model.vo.response.user.UserResponse;
+import com.ll.order.domain.model.vo.response.ClientResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestTemplate;
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class UserServiceClient {
 
-    private final RestClient restClient;
+    private final RestTemplate restTemplate;
     
-    @Value("${external.user-service.url:http://localhost:8083}")
+    @Value("${external.user-service.url:http://localhost:8081}")
     private String userServiceUrl;
 
-    public UserResponse getUserByCode(String userCode) {
-        log.info("userServiceUrl = {}", userServiceUrl);
-        BaseResponse<UserResponse> response = restClient.get()
-                .uri(userServiceUrl + "/api/users/info")
-                .header("X-User-Code", userCode)
-                .retrieve()
-                .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
-        
-        if (response == null || response.getData() == null) {
-            return null;
-        }
-        
-        return response.getData();
+    /**
+     * 회원 서비스에서 userCode로 사용자 정보를 조회합니다.
+     * @param userCode 사용자 코드
+     * @return 사용자 정보 (id, name, address)
+     */
+    public ClientResponse getUserByCode(String userCode) {
+        String url = userServiceUrl + "/api/users/" + userCode;
+        return restTemplate.getForObject(url, ClientResponse.class);
     }
-
-//    public UserResponse getUserById(Long userId) {
-//        log.info("userServiceUrl = {}, userId = {}", userServiceUrl, userId);
-//        BaseResponse<UserResponse> response = restClient.get()
-//                .uri(uriBuilder -> uriBuilder
-//                        .path(userServiceUrl + "/api/users/info")
-//                        .queryParam("id", userId)
-//                        .build())
-//                .retrieve()
-//                .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
-//
-//        if (response == null || response.getData() == null) {
-//            return null;
-//        }
-//
-//        return response.getData();
-//    }
 }
 

@@ -39,5 +39,3 @@ out/
 gradle/wrapper
 gradlew
 gradlew.bat
-
-*.md

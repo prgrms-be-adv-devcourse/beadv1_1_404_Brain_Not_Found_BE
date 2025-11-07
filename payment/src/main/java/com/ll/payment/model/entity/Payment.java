@@ -1,28 +1,29 @@
 package com.ll.payment.model.entity;
 
-import com.ll.core.model.persistence.BaseEntity;
 import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-@Getter
 @Entity
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Payment extends BaseEntity {
+public class Payment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false)
-    private int paidAmount;
+    private Long paidAmount;
 
     @Column(nullable = false)
     private Long buyerId;
 
     @Column(nullable = false)
     private Long orderId;
+
+    @Column(nullable = false, unique = true)
+    private String paymentCode;
 
     @Column(nullable = false)
     private Long depositHistoryId;
@@ -38,63 +39,80 @@ public class Payment extends BaseEntity {
     @Column(nullable = false)
     private PaidType paidType;
 
-    @Column(nullable = true)
-    private String paymentKey; // 토스 결제용 paymentKey
+    // 기본 생성자
+    public Payment() {
+    }
 
-    private Payment(int paidAmount,
-                    Long buyerId,
-                    Long orderId,
-                    PaymentStatus paymentStatus,
-                    PaidType paidType,
-                    Long depositHistoryId,
-                    LocalDateTime paidAt,
-                    String paymentKey) {
+    // Getter and Setter
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getPaidAmount() {
+        return paidAmount;
+    }
+
+    public void setPaidAmount(Long paidAmount) {
         this.paidAmount = paidAmount;
+    }
+
+    public Long getBuyerId() {
+        return buyerId;
+    }
+
+    public void setBuyerId(Long buyerId) {
         this.buyerId = buyerId;
+    }
+
+    public Long getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(Long orderId) {
         this.orderId = orderId;
-        this.paymentStatus = paymentStatus;
-        this.paidType = paidType;
+    }
+
+    public String getPaymentCode() {
+        return paymentCode;
+    }
+
+    public void setPaymentCode(String paymentCode) {
+        this.paymentCode = paymentCode;
+    }
+
+    public Long getDepositHistoryId() {
+        return depositHistoryId;
+    }
+
+    public void setDepositHistoryId(Long depositHistoryId) {
         this.depositHistoryId = depositHistoryId;
+    }
+
+    public LocalDateTime getPaidAt() {
+        return paidAt;
+    }
+
+    public void setPaidAt(LocalDateTime paidAt) {
         this.paidAt = paidAt;
-        this.paymentKey = paymentKey;
     }
 
-    public static Payment createTossPayment(Long orderId, Long buyerId, int paidAmount, String paymentKey) {
-        return new Payment(
-                paidAmount,
-                buyerId,
-                orderId,
-                PaymentStatus.PENDING,
-                PaidType.TOSS_PAYMENT,
-                0L,
-                LocalDateTime.now(),
-                paymentKey
-        );
+    public PaymentStatus getPaymentStatus() {
+        return paymentStatus;
     }
 
-    public static Payment createDepositPayment(Long orderId,
-                                               Long buyerId,
-                                               int paidAmount,
-                                               long depositHistoryId) {
-        return new Payment(
-                paidAmount,
-                buyerId,
-                orderId,
-                PaymentStatus.COMPLETED,
-                PaidType.DEPOSIT,
-                depositHistoryId,
-                LocalDateTime.now(),
-                null // 예치금 결제는 paymentKey 없음
-        );
+    public void setPaymentStatus(PaymentStatus paymentStatus) {
+        this.paymentStatus = paymentStatus;
     }
 
-    public void markSuccess(PaymentStatus status, LocalDateTime approvedAt) {
-        this.paymentStatus = status;
-        this.paidAt = approvedAt;
+    public PaidType getPaidType() {
+        return paidType;
     }
 
-    public void markRefund(LocalDateTime refundedAt) {
-        this.paymentStatus = PaymentStatus.REFUNDED;
-        this.paidAt = refundedAt;
+    public void setPaidType(PaidType paidType) {
+        this.paidType = paidType;
     }
 }

@@ -1,16 +1,20 @@
 package com.ll.order.domain.model.entity;
 
-import com.ll.core.model.persistence.BaseEntity;
+import com.ll.order.global.baseEntity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Table(name = "order_items")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OrderItem extends BaseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
@@ -20,13 +24,10 @@ public class OrderItem extends BaseEntity {
     private Long productId;
 
     @Column(nullable = false)
-    private String productCode;
+    private Long sellerId;
 
-    @Column(nullable = false)
-    private String sellerCode;
-
-    @Column(nullable = false)
-    private String productName;
+    @Column(nullable = false, unique = true)
+    private String orderItemCode;
 
     @Column(nullable = false)
     private Integer quantity;
@@ -34,30 +35,18 @@ public class OrderItem extends BaseEntity {
     @Column(nullable = false)
     private Integer price;
 
-    private OrderItem(Order order,
-                      Long productId,
-                      String productCode,
-                      String sellerCode,
-                      String productName,
-                      Integer quantity,
-                      Integer price) {
+    @Builder
+    public OrderItem(Order order, Long productId, Long sellerId, String orderItemCode, Integer quantity, Integer price) {
         this.order = order;
         this.productId = productId;
-        this.productCode = productCode;
-        this.sellerCode = sellerCode;
-        this.productName = productName;
+        this.sellerId = sellerId;
+        this.orderItemCode = orderItemCode;
         this.quantity = quantity;
         this.price = price;
     }
-
-    public static OrderItem create(Order order,
-                                   Long productId,
-                                   String productCode,
-                                   String sellerCode,
-                                   String productName,
-                                   Integer quantity,
-                                   Integer price) {
-        return new OrderItem(order, productId, productCode, sellerCode, productName, quantity, price);
+    
+    public void setOrder(Order order) {
+        this.order = order;
     }
 }
 

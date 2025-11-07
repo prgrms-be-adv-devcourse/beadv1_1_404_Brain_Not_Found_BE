@@ -1,27 +1,34 @@
 package com.ll.order.domain.model.entity;
 
-import com.ll.core.model.persistence.BaseEntity;
-import com.ll.order.domain.model.enums.order.OrderStatus;
-import com.ll.order.domain.model.enums.order.OrderType;
+import com.ll.order.domain.model.enums.OrderStatus;
+import com.ll.order.domain.model.enums.OrderType;
+import com.ll.order.global.baseEntity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
-@Table(name = "orders")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order extends BaseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String orderCode;
 
     @Column(nullable = false)
     private Long buyerId;
 
     @Column(nullable = false)
-    private String buyerCode;
-
-    @Column(nullable = false)
-    private Integer totalPrice = 0;
+    private Integer totalPrice;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -34,53 +41,22 @@ public class Order extends BaseEntity {
     @Column(nullable = false)
     private String address;
 
-    public static Order create(Long buyerId, String buyerCode, OrderType orderType, String address) {
-        Order order = new Order();
-        order.buyerId = buyerId;
-        order.buyerCode = buyerCode;
-        order.orderType = orderType;
-        order.orderStatus = OrderStatus.CREATED;
-        order.address = address;
-        order.totalPrice = 0;
-        return order;
-    }
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> orderItems = new ArrayList<>();
 
-    public OrderItem createOrderItem(Long productId,
-                                     String productCode,
-                                     String sellerCode,
-                                     String productName,
-                                     int quantity,
-                                     int pricePerUnit) {
-        OrderItem orderItem = OrderItem.create(
-                this,
-                productId,
-                productCode,
-                sellerCode,
-                productName,
-                quantity,
-                pricePerUnit
-        );
-        increaseTotalPrice(pricePerUnit * quantity);
-        return orderItem;
-    }
-
-//    public OrderItem createOrderItem(ProductResponse product, int quantity) {
-//        return createOrderItem(
-//                product.id(),
-//                product.code(),
-//                product.sellerCode(),
-//                product.name(),
-//                quantity,
-//                product.price()
-//        );
-//    }
-
-    public void changeStatus(OrderStatus orderStatus) {
+    @Builder
+    public Order(String orderCode, Long buyerId, Integer totalPrice, OrderType orderType, OrderStatus orderStatus, String address) {
+        this.orderCode = orderCode;
+        this.buyerId = buyerId;
+        this.totalPrice = totalPrice;
+        this.orderType = orderType;
         this.orderStatus = orderStatus;
+        this.address = address;
+        this.orderItems = new ArrayList<>();
     }
-
-    private void increaseTotalPrice(int amount) {
-        this.totalPrice += amount;
+    
+    public void addOrderItem(OrderItem orderItem) {
+        this.orderItems.add(orderItem);
+        orderItem.setOrder(this);
     }
-
 }
