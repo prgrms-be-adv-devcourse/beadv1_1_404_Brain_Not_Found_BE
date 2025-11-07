@@ -1,1 +1,3 @@
 rootProject.name = 'Gooream'
+
+include "core"
