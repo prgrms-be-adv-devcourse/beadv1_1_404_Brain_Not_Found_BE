@@ -1,20 +1,19 @@
 package com.ll.order.domain.service;
 
-import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
+import com.ll.order.domain.model.vo.response.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.OrderDetailResponse;
-import com.ll.order.domain.model.vo.response.OrderListApiResponse;
-
-import java.util.List;
+import com.ll.order.domain.model.vo.response.OrderPageResponse;
 
 public interface OrderService {
 
-    List<OrderListApiResponse> findAllOrders(String userCode, int page, int size, String sort);
+    OrderPageResponse findAllOrders(String userCode, String keyword, int page, int size, String sortBy, String sortOrder);
 
     OrderDetailResponse findOrderDetails(String orderCode);
 
-    Order createCartItemOrder(OrderCartItemRequest request);
+    OrderCreateResponse createCartItemOrder(OrderCartItemRequest request);
 
-    Order createDirectOrder(OrderDirectRequest request);
+    OrderCreateResponse createDirectOrder(OrderDirectRequest request);
+
 }
