@@ -126,21 +126,11 @@ public class CategoryService {
 
 
 
-
-
-
-
-
-
-
-
-
-
     // 순환참조 확인 메서드
     private boolean isCircularReference(Category category, Category newParent) {
         Category current = newParent;
         while (current != null) {
-            if (current.getId().equals(category.getId())) {
+            if (current.equals(category)) {
                 return true;
             }
             current = current.getParent();
