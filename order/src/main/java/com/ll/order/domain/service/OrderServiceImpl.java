@@ -1,28 +1,27 @@
 package com.ll.order.domain.service;
 
+import com.github.f4b6a3.uuid.UuidCreator;
 import com.ll.order.domain.client.CartServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.model.entity.Order;
+import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
-import com.ll.order.domain.model.vo.response.CartResponse;
-import com.ll.order.domain.model.vo.response.ClientResponse;
-import com.ll.order.domain.model.vo.response.OrderDetailResponse;
-import com.ll.order.domain.model.vo.response.OrderListApiResponse;
-import com.ll.order.domain.model.vo.response.ProductResponse;
-import com.ll.order.domain.model.entity.OrderItem;
+import com.ll.order.domain.model.vo.response.*;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-
-import com.github.f4b6a3.uuid.UuidCreator;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,8 +33,48 @@ public class OrderServiceImpl implements OrderService {
     private final CartServiceClient cartServiceClient;
 
     @Override
-    public List<OrderListApiResponse> findAllOrders(String userCode, int page, int size, String sort) {
-        return List.of();
+    public OrderPageResponse findAllOrders(String userCode, String keyword, int page, int size, String sortBy, String sortOrder) {
+        ClientResponse userInfo = getUserInfo(userCode);
+
+        Sort.Direction direction = sortOrder.equalsIgnoreCase("asc") 
+                ? Sort.Direction.ASC 
+                : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        // keyword가 있으면 상품명으로 검색, 없으면 전체 조회
+        Page<Order> orderPage;
+        if (keyword != null && !keyword.isBlank()) {
+            orderPage = orderJpaRepository.findByBuyerIdAndProductNameContaining(
+                    userInfo.id(), keyword, pageable);
+        } else {
+            orderPage = orderJpaRepository.findByBuyerId(userInfo.id(), pageable);
+        }
+
+        // Order 엔티티를 OrderInfo DTO로 변환
+        List<OrderPageResponse.OrderInfo> orderInfoList = orderPage.getContent().stream()
+                .map(order -> new OrderPageResponse.OrderInfo(
+                        order.getId(),
+                        order.getOrderCode(),
+                        order.getOrderStatus(),
+                        order.getTotalPrice(),
+                        new OrderPageResponse.UserInfo(
+                                order.getBuyerId(),
+                                order.getAddress()
+                        )
+                ))
+                .collect(Collectors.toList());
+
+        OrderPageResponse.PageInfo pageInfo = new OrderPageResponse.PageInfo(
+                orderPage.getNumber(),
+                orderPage.getSize(),
+                orderPage.getTotalElements(),
+                orderPage.getTotalPages(),
+                orderPage.hasNext(),
+                orderPage.hasPrevious()
+        );
+
+        return new OrderPageResponse(orderInfoList, pageInfo);
     }
 
     @Override
@@ -63,13 +102,10 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public Order createCartItemOrder(OrderCartItemRequest request) {
+    public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request) {
         validateCartItemRequest(request);
 
-        ClientResponse userInfo = userServiceClient.getUserByCode(request.userCode());
-        if (userInfo == null) {
-            throw new IllegalArgumentException("구매자를 찾을 수 없습니다: " + request.userCode());
-        }
+        ClientResponse userInfo = getUserInfo(request.userCode());
 
         CartResponse cartInfo = cartServiceClient.getCartByCode(request.cartCode());
         if (cartInfo == null) {
@@ -111,6 +147,7 @@ public class OrderServiceImpl implements OrderService {
                     .productId(productInfo.productId())
                     .sellerId(productInfo.sellerId())
                     .orderItemCode(orderItemCode)
+                    .productName(productInfo.productName())
                     .quantity(cartItem.quantity())
                     .price(cartItem.price())
                     .build();
@@ -119,17 +156,14 @@ public class OrderServiceImpl implements OrderService {
         }
         
         Order savedOrder = orderJpaRepository.save(order);
-        return savedOrder;
+        return convertToOrderCreateResponse(savedOrder);
     }
 
     @Override
-    public Order createDirectOrder(OrderDirectRequest request) {
+    public OrderCreateResponse createDirectOrder(OrderDirectRequest request) {
         validateDirectOrderRequest(request);
 
-        ClientResponse userInfo = userServiceClient.getUserByCode(request.userCode());
-        if (userInfo == null) {
-            throw new IllegalArgumentException("사용자를 찾을 수 없습니다: " + request.userCode());
-        }
+        ClientResponse userInfo = getUserInfo(request.userCode());
 
         ProductResponse productInfo = productServiceClient.getProductByCode(request.productCode());
         if (productInfo == null) {
@@ -156,6 +190,7 @@ public class OrderServiceImpl implements OrderService {
                 .productId(productInfo.productId())
                 .sellerId(productInfo.sellerId())
                 .orderItemCode(orderItemCode)
+                .productName(productInfo.productName())
                 .quantity(request.quantity())
                 .price(productInfo.totalPrice())
                 .build();
@@ -164,7 +199,32 @@ public class OrderServiceImpl implements OrderService {
         
         Order savedOrder = orderJpaRepository.save(order);
 
-        return savedOrder;
+        return convertToOrderCreateResponse(savedOrder);
+    }
+
+    private OrderCreateResponse convertToOrderCreateResponse(Order order) {
+        List<OrderCreateResponse.OrderItemInfo> orderItemInfoList = order.getOrderItems().stream()
+                .map(item -> new OrderCreateResponse.OrderItemInfo(
+                        item.getId(),
+                        item.getOrderItemCode(),
+                        item.getProductId(),
+                        item.getSellerId(),
+                        item.getProductName(),
+                        item.getQuantity(),
+                        item.getPrice()
+                ))
+                .collect(Collectors.toList());
+
+        return new OrderCreateResponse(
+                order.getId(),
+                order.getOrderCode(),
+                order.getOrderStatus(),
+                order.getTotalPrice(),
+                order.getOrderType(),
+                order.getAddress(),
+                order.getBuyerId(),
+                orderItemInfoList
+        );
     }
 
     private void validateCartItemRequest(OrderCartItemRequest request) {
@@ -204,6 +264,14 @@ public class OrderServiceImpl implements OrderService {
         if (request.productCode() == null || request.productCode().isBlank()) {
             throw new IllegalArgumentException("상품 코드가 필요합니다.");
         }
+    }
+
+    private ClientResponse getUserInfo(String userCode) {
+        ClientResponse userInfo = userServiceClient.getUserByCode(userCode);
+        if (userInfo == null) {
+            throw new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userCode);
+        }
+        return userInfo;
     }
 
 }

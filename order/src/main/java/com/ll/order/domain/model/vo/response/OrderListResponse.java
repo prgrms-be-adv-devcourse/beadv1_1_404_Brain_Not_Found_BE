@@ -4,7 +4,7 @@ import com.ll.order.domain.model.enums.OrderStatus;
 
 import java.util.List;
 
-public record OrderListApiResponse(
+public record OrderListResponse(
         OrderListBody body
 ) {
     public record OrderListBody(

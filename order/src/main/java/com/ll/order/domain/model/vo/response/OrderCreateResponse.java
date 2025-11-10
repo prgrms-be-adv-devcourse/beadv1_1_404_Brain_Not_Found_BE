@@ -1,14 +1,29 @@
 package com.ll.order.domain.model.vo.response;
 
+import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.OrderType;
 
-public record OrderCreateResponse(
-        String accountCode,
-        ClientResponse client,
-        ProductResponse products,
-        int totalPrice,
-        OrderType orderType
-) {
-}
+import java.util.List;
 
+public record OrderCreateResponse(
+        Long id,
+        String orderCode,
+        OrderStatus orderStatus,
+        Integer totalPrice,
+        OrderType orderType,
+        String address,
+        Long buyerId,
+        List<OrderItemInfo> orderItems
+) {
+    public record OrderItemInfo(
+            Long id,
+            String orderItemCode,
+            Long productId,
+            Long sellerId,
+            String productName,
+            Integer quantity,
+            Integer price
+    ) {
+    }
+}
 

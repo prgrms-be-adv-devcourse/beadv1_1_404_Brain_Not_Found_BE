@@ -30,17 +30,21 @@ public class OrderItem extends BaseEntity {
     private String orderItemCode;
 
     @Column(nullable = false)
+    private String productName;
+
+    @Column(nullable = false)
     private Integer quantity;
 
     @Column(nullable = false)
     private Integer price;
 
     @Builder
-    public OrderItem(Order order, Long productId, Long sellerId, String orderItemCode, Integer quantity, Integer price) {
+    public OrderItem(Order order, Long productId, Long sellerId, String orderItemCode, String productName, Integer quantity, Integer price) {
         this.order = order;
         this.productId = productId;
         this.sellerId = sellerId;
         this.orderItemCode = orderItemCode;
+        this.productName = productName;
         this.quantity = quantity;
         this.price = price;
     }
