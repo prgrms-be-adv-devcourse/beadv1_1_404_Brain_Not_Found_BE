@@ -2,3 +2,4 @@ rootProject.name = 'Gooream'
 
 include "core"
 include "products"
+include "user"
