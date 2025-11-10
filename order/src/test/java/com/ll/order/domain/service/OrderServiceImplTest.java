@@ -284,6 +284,7 @@ class OrderServiceImplTest {
         assertThat(capturedOrderItem.getPrice()).isEqualTo(10000);
         assertThat(capturedOrderItem.getOrderItemCode()).startsWith("ORD-ITEM-");
         
+        // Client 호출 검증
         ArgumentCaptor<String> userCodeCaptor = ArgumentCaptor.forClass(String.class);
         verify(userServiceClient).getUserByCode(userCodeCaptor.capture());
         assertThat(userCodeCaptor.getAllValues()).hasSize(1);
