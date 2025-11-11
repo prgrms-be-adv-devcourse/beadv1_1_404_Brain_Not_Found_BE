@@ -1,0 +1,302 @@
+
+networks:
+  gooream-net:
+    name: ${NETWORK_NAME}
+    driver: ${NETWORK_DRIVER}
+
+services:
+  #spring <--
+#  spring-app:
+#    build:
+#      context: ${DOCKER_FILE_CONTEXT}
+#      dockerfile: ${DOCKER_FILE}
+#    environment:
+#      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+#      MYSQL_USER: ${MYSQL_USER}
+#      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+#
+#    ports:
+#      - ${SPRING_PORTS}
+#    networks:
+#      - ${NETWORK_NAME}
+#    depends_on:
+#      order-db:
+#        condition: service_healthy
+#      kafka-1:
+#        condition: service_healthy
+#      elasticsearch-1:
+#        condition: service_healthy
+  #spring -->
+  #mysql <--
+#  auth-db:
+#    ports:
+#      - ${AUTH_DB_PORTS}
+#    container_name: ${AUTH_DB_CONTAINER_NAME}
+#    image: ${MYSQL_VERSION}
+#    environment:
+#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+#      - MYSQL_DATABASE=${AUTH_DB_NAME}
+#      - MYSQL_USER=${MYSQL_USER}
+#      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+#      - TZ=${TZ}
+#    volumes:
+#      - ./data/${AUTH_DB_NAME}:/var/lib/mysql
+#    networks:
+#      - ${NETWORK_NAME}
+#
+#  user-db:
+#    ports:
+#      - ${USER_DB_PORTS}
+#    container_name: ${USER_DB_CONTAINER_NAME}
+#    image: ${MYSQL_VERSION}
+#    environment:
+#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+#      - MYSQL_DATABASE=${USER_DB_NAME}
+#      - MYSQL_USER=${MYSQL_USER}
+#      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+#      - TZ=${TZ}
+#    networks:
+#      - ${NETWORK_NAME}
+#
+  order-db:
+    ports:
+      - ${ORDER_DB_PORTS}
+    container_name: ${ORDER_DB_CONTAINER_NAME}
+    image: ${MYSQL_VERSION}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${ORDER_DB_NAME}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - TZ=${TZ}
+    networks:
+      - ${NETWORK_NAME}
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h order-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+      interval: 5s
+      retries: 10
+
+#  product-db:
+#    ports:
+#      - ${PRODUCT_DB_PORTS}
+#    container_name: ${PRODUCT_DB_CONTAINER_NAME}
+#    image: ${MYSQL_VERSION}
+#    environment:
+#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+#      - MYSQL_DATABASE=${PRODUCT_DB_NAME}
+#      - MYSQL_USER=${MYSQL_USER}
+#      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+#      - TZ=${TZ}
+#    volumes:
+#      - ./data/${PRODUCT_DB_NAME}:/var/lib/mysql
+#    networks:
+#      - ${NETWORK_NAME}
+#
+#  deposit-db:
+#    ports:
+#      - ${DEPOSIT_DB_PORTS}
+#    container_name: ${DEPOSIT_DB_CONTAINER_NAME}
+#    image: ${MYSQL_VERSION}
+#    environment:
+#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+#      - MYSQL_DATABASE=${DEPOSIT_DB_NAME}
+#      - MYSQL_USER=${MYSQL_USER}
+#      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+#      - TZ=${TZ}
+#    volumes:
+#      - ./data/${DEPOSIT_DB_NAME}:/var/lib/mysql
+#    networks:
+#      - ${NETWORK_NAME}
+
+  #mysql -->
+
+  #kafka <--
+  kafka-1:
+    image: ${KAFKA_IMAGE}
+    container_name: ${KAFKA_1_CONTAINER_NAME}
+    ports:
+      - ${KAFKA_1_PORTS}
+    environment:
+      - KAFKA_NODE_ID=${KAFKA_1_NODE_ID}
+      - KAFKA_LISTENERS=${KAFKA_1_LISTENERS}
+      - KAFKA_ADVERTISED_LISTENERS=${KAFKA_1_ADVERTISED_LISTENERS}
+#     common
+      - CLUSTER_ID=${CLUSTER_ID}
+      - KAFKA_PROCESS_ROLES=${KAFKA_PROCESS_ROLES}
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=${KAFKA_CONTROLLER_QUORUM_VOTERS}
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+      - KAFKA_CONTROLLER_LISTENER_NAMES=${KAFKA_CONTROLLER_LISTENER_NAMES}
+      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+#     extra
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
+      - KAFKA_MIN_INSYNC_REPLICAS=${KAFKA_MIN_INSYNC_REPLICAS}
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=${KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS}
+      - TZ=${TZ}
+    networks:
+      - ${NETWORK_NAME}
+    volumes:
+      - ./scripts:/scripts
+      - ./kafka-data-1:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9090 --list"]
+      interval: 5s
+      retries: 10
+#  kafka-2:
+#    image: ${KAFKA_IMAGE}
+#    container_name: ${KAFKA_2_CONTAINER_NAME}
+#    ports:
+#      - ${KAFKA_2_PORTS}
+#    environment:
+#      - KAFKA_NODE_ID=${KAFKA_2_NODE_ID}
+#      - KAFKA_LISTENERS=${KAFKA_2_LISTENERS}
+#      - KAFKA_ADVERTISED_LISTENERS=${KAFKA_2_ADVERTISED_LISTENERS}
+##     common
+#      - CLUSTER_ID=${CLUSTER_ID}
+#      - KAFKA_PROCESS_ROLES=${KAFKA_PROCESS_ROLES}
+#      - KAFKA_CONTROLLER_QUORUM_VOTERS=${KAFKA_CONTROLLER_QUORUM_VOTERS}
+#      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+#      - KAFKA_CONTROLLER_LISTENER_NAMES=${KAFKA_CONTROLLER_LISTENER_NAMES}
+#      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+#    networks:
+#      - ${NETWORK_NAME}
+#    healthcheck:
+#      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-2:9090 --list"]
+#      interval: 5s
+#      retries: 10
+#  kafka-3:
+#    image: ${KAFKA_IMAGE}
+#    container_name: ${KAFKA_3_CONTAINER_NAME}
+#    ports:
+#      - ${KAFKA_3_PORTS}
+#    environment:
+#      - KAFKA_NODE_ID=${KAFKA_3_NODE_ID}
+#      - KAFKA_LISTENERS=${KAFKA_3_LISTENERS}
+#      - KAFKA_ADVERTISED_LISTENERS=${KAFKA_3_ADVERTISED_LISTENERS}
+##     common
+#      - CLUSTER_ID=${CLUSTER_ID}
+#      - KAFKA_PROCESS_ROLES=${KAFKA_PROCESS_ROLES}
+#      - KAFKA_CONTROLLER_QUORUM_VOTERS=${KAFKA_CONTROLLER_QUORUM_VOTERS}
+#      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+#      - KAFKA_CONTROLLER_LISTENER_NAMES=${KAFKA_CONTROLLER_LISTENER_NAMES}
+#      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+#    networks:
+#      - ${NETWORK_NAME}
+#    healthcheck:
+#      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-3:9090 --list"]
+#      interval: 5s
+#      retries: 10
+
+  kafka-init:
+    image: ${KAFKA_IMAGE}
+    container_name: kafka-init
+    depends_on:
+      - kafka-1
+    #      - kafka-2
+    #      - kafka-3
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: ["/bin/bash", "-c", "/scripts/init-topics.sh"]
+    restart: "no"
+    networks:
+      - ${NETWORK_NAME}
+
+  #kafka -->
+
+#  elasticsearch <--
+  elasticsearch-1:
+    image: ${ES_IMAGE}
+    container_name: ${ES_1_CONTAINER_NAME}
+    ports:
+      - ${ES_1_PORTS}
+    environment:
+      - node.name=${ES_1_NODE_NAME}
+      #common
+      - cluster.name=${ES_CLUSTER_NAME}
+      - discovery.type=${ES_DISCOVERY_TYPE}
+#      - discovery.seed_hosts=${ES_1_DISCOVERY_SEED_HOSTS}
+#      - cluster.initial_master_nodes=${ES_CLUSTER_INITIAL_MASTER_NODES}
+      - xpack.security.enabled=${ES_XPACK_SECURITY_ENABLED}
+      - xpack.security.http.ssl.enabled=${ES_XPACK_SECURITY_HTTP_SSL_ENABLED}
+      - "ES_JAVA_OPTS=${ES_JAVA_OPTS}"
+    networks:
+      - ${NETWORK_NAME}
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+#  elasticsearch-2:
+#    image: ${ES_IMAGE}
+#    container_name: ${ES_2_CONTAINER_NAME}
+#    ports:
+#      - ${ES_2_PORTS}
+#    environment:
+#      - node.name=${ES_2_NODE_NAME}
+#      #common
+#      - cluster.name=${ES_CLUSTER_NAME}
+##      - discovery.type=${ES_DISCOVERY_TYPE}
+#      - discovery.seed_hosts=${ES_2_DISCOVERY_SEED_HOSTS}
+#      - cluster.initial_master_nodes=${ES_CLUSTER_INITIAL_MASTER_NODES}
+#      - xpack.security.enabled=${ES_XPACK_SECURITY_ENABLED}
+#      - xpack.security.http.ssl.enabled=${ES_XPACK_SECURITY_HTTP_SSL_ENABLED}
+#      - "ES_JAVA_OPTS=${ES_JAVA_OPTS}"
+#    networks:
+#      - ${NETWORK_NAME}
+#    healthcheck:
+#      test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+#      start_period: 30s
+#  elasticsearch-3:
+#    image: ${ES_IMAGE}
+#    container_name: ${ES_3_CONTAINER_NAME}
+#    ports:
+#      - ${ES_3_PORTS}
+#    environment:
+#      - node.name=${ES_3_NODE_NAME}
+#      #common
+#      - cluster.name=${ES_CLUSTER_NAME}
+##      - discovery.type=${ES_DISCOVERY_TYPE}
+#      - discovery.seed_hosts=${ES_3_DISCOVERY_SEED_HOSTS}
+#      - cluster.initial_master_nodes=${ES_CLUSTER_INITIAL_MASTER_NODES}
+#      - xpack.security.enabled=${ES_XPACK_SECURITY_ENABLED}
+#      - xpack.security.http.ssl.enabled=${ES_XPACK_SECURITY_HTTP_SSL_ENABLED}
+#      - "ES_JAVA_OPTS=${ES_JAVA_OPTS}"
+#    networks:
+#      - ${NETWORK_NAME}
+#    healthcheck:
+#      test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+#      start_period: 30s
+#  #elasticsearch -->
+#
+#  #kibana <--
+  kibana:
+    image: ${KIBANA_IMAGE}
+    container_name: ${KIBANA_CONTAINER_NAME}
+    ports:
+      - ${KIBANA_PORTS}
+    environment:
+#      - ELASTICSEARCH_HOSTS=${KIBANA_ES_HOSTS}
+      elasticsearch_hosts: "elasticsearch-01:9200"
+#      ,elasticsearch-02:9200,elasticsearch-03:9200"
+    networks:
+      - ${NETWORK_NAME}
+  #kibana -->
+
+
+
+  #  logstash:
+  #    image: eddie1031/ls:9.1.3
+  #    container_name: logstash
+  #    ports:
+  #      - "5044:5044"
+  #    volumes:
+  #      - ./lib/pipeline:/usr/share/logstash/pipeline
+
