@@ -78,11 +78,11 @@ public class OrderController {
     public ResponseEntity<OrderDetailResponse> getOrderDetails(
             @PathVariable String orderCode
     ) {
-        OrderDetailResponse orderDetails = orderService.findOrderDetails(orderCode);
+        OrderDetailResponse response = orderService.findOrderDetails(orderCode);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(orderDetails);
+                .body(response);
     }
 //
 //    @PostMapping

@@ -2,16 +2,17 @@ package com.ll.payment.model.entity;
 
 import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
+import com.ll.payment.util.PaymentCodeGenerator;
 import jakarta.persistence.*;
-import lombok.Builder;
+import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-@Setter
 @Getter
 @Entity
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,8 +44,14 @@ public class Payment {
     @Column(nullable = false)
     private PaidType paidType;
 
-    @Builder
-    public Payment(int paidAmount, Long buyerId, Long orderId, String paymentCode, PaymentStatus paymentStatus, PaidType paidType, Long depositHistoryId, LocalDateTime paidAt) {
+    private Payment(int paidAmount,
+                    Long buyerId,
+                    Long orderId,
+                    String paymentCode,
+                    PaymentStatus paymentStatus,
+                    PaidType paidType,
+                    Long depositHistoryId,
+                    LocalDateTime paidAt) {
         this.paidAmount = paidAmount;
         this.buyerId = buyerId;
         this.orderId = orderId;
@@ -53,5 +60,23 @@ public class Payment {
         this.paidType = paidType;
         this.depositHistoryId = depositHistoryId;
         this.paidAt = paidAt;
+    }
+
+    public static Payment createTossPayment(Long orderId, Long buyerId, int paidAmount) {
+        return new Payment(
+                paidAmount,
+                buyerId,
+                orderId,
+                PaymentCodeGenerator.newPaymentCode(),
+                PaymentStatus.PENDING,
+                PaidType.TOSS_PAYMENT,
+                0L,
+                LocalDateTime.now()
+        );
+    }
+
+    public void markSuccess(PaymentStatus status, LocalDateTime approvedAt) {
+        this.paymentStatus = status;
+        this.paidAt = approvedAt;
     }
 }

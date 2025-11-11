@@ -2,26 +2,21 @@ package com.ll.payment.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ll.payment.model.dto.TossPaymentResponse;
 import com.ll.payment.model.entity.Payment;
-import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
 import com.ll.payment.model.vo.PaymentRequest;
 import com.ll.payment.model.vo.TossPaymentRequest;
 import com.ll.payment.repository.PaymentJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +25,7 @@ public class PaymentServiceImpl implements  PaymentService {
     private final PaymentJpaRepository paymentJpaRepository;
 //    private final DepositRepository depositRepository;
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final ObjectMapper om;
 
     @Value("${payment.secretKey}")
@@ -41,28 +36,20 @@ public class PaymentServiceImpl implements  PaymentService {
     @Override
     public String confirmPayment(TossPaymentRequest request) {
         // api 결제 승인 요청
-        String url = "https://api.tosspayments.com/v1/payments/confirm";
         String target = secretKey + ":";
         Base64.Encoder encoder = Base64.getEncoder();
         String encryptedSecretKey = "Basic " + encoder.encodeToString(target.getBytes(StandardCharsets.UTF_8));
 
-        // 헤더 추가
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.setContentType(MediaType.APPLICATION_JSON); // Content-Type: application/json
-        httpHeaders.set("Authorization", encryptedSecretKey);
-
         Map<String, Object> requestMap = om.convertValue(request, new TypeReference<>() {
         });
 
-        HttpEntity<Map<String, Object>> httpEntity = new HttpEntity<>(requestMap, httpHeaders);
-
-        return restTemplate.exchange(
-                        targetUrl,
-                        HttpMethod.POST,
-                        httpEntity,
-                        String.class
-                )
-                .getBody();
+        return restClient.post()
+                .uri(targetUrl)
+                .headers(headers -> headers.set("Authorization", encryptedSecretKey))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestMap)
+                .retrieve()
+                .body(String.class);
     }
 
     @Override
@@ -115,17 +102,11 @@ public class PaymentServiceImpl implements  PaymentService {
     @Override
     public Payment tossPayment(PaymentRequest request) {
         // 1) 결제 엔티티 초안 저장 (상태: PENDING)
-        Payment payment = Payment.builder()
-                .orderId(request.orderId())
-                .buyerId(request.buyerId())
-                .paidAmount(request.paidAmount())
-                .paidType(PaidType.TOSS_PAYMENT)
-                .paymentStatus(PaymentStatus.PENDING)
-                .paymentCode(UUID.randomUUID().toString())
-                .depositHistoryId(0L)
-                .paidAt(LocalDateTime.now())
-                .build();
-
+        Payment payment = Payment.createTossPayment(
+                request.orderId(),
+                request.buyerId(),
+                request.paidAmount()
+        );
         paymentJpaRepository.save(payment);
 
         // 2) 토스 승인 요청
@@ -134,15 +115,33 @@ public class PaymentServiceImpl implements  PaymentService {
                 payment.getPaymentCode(),
                 request.paidAmount()
         );
-
         String response = confirmPayment(tossRequest);
-        // response 파싱/검증
+        TossPaymentResponse tossPaymentResponse = parseTossResponse(response);
+        validateTossResponse(request, tossPaymentResponse);
 
-        payment.setPaymentStatus(PaymentStatus.COMPLETED);
-        payment.setPaidAt(LocalDateTime.now());
+        payment.markSuccess(
+                PaymentStatus.COMPLETED,
+                tossPaymentResponse.approvedAt()
+        );
         paymentJpaRepository.save(payment);
 
-        // 4) 주문 도메인 등으로 넘길 DTO 구성
         return payment;
+    }
+
+    private TossPaymentResponse parseTossResponse(String response) {
+        try {
+            return om.readValue(response, TossPaymentResponse.class);
+        } catch (Exception e) {
+            throw new IllegalStateException("토스 결제 응답 파싱에 실패했습니다.", e);
+        }
+    }
+
+    private void validateTossResponse(PaymentRequest request, TossPaymentResponse tossPaymentResponse) {
+        if (!"DONE".equalsIgnoreCase(tossPaymentResponse.status())) {
+            throw new IllegalStateException("토스 결제 승인 상태가 DONE이 아닙니다. status=" + tossPaymentResponse.status());
+        }
+        if (request.paidAmount() != tossPaymentResponse.approvedAmount()) {
+            throw new IllegalStateException("토스 승인 금액과 요청 금액이 일치하지 않습니다.");
+        }
     }
 }

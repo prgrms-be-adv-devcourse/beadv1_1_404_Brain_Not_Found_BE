@@ -1,26 +1,27 @@
 package com.ll.order.domain.service;
 
-import com.github.f4b6a3.uuid.UuidCreator;
 import com.ll.order.domain.client.CartServiceClient;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
-import com.ll.order.domain.model.enums.OrderStatus;
-import com.ll.order.domain.model.enums.OrderType;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderPaymentRequest;
 import com.ll.order.domain.model.vo.response.*;
+import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
+import com.ll.order.global.util.OrderCodeGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,8 +37,10 @@ public class OrderServiceImpl implements OrderService {
     private final ProductServiceClient productServiceClient;
     private final CartServiceClient cartServiceClient;
     private final PaymentServiceClient paymentApiClient;
+    private final OrderItemJpaRepository orderItemJpaRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public OrderPageResponse findAllOrders(String userCode, String keyword, int page, int size, String sortBy, String sortOrder) {
         ClientResponse userInfo = getUserInfo(userCode);
 
@@ -108,6 +111,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
     public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request) {
         validateCartItemRequest(request);
         ClientResponse userInfo = getUserInfo(request.buyerCode());
@@ -132,36 +136,31 @@ public class OrderServiceImpl implements OrderService {
 
             productMap.put(item.productCode(), productInfo);
         }
-        String orderCode = "ORD-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
 
-        Order order = Order.builder()
-                .orderCode(orderCode)
-                .buyerId(userInfo.id())
-                .totalPrice(request.totalPrice())
-                .orderType(request.orderType())
-                .orderStatus(OrderStatus.CREATED)
-                .address(request.address())
-                .build();
+        Order order = Order.create(
+                OrderCodeGenerator.newOrderCode(),
+                userInfo.id(),
+                request.orderType(),
+                request.address()
+        );
+        Order savedOrder = orderJpaRepository.save(order);
 
+        List<OrderItem> orderItems = new ArrayList<>();
         for (CartResponse.CartItemResponse cartItem : cartInfo.items()) {
             ProductResponse productInfo = productMap.get(cartItem.productCode());
 
-            String orderItemCode = "ORD-ITEM-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
-
-            OrderItem orderItem = OrderItem.builder()
-                    .order(order)
-                    .productId(productInfo.productId())
-                    .sellerId(productInfo.sellerId())
-                    .orderItemCode(orderItemCode)
-                    .productName(productInfo.productName())
-                    .quantity(cartItem.quantity())
-                    .price(cartItem.price())
-                    .build();
-
-            order.addOrderItem(orderItem);
+            OrderItem orderItem = savedOrder.createOrderItem(
+                    productInfo.productId(),
+                    productInfo.sellerId(),
+                    OrderCodeGenerator.newOrderItemCode(),
+                    productInfo.productName(),
+                    cartItem.quantity(),
+                    cartItem.price()
+            );
+            orderItems.add(orderItem);
         }
 
-        Order savedOrder = orderJpaRepository.save(order);
+        orderItemJpaRepository.saveAll(orderItems);
         /*
         1) OrderCartItemRequest → 사용자 입력값 받기
         2) OrderServiceImpl에서 PaidType 유효성 검사
@@ -185,6 +184,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
     public OrderCreateResponse createDirectOrder(OrderDirectRequest request) {
         validateDirectOrderRequest(request);
         ClientResponse userInfo = getUserInfo(request.userCode());
@@ -194,42 +194,30 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalArgumentException("상품을 찾을 수 없습니다: " + request.productCode());
         }
 
-        // 코드를 하드코딩하기 보단, 상수로서 사용 가능하면서 규칙을 지킬 수 있게 객체로 활용해보시는게 어떨까요?
-        String orderCode = "ORD-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
-
-        //엔티티의 필드 값을 연산하기 위한 로직은 객체지향을 생각하면 엔티티의 종속되도록 하는 방향도 생각해보세요
-        Integer totalPrice = productInfo.totalPrice() * request.quantity();
-
-        Order order = Order.builder()
-                .orderCode(orderCode)
-                .buyerId(userInfo.id())
-                .totalPrice(totalPrice)
-                .orderStatus(OrderStatus.CREATED)
-                .address(request.address())
-                .orderType(OrderType.ONLINE)
-                .build();
-
-        String orderItemCode = "ORD-ITEM-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
-
-        OrderItem orderItem = OrderItem.builder()
-                .order(order)
-                .productId(productInfo.productId())
-                .sellerId(productInfo.sellerId())
-                .orderItemCode(orderItemCode)
-                .productName(productInfo.productName())
-                .quantity(request.quantity())
-                .price(productInfo.totalPrice())
-                .build();
-
-        order.addOrderItem(orderItem);
-
+        Order order = Order.create(
+                OrderCodeGenerator.newOrderCode(),
+                userInfo.id(),
+                request.orderType(),
+                request.address()
+        );
         Order savedOrder = orderJpaRepository.save(order);
+
+        OrderItem orderItem = savedOrder.createOrderItem(
+                productInfo.productId(),
+                productInfo.sellerId(),
+                OrderCodeGenerator.newOrderItemCode(),
+                productInfo.productName(),
+                request.quantity(),
+                productInfo.totalPrice()
+        );
+        orderItemJpaRepository.save(orderItem);
+        orderJpaRepository.save(savedOrder);
 
         return convertToOrderCreateResponse(savedOrder);
     }
 
     private OrderCreateResponse convertToOrderCreateResponse(Order order) {
-        List<OrderCreateResponse.OrderItemInfo> orderItemInfoList = order.getOrderItems().stream()
+        List<OrderCreateResponse.OrderItemInfo> orderItemInfoList = orderItemJpaRepository.findByOrderId(order.getId()).stream()
                 .map(item -> new OrderCreateResponse.OrderItemInfo(
                         item.getId(),
                         item.getOrderItemCode(),

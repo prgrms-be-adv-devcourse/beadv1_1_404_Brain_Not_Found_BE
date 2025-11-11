@@ -4,13 +4,13 @@ import com.ll.order.domain.model.vo.response.ClientResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 @Component
 @RequiredArgsConstructor
 public class UserServiceClient {
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     
     @Value("${external.user-service.url:http://localhost:8081}")
     private String userServiceUrl;
@@ -21,8 +21,10 @@ public class UserServiceClient {
      * @return 사용자 정보 (id, name, address)
      */
     public ClientResponse getUserByCode(String userCode) {
-        String url = userServiceUrl + "/api/users/" + userCode;
-        return restTemplate.getForObject(url, ClientResponse.class);
+        return restClient.get()
+                .uri(userServiceUrl + "/api/users/{userCode}", userCode)
+                .retrieve()
+                .body(ClientResponse.class);
     }
 }
 

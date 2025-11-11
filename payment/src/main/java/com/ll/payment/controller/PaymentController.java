@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
-public class PaymentController { // TODO : 보상 전략
+public class PaymentController { // TODO : 결제 실패 시 주문 상태 갱신 또는 트랜잭션 롤백 정책
 
     private final PaymentService paymentService;
 
