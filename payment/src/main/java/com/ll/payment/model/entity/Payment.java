@@ -3,18 +3,22 @@ package com.ll.payment.model.entity;
 import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
 import jakarta.persistence.*;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+@Setter
+@Getter
 @Entity
 public class Payment {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false)
-    private Long paidAmount;
+    private int paidAmount;
 
     @Column(nullable = false)
     private Long buyerId;
@@ -39,80 +43,15 @@ public class Payment {
     @Column(nullable = false)
     private PaidType paidType;
 
-    // 기본 생성자
-    public Payment() {
-    }
-
-    // Getter and Setter
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Long getPaidAmount() {
-        return paidAmount;
-    }
-
-    public void setPaidAmount(Long paidAmount) {
+    @Builder
+    public Payment(int paidAmount, Long buyerId, Long orderId, String paymentCode, PaymentStatus paymentStatus, PaidType paidType, Long depositHistoryId, LocalDateTime paidAt) {
         this.paidAmount = paidAmount;
-    }
-
-    public Long getBuyerId() {
-        return buyerId;
-    }
-
-    public void setBuyerId(Long buyerId) {
         this.buyerId = buyerId;
-    }
-
-    public Long getOrderId() {
-        return orderId;
-    }
-
-    public void setOrderId(Long orderId) {
         this.orderId = orderId;
-    }
-
-    public String getPaymentCode() {
-        return paymentCode;
-    }
-
-    public void setPaymentCode(String paymentCode) {
         this.paymentCode = paymentCode;
-    }
-
-    public Long getDepositHistoryId() {
-        return depositHistoryId;
-    }
-
-    public void setDepositHistoryId(Long depositHistoryId) {
-        this.depositHistoryId = depositHistoryId;
-    }
-
-    public LocalDateTime getPaidAt() {
-        return paidAt;
-    }
-
-    public void setPaidAt(LocalDateTime paidAt) {
-        this.paidAt = paidAt;
-    }
-
-    public PaymentStatus getPaymentStatus() {
-        return paymentStatus;
-    }
-
-    public void setPaymentStatus(PaymentStatus paymentStatus) {
         this.paymentStatus = paymentStatus;
-    }
-
-    public PaidType getPaidType() {
-        return paidType;
-    }
-
-    public void setPaidType(PaidType paidType) {
         this.paidType = paidType;
+        this.depositHistoryId = depositHistoryId;
+        this.paidAt = paidAt;
     }
 }

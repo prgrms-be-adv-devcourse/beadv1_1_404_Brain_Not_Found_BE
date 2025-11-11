@@ -14,6 +14,7 @@ import com.ll.order.domain.model.vo.response.ClientResponse;
 import com.ll.order.domain.model.vo.response.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.ProductResponse;
 import com.ll.order.domain.repository.OrderJpaRepository;
+import com.ll.payment.model.enums.PaidType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -75,7 +76,8 @@ class OrderServiceImplTest {
                 "서울시 강남구",
                 new ArrayList<>(),
                 20000,
-                OrderType.ONLINE
+                OrderType.ONLINE,
+                PaidType.DEPOSIT
         );
 
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUserInfo);
@@ -154,7 +156,8 @@ class OrderServiceImplTest {
                 "서울시 강남구",
                 new ArrayList<>(),
                 50000,
-                OrderType.ONLINE
+                OrderType.ONLINE,
+                PaidType.DEPOSIT
         );
 
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUserInfo);
@@ -243,7 +246,8 @@ class OrderServiceImplTest {
                 "PROD-001",
                 2,
                 "서울시 강남구",
-                OrderType.ONLINE
+                OrderType.ONLINE,
+                PaidType.DEPOSIT
         );
 
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUserInfo);

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
 public class OrderController {
+
     private final OrderService orderService;
 
     /*
@@ -47,13 +48,16 @@ public class OrderController {
 
 //    @DeleteMapping("/{orderCode}")
 //    public ResponseEntity deleteOrder(
-//            @RequestParam String userCode,
+//            @RequestParam String buyerCode,
 //            @RequestParam String orderCode
 //    ) {
 //
 //        return ResponseEntity.ok(null);
 //    }
 //
+
+    //Pageable 객체로 controller 파라미터에서 바로 받을 수 있습니다!
+    //@PageableDefault 어노테이션도 같이 참조해보시면 좋을 거 같아요
     @GetMapping
     public ResponseEntity<OrderPageResponse> getOrderList(
             @RequestParam String userCode,
@@ -83,7 +87,7 @@ public class OrderController {
 //
 //    @PostMapping
 //    public ResponseEntity getPaymentRequest(
-//            @RequestParam String userCode
+//            @RequestParam String buyerCode
 //    ) {
 //
 //        return ResponseEntity.ok(null);
@@ -101,7 +105,7 @@ public class OrderController {
 //
 //    @PostMapping("/{orderCode}/payment/complete")
 //    public ResponseEntity completePayment(
-//            @RequestParam String userCode,
+//            @RequestParam String buyerCode,
 //            @RequestParam String orderCode
 //    ) {
 //
@@ -110,7 +114,7 @@ public class OrderController {
 //
 //    @PostMapping("/{orderCode}/payment/validate")
 //    public ResponseEntity validatePayment(
-//            @RequestParam String userCode,
+//            @RequestParam String buyerCode,
 //            @RequestParam String orderCode
 //    ) {
 //
@@ -120,7 +124,7 @@ public class OrderController {
 //
 //    @PostMapping("/{orderCode}/complete")
 //    public ResponseEntity completeOrder(
-//            @RequestParam String userCode,
+//            @RequestParam String buyerCode,
 //            @RequestParam String orderCode
 //    ) {
 //
