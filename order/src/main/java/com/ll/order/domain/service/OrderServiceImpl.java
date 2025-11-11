@@ -113,7 +113,6 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request) {
-        validateCartItemRequest(request);
         ClientResponse userInfo = getUserInfo(request.buyerCode());
 
         CartResponse cartInfo = cartServiceClient.getCartByCode(request.cartCode());
@@ -186,7 +185,6 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderCreateResponse createDirectOrder(OrderDirectRequest request) {
-        validateDirectOrderRequest(request);
         ClientResponse userInfo = getUserInfo(request.userCode());
 
         ProductResponse productInfo = productServiceClient.getProductByCode(request.productCode());
@@ -241,46 +239,6 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
-    //validation 하는 로직의 역할이 service 레이어일까요?
-    private void validateCartItemRequest(OrderCartItemRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("요청이 비어 있습니다.");
-        }
-        if (request.buyerCode() == null || request.buyerCode().isBlank()) {
-            throw new IllegalArgumentException("사용자 코드가 필요합니다.");
-        }
-        if (request.cartCode() == null || request.cartCode().isBlank()) {
-            throw new IllegalArgumentException("카트 코드가 필요합니다.");
-        }
-        if (request.totalPrice() <= 0) {
-            throw new IllegalArgumentException("결제 금액이 0 이하입니다.");
-        }
-        if (request.orderType() == null) {
-            throw new IllegalArgumentException("주문 유형이 필요합니다.");
-        }
-        if (request.address() == null || request.address().isBlank()) {
-            throw new IllegalArgumentException("배송지 주소가 필요합니다.");
-        }
-    }
-
-    private void validateDirectOrderRequest(OrderDirectRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("요청이 비어 있습니다.");
-        }
-        if (request.userCode() == null || request.userCode().isBlank()) {
-            throw new IllegalArgumentException("사용자 코드가 필요합니다.");
-        }
-        if (request.quantity() <= 0) {
-            throw new IllegalArgumentException("주문 수량은 1 이상이어야 합니다.");
-        }
-        if (request.address() == null || request.address().isBlank()) {
-            throw new IllegalArgumentException("배송지 주소가 필요합니다.");
-        }
-        if (request.productCode() == null || request.productCode().isBlank()) {
-            throw new IllegalArgumentException("상품 코드가 필요합니다.");
-        }
-    }
-
     private ClientResponse getUserInfo(String userCode) {
         ClientResponse userInfo = userServiceClient.getUserByCode(userCode);
         if (userInfo == null) {
@@ -289,4 +247,5 @@ public class OrderServiceImpl implements OrderService {
         return userInfo;
     }
 
+    // 도메인 별 규칙에 맞는 검증 로직이 필요하면 추가 작성할 것.
 }

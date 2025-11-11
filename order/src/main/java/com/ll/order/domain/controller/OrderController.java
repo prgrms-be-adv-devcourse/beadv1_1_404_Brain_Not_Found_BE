@@ -6,6 +6,7 @@ import com.ll.order.domain.model.vo.response.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.OrderDetailResponse;
 import com.ll.order.domain.model.vo.response.OrderPageResponse;
 import com.ll.order.domain.service.OrderService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +27,7 @@ public class OrderController {
     * */
     @PostMapping("/cartItems")
     public ResponseEntity<OrderCreateResponse> createCartItemOrder(
-            @RequestBody OrderCartItemRequest request
+            @Valid @RequestBody OrderCartItemRequest request
     ) {
         OrderCreateResponse response = orderService.createCartItemOrder(request);
 
@@ -37,7 +38,7 @@ public class OrderController {
 
     @PostMapping("/direct")
     public ResponseEntity<OrderCreateResponse> createDirectOrder(
-            @RequestBody OrderDirectRequest request
+            @Valid @RequestBody OrderDirectRequest request
     ) {
         OrderCreateResponse response = orderService.createDirectOrder(request);
 
