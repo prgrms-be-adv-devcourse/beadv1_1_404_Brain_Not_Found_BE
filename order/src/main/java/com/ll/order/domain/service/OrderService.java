@@ -8,6 +8,7 @@ import com.ll.order.domain.model.vo.response.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.OrderDetailResponse;
 import com.ll.order.domain.model.vo.response.OrderPageResponse;
 import com.ll.order.domain.model.vo.response.OrderStatusUpdateResponse;
+import com.ll.order.domain.model.vo.response.OrderValidateResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 
@@ -23,5 +24,5 @@ public interface OrderService {
 
     OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request);
 
-    void validateOrder(OrderValidateRequest buyerCode);
+    OrderValidateResponse validateOrder(OrderValidateRequest request);
 }

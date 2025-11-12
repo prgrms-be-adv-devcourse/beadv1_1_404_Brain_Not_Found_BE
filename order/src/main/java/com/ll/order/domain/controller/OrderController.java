@@ -8,6 +8,7 @@ import com.ll.order.domain.model.vo.response.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.OrderDetailResponse;
 import com.ll.order.domain.model.vo.response.OrderPageResponse;
 import com.ll.order.domain.model.vo.response.OrderStatusUpdateResponse;
+import com.ll.order.domain.model.vo.response.OrderValidateResponse;
 import com.ll.order.domain.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -92,12 +93,14 @@ public class OrderController {
 
     // 주문 가능 여부 확인
     @PostMapping("/validate")
-    public ResponseEntity<?> validateOrder(
+    public ResponseEntity<OrderValidateResponse> validateOrder(
             @RequestBody OrderValidateRequest request
     ) {
-        orderService.validateOrder(request);
+        OrderValidateResponse response = orderService.validateOrder(request);
 
-        return ResponseEntity.ok(null);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
     }
 //
 //

@@ -19,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -220,7 +221,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public void validateOrder(OrderValidateRequest request) {
+    public OrderValidateResponse validateOrder(OrderValidateRequest request) {
         ClientResponse userInfo = getUserInfo(request.buyerCode());
 
         if (userInfo.address() == null || userInfo.address().isBlank()) {
@@ -230,6 +231,7 @@ public class OrderServiceImpl implements OrderService {
         Set<String> duplicatedCheck = new HashSet<>();
         int totalQuantity = 0;
         long totalAmount = 0L;
+        List<OrderValidateResponse.ItemInfo> itemInfos = new ArrayList<>();
 
         for (ProductRequest productRequest : request.products()) {
             if (!duplicatedCheck.add(productRequest.productCode())) { // 이미 들어있는 코드면 false 반환
@@ -256,6 +258,12 @@ public class OrderServiceImpl implements OrderService {
 
             totalQuantity += productRequest.quantity();
             totalAmount += (long) productInfo.totalPrice() * productRequest.quantity();
+
+            itemInfos.add(new OrderValidateResponse.ItemInfo(
+                    productRequest.productCode(),
+                    productRequest.quantity(),
+                    productInfo.totalPrice()
+            ));
         }
 
         if (totalQuantity <= 0) {
@@ -265,6 +273,13 @@ public class OrderServiceImpl implements OrderService {
         if (totalAmount <= 0) {
             throw new IllegalArgumentException("주문 금액이 0 이하입니다.");
         }
+
+        return new OrderValidateResponse(
+                request.buyerCode(),
+                totalQuantity,
+                BigDecimal.valueOf(totalAmount),
+                itemInfos
+        );
     }
 
     private ProductResponse getProductInfo(String productCode) {
