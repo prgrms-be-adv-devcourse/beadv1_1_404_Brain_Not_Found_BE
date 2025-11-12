@@ -7,6 +7,6 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 
-public interface DepositHistoryRepositoryCustom {
+public interface CustomDepositHistoryRepository {
     Page<DepositHistory> findAllByDepositAndCreatedAtBetween(Deposit deposit, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable);
 }

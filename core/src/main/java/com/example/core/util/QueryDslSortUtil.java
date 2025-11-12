@@ -12,8 +12,17 @@ import java.util.*;
 public class QueryDslSortUtil {
 
     public static <T> OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable, EntityPathBase<T> qEntity) {
+        return getOrderSpecifiers(pageable, qEntity, true);
+    }
+    public static <T> OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable, EntityPathBase<T> qEntity, boolean applyDefaultCreatedDescSort) {
         if (pageable == null || pageable.getSort().isUnsorted()) {
-            return new OrderSpecifier[0];
+            if (applyDefaultCreatedDescSort) {
+                return new OrderSpecifier[]{
+                        new OrderSpecifier<>(Order.DESC, new PathBuilder<>(qEntity.getType(), qEntity.getMetadata().getName()).getComparable("createdAt", Comparable.class))
+                };
+            } else {
+                return new OrderSpecifier[0];
+            }
         }
 
         List<OrderSpecifier<?>> orders = new ArrayList<>();

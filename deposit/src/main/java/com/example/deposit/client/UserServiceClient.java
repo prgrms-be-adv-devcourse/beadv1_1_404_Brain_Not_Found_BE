@@ -21,7 +21,7 @@ public class UserServiceClient {
      * @return 사용자 정보 (userId, userCode)
      */
     public UserInfoResponse getUserByCode(String userCode) {
-        return new UserInfoResponse(1L, "userCode123"); // TODO: 임시 구현, 실제로는 RestClient 를 사용하여 회원 서비스와 통신해야 함
+        return new UserInfoResponse(1L, "userCode123"); // TODO: 임시 구현, 실제로는 RestClient 를 사용하여 회원 서비스와 통신해야 함. 아마 kafka 로 바뀔 수도?
 //        return restClient.get()
 //                .uri(userServiceUrl + "/api/users/{userCode}", userCode)
 //                .retrieve()

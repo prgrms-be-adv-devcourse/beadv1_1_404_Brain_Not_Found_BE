@@ -1,7 +1,7 @@
 package com.example.deposit.controller;
 
 import com.example.core.model.response.BaseResponse;
-import com.example.deposit.model.exception.InvalidDateRangeException;
+import com.example.core.model.vo.common.DateRange;
 import com.example.deposit.model.vo.request.DepositDeleteRequest;
 import com.example.deposit.model.vo.request.DepositTransactionRequest;
 import com.example.deposit.model.vo.response.*;
@@ -10,12 +10,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @RestController
 @RequiredArgsConstructor
@@ -70,16 +66,11 @@ public class DepositController {
     public ResponseEntity<BaseResponse<DepositHistoryPageResponse>> getDepositHistories(
             @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
             @RequestParam String userCode,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @Valid @ModelAttribute DateRange dateRange,
             Pageable pageable
     ) {
-        LocalDateTime start = fromDate != null ? fromDate.atStartOfDay() : null;
-        LocalDateTime end = toDate != null ? toDate.plusDays(1).atStartOfDay() : null;
-        if (fromDate != null && toDate != null && toDate.isBefore(fromDate)) {
-            throw new InvalidDateRangeException("조회 종료일은 시작일보다 빠를 수 없습니다.");
-        }
-        return BaseResponse.ok(depositService.getDepositHistoryByUserCode(userCode, start, end, pageable));
+        dateRange.validate();
+        return BaseResponse.ok(depositService.getDepositHistoryByUserCode(userCode, dateRange.getStartDateTime(), dateRange.getEndDateTime(), pageable));
     }
 
 }

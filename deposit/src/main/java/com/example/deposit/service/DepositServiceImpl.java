@@ -5,6 +5,7 @@ import com.example.deposit.model.entity.Deposit;
 import com.example.deposit.model.entity.DepositHistory;
 import com.example.deposit.model.enums.DepositHistoryType;
 import com.example.deposit.model.enums.TransactionStatus;
+import com.example.deposit.model.exception.DepositAlreadyExistsException;
 import com.example.deposit.model.exception.DepositNotFoundException;
 import com.example.deposit.model.exception.DuplicateDepositTransactionException;
 import com.example.deposit.model.exception.UserNotFoundException;
@@ -34,10 +35,9 @@ public class DepositServiceImpl implements DepositService {
     @Transactional
     public DepositResponse createDeposit(String userCode) {
         UserInfoResponse userInfo = getUserInfo(userCode);
-
         if ( depositRepository.existsByUserId(userInfo.userId()) ) {
             log.warn("User {} already exists", userCode);
-            return DepositResponse.from(userCode, getDepositByUserId(userInfo.userId()));
+            throw new DepositAlreadyExistsException();
         }
         Deposit deposit = Deposit.createInitialDeposit(userInfo.userId());
         depositRepository.save(deposit);
@@ -84,7 +84,7 @@ public class DepositServiceImpl implements DepositService {
         depositHistoryRepository.save(depositHistory);
         deposit.addHistory(depositHistory);
 
-        // TODO: 카프카 이벤트 발행 필요한지 검토
+        // TODO: 카프카 이벤트 발행 필요한지 검토 ( @TransactionalEventListener(phase = AFTER_COMMIT) )
 
         return DepositTransactionResponse.from(userCode, depositHistory);
     }
@@ -112,7 +112,7 @@ public class DepositServiceImpl implements DepositService {
         depositHistoryRepository.save(depositHistory);
         deposit.addHistory(depositHistory);
 
-        // TODO: 카프카 이벤트 발행 필요한지 검토
+        // TODO: 카프카 이벤트 발행 필요한지 검토 ( @TransactionalEventListener(phase = AFTER_COMMIT) )
 
         return DepositTransactionResponse.from(userCode, depositHistory);
     }

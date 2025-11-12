@@ -9,7 +9,7 @@ import lombok.*;
 
 @Entity
 @Getter
-@Table(name = "deposit_historys")
+@Table(name = "deposit_histories")
 @NoArgsConstructor( access = AccessLevel.PROTECTED )
 public class DepositHistory extends BaseEntity {
 

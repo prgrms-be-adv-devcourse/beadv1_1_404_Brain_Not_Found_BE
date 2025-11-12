@@ -4,7 +4,6 @@ import com.example.core.model.persistence.BaseEntity;
 import com.example.deposit.model.enums.DepositStatus;
 import com.example.deposit.model.exception.DepositBalanceNotEmptyException;
 import com.example.deposit.model.exception.InsufficientDepositBalanceException;
-import com.example.deposit.model.exception.InvalidDepositAmountException;
 import com.example.deposit.model.exception.InvalidDepositStatusTransitionException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -59,9 +58,6 @@ public class Deposit extends BaseEntity {
     }
 
     public void charge(Long amount) {
-        if (amount <= 0) {
-            throw new InvalidDepositAmountException("금액은 0보다 커야 합니다.");
-        }
         if (this.depositStatus != DepositStatus.ACTIVE) {
             throw new InvalidDepositStatusTransitionException("비활성 또는 종료된 입금 계좌에는 충전할 수 없습니다.");
         }
@@ -69,9 +65,6 @@ public class Deposit extends BaseEntity {
     }
 
     public void withdraw(Long amount) {
-        if (amount < 0) {
-            throw new InvalidDepositAmountException("금액은 0보다 커야 합니다.");
-        }
         if (this.balance < amount) {
             throw new InsufficientDepositBalanceException("잔액이 부족합니다.");
         }

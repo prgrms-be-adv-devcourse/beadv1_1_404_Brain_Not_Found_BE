@@ -1,4 +1,4 @@
-package com.example.deposit.model.exception;
+package com.example.core.model.exception;
 
 import com.example.core.exception.BaseException;
 import com.example.core.exception.ErrorCode;

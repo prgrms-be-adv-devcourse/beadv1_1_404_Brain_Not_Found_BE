@@ -38,6 +38,7 @@ public enum ErrorCode {
     GATEWAY_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "게이트웨이 응답 시간이 초과되었습니다."),
 
     // CUSTOM ERROR CODES
+    DEPOSIT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 존재하는 입금 계좌입니다."),
     DEPOSIT_ALREADY_CLOSED(HttpStatus.CONFLICT, "이미 비활성 상태인 입금 계좌입니다."),
     BALANCE_NOT_EMPTY(HttpStatus.UNPROCESSABLE_ENTITY, "잔액이 남아있는 입금 계좌는 삭제할 수 없습니다.");
 
