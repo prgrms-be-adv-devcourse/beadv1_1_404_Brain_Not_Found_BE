@@ -209,7 +209,6 @@ public class OrderServiceImpl implements OrderService {
                 productInfo.totalPrice()
         );
         orderItemJpaRepository.save(orderItem);
-        orderJpaRepository.save(savedOrder);
 
         return convertToOrderCreateResponse(savedOrder);
     }
