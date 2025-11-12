@@ -8,9 +8,10 @@ import com.ll.products.domain.product.model.entity.ProductStatus;
 public interface ProductRepositoryCustom {
 
     Page<Product> searchProducts(
-            String sellerCode,
+            Long sellerId,
             Long categoryId,
             ProductStatus status,
+            Boolean isDeleted,
             String name,
             Pageable pageable
     );

@@ -1,6 +1,6 @@
 package com.ll.products.domain.category.controller;
 
-import com.ll.core.model.response.BaseResponse;
+import com.example.core.model.response.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +18,6 @@ import java.util.List;
 public class CategoryController {
 
     private final CategoryService categoryService;
-
-    @GetMapping("/ping")
-    public ResponseEntity<BaseResponse<String>> pong() {
-        System.out.println("CategoryController.pong");
-        return BaseResponse.ok("Ok");
-    }
 
     // 카테고리 생성
     @PostMapping

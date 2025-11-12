@@ -2,7 +2,6 @@ package com.ll.products.domain.product.model.dto.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import com.ll.products.domain.product.model.dto.ProductImageDto;
 
@@ -23,10 +22,6 @@ public record ProductUpdateRequest(
         Integer price,
 
         @Valid
-        @Size(max = 5)
-        List<ProductImageDto> addImages,
-
-        List<String> deleteImageKeys
-
+        List<ProductImageDto> images
 ) {
 }

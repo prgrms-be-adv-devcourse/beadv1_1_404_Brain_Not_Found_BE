@@ -11,25 +11,25 @@ public record ProductListResponse(
         Long id,
         String code,
         String name,
-        String sellerCode,
+        Long sellerId,
         String sellerName,
         Integer price,
         ProductStatus status,
         String mainImageUrl,
         LocalDateTime createdAt
 ) {
-    public static ProductListResponse from(Product product, String s3BaseUrl) {
+    public static ProductListResponse from(Product product) {
         String mainImageUrl = product.getImages().stream()
                 .filter(image -> image.getIsMain())
                 .findFirst()
-                .map(image -> image.getUrl(s3BaseUrl))
+                .map(image -> image.getUrl())
                 .orElse(null);
 
         return ProductListResponse.builder()
                 .id(product.getId())
                 .code(product.getCode())
                 .name(product.getName())
-                .sellerCode(product.getSellerCode())
+                .sellerId(product.getSellerId())
                 .sellerName(product.getSellerName())
                 .price(product.getPrice())
                 .status(product.getStatus())

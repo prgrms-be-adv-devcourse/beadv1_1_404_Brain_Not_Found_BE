@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "product_categories")
+@Table(name = "Product_Categories")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter

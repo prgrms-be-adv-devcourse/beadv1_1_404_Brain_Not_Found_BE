@@ -1,9 +1,7 @@
 package com.ll.products.global.client;
 
-import com.ll.core.model.response.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import com.ll.products.global.client.dto.UserResponse;
@@ -15,22 +13,16 @@ public class UserClient {
 
     private final RestClient userRestClient;
 
-    public String getSellerName(String sellerCode) {
+    public String getSellerName(Long sellerId) {
         try {
-            BaseResponse<UserResponse> response = userRestClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/api/users/info")
-                            .build())
-                    .header("X-User-Code", sellerCode)
+            UserResponse response = userRestClient.get()
+                    .uri("/api/users/info")
+                    .header("sellerId", sellerId.toString())
                     .retrieve()
-                    .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
-            if (response != null && response.getData() != null) {
-                return response.getData().name();
-            }
-            log.warn("판매자명 조회 실패 : {}", sellerCode);
-            return null;
+                    .body(UserResponse.class);
+            return response != null ? response.name() : null;
         } catch (Exception e) {
-            log.error("판매자명 조회 중 예외 발생 : {}, error: {}", sellerCode, e.getMessage(), e);
+            log.error("해당하는 id의 판매자를 찾을 수 없습니다 : {}", sellerId, e);
             return null;
         }
     }

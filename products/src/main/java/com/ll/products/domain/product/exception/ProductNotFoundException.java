@@ -1,12 +1,8 @@
 package com.ll.products.domain.product.exception;
 
-import com.ll.core.model.exception.BaseException;
-import com.ll.core.model.exception.ErrorCode;
-
-public class ProductNotFoundException extends BaseException {
+public class ProductNotFoundException extends RuntimeException {
 
     public ProductNotFoundException(String code) {
-        super(ErrorCode.NOT_FOUND,
-                String.format("상품을 찾을 수 없습니다. 상품코드: %s", code));
+        super("상품 코드 " + code + "에 해당하는 상품을 찾을 수 없습니다.");
     }
 }

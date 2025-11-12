@@ -1,6 +1,7 @@
 package com.ll.products.domain.product.model.dto.response;
 
 import lombok.Builder;
+import com.ll.products.domain.product.model.dto.ProductImageDto;
 import com.ll.products.domain.product.model.entity.Product;
 import com.ll.products.domain.product.model.entity.ProductStatus;
 
@@ -14,31 +15,31 @@ public record ProductResponse(
         String name,
         Long categoryId,
         String categoryName,
-        String sellerCode,
+        Long sellerId,
         String sellerName,
         ProductStatus status,
         Integer quantity,
         String description,
         Integer price,
-        List<ProductImageResponse> images,
+        List<ProductImageDto> images,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static ProductResponse from(Product product, String s3BaseUrl) {
+    public static ProductResponse from(Product product) {
         return ProductResponse.builder()
                 .id(product.getId())
                 .code(product.getCode())
                 .name(product.getName())
                 .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
-                .sellerCode(product.getSellerCode())
+                .sellerId(product.getSellerId())
                 .sellerName(product.getSellerName())
                 .quantity(product.getQuantity())
                 .description(product.getDescription())
                 .price(product.getPrice())
                 .status(product.getStatus())
                 .images(product.getImages().stream()
-                        .map(image -> ProductImageResponse.from(image, s3BaseUrl))
+                        .map(ProductImageDto::from)
                         .toList())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())

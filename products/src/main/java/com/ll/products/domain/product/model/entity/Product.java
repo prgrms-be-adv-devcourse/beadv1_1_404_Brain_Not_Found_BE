@@ -1,7 +1,6 @@
 package com.ll.products.domain.product.model.entity;
 
-import com.ll.core.model.persistence.BaseEntity;
-import com.ll.products.domain.product.exception.InsufficientInventoryException;
+import com.example.core.model.persistence.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,7 +27,7 @@ public class Product extends BaseEntity {
     private Category category;
 
     @Column(nullable = false)
-    private String sellerCode;
+    private Long sellerId;
 
     @Column(nullable = false)
     private String sellerName;
@@ -79,11 +78,6 @@ public class Product extends BaseEntity {
         this.status = status;
     }
 
-    public void updateQuantity(Integer quantity) {
-        validateUpdateQuantity(quantity);
-        this.quantity += quantity;
-    }
-
     public void softDelete() {
         this.isDeleted = true;
     }
@@ -93,13 +87,7 @@ public class Product extends BaseEntity {
         image.updateProduct(this);
     }
 
-    public void deleteImages(List<ProductImage> imagesToDelete) {
-        this.images.removeAll(imagesToDelete);
-    }
-
-    private void validateUpdateQuantity(Integer quantity) {
-        if (this.quantity + quantity < 0) {
-            throw new InsufficientInventoryException(this.getCode(), this.quantity);
-        }
+    public void deleteImages() {
+        this.images.clear();
     }
 }
