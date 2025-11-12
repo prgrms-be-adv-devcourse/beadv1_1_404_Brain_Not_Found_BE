@@ -81,8 +81,8 @@ public class DepositServiceImpl implements DepositService {
                 .transactionStatus(TransactionStatus.COMPLETED)
                 .build();
 
-        depositHistoryRepository.save(depositHistory);
         deposit.addHistory(depositHistory);
+        depositHistoryRepository.save(depositHistory);
 
         // TODO: 카프카 이벤트 발행 필요한지 검토 ( @TransactionalEventListener(phase = AFTER_COMMIT) )
 
@@ -109,8 +109,8 @@ public class DepositServiceImpl implements DepositService {
                 .transactionStatus(TransactionStatus.COMPLETED)
                 .build();
 
-        depositHistoryRepository.save(depositHistory);
         deposit.addHistory(depositHistory);
+        depositHistoryRepository.save(depositHistory);
 
         // TODO: 카프카 이벤트 발행 필요한지 검토 ( @TransactionalEventListener(phase = AFTER_COMMIT) )
 
@@ -122,12 +122,7 @@ public class DepositServiceImpl implements DepositService {
     public DepositHistoryPageResponse getDepositHistoryByUserCode(String userCode, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
         UserInfoResponse userInfo = getUserInfo(userCode);
         Deposit deposit = getDepositByUserId(userInfo.userId());
-
-        System.out.println("fromDate = " + fromDate);
-        System.out.println("toDate = " + toDate);
-
         Page<DepositHistory> histories = depositHistoryRepository.findAllByDepositAndCreatedAtBetween(deposit, fromDate, toDate, pageable);
-
         return DepositHistoryPageResponse.from(userCode, histories.map(DepositHistoryResponse::from));
     }
 

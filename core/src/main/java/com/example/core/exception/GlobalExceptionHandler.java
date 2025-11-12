@@ -63,7 +63,7 @@ public class GlobalExceptionHandler {
     // 그 외 모든 예외 (예상치 못한 에러)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse<Void>> handleGenericException(Exception e) {
-        log.error(LOG_PREFIX, e.getMessage(), e);
+        log.warn(LOG_PREFIX, e.getMessage(), e);
         return BaseResponse.error(ErrorCode.INTERNAL_SERVER_ERROR);
     }
 }

@@ -65,6 +65,9 @@ public class Deposit extends BaseEntity {
     }
 
     public void withdraw(Long amount) {
+        if (this.depositStatus != DepositStatus.ACTIVE) {
+            throw new InvalidDepositStatusTransitionException("비활성 계좌는 출금할 수 없습니다.");
+        }
         if (this.balance < amount) {
             throw new InsufficientDepositBalanceException("잔액이 부족합니다.");
         }

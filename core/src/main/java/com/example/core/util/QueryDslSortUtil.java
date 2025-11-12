@@ -11,6 +11,8 @@ import java.util.*;
 
 public class QueryDslSortUtil {
 
+    private static final String DEFAULT_SORT_FIELD = "createdAt";
+
     public static <T> OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable, EntityPathBase<T> qEntity) {
         return getOrderSpecifiers(pageable, qEntity, true);
     }
@@ -18,7 +20,7 @@ public class QueryDslSortUtil {
         if (pageable == null || pageable.getSort().isUnsorted()) {
             if (applyDefaultCreatedDescSort) {
                 return new OrderSpecifier[]{
-                        new OrderSpecifier<>(Order.DESC, new PathBuilder<>(qEntity.getType(), qEntity.getMetadata().getName()).getComparable("createdAt", Comparable.class))
+                        new OrderSpecifier<>(Order.DESC, new PathBuilder<>(qEntity.getType(), qEntity.getMetadata().getName()).getComparable(DEFAULT_SORT_FIELD, Comparable.class))
                 };
             } else {
                 return new OrderSpecifier[0];
