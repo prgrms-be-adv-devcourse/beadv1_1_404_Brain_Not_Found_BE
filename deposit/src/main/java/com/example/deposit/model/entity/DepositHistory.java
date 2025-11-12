@@ -2,9 +2,8 @@ package com.example.deposit.model.entity;
 
 import com.example.core.model.persistence.BaseEntity;
 import com.example.deposit.model.enums.DepositHistoryType;
-import com.example.deposit.model.enums.DepositStatus;
 import com.example.deposit.model.enums.TransactionStatus;
-import com.example.deposit.model.exception.InvalidDepositStatusTransitionException;
+import com.example.deposit.model.exception.InvalidDepositHistoryStatusTransitionException;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -52,21 +51,21 @@ public class DepositHistory extends BaseEntity {
 
     public void setTransactionCompleted() {
         if ( transactionStatus != TransactionStatus.PENDING ) {
-            throw new InvalidDepositStatusTransitionException("거래 상태가 PENDING 이어야만 COMPLETED 로 변경할 수 있습니다.");
+            throw new InvalidDepositHistoryStatusTransitionException("거래 상태가 PENDING 이어야만 COMPLETED 로 변경할 수 있습니다.");
         }
         this.transactionStatus = TransactionStatus.COMPLETED;
     }
 
     public void setTransactionFailed() {
         if ( transactionStatus != TransactionStatus.PENDING ) {
-            throw new InvalidDepositStatusTransitionException("거래 상태가 PENDING 이어야만 FAILED 로 변경할 수 있습니다.");
+            throw new InvalidDepositHistoryStatusTransitionException("거래 상태가 PENDING 이어야만 FAILED 로 변경할 수 있습니다.");
         }
         this.transactionStatus = TransactionStatus.FAILED;
     }
 
     public void setTransactionCancelled() {
         if ( transactionStatus != TransactionStatus.PENDING ) {
-            throw new InvalidDepositStatusTransitionException("거래 상태가 PENDING 이어야만 CANCELLED 로 변경할 수 있습니다.");
+            throw new InvalidDepositHistoryStatusTransitionException("거래 상태가 PENDING 이어야만 CANCELLED 로 변경할 수 있습니다.");
         }
         this.transactionStatus = TransactionStatus.CANCELLED;
     }
