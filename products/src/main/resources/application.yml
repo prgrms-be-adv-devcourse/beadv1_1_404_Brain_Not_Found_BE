@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: products
+
+api:
+  user:
+    base-url: http://localhost:8080
