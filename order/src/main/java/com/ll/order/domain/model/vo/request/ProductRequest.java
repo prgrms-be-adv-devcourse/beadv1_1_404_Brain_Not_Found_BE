@@ -10,6 +10,9 @@ public record ProductRequest(
         @Positive(message = "상품 수량은 1 이상이어야 합니다.")
         int quantity,
 
+        @Positive(message = "상품 가격은 1 이상이어야 합니다.")
+        int price,
+
         String image
 ) {
 }
