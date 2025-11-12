@@ -1,18 +1,21 @@
 package com.example.deposit.controller;
 
 import com.example.core.model.response.BaseResponse;
+import com.example.deposit.model.exception.InvalidDateRangeException;
 import com.example.deposit.model.vo.request.DepositDeleteRequest;
 import com.example.deposit.model.vo.request.DepositTransactionRequest;
-import com.example.deposit.model.vo.response.DepositDeleteResponse;
-import com.example.deposit.model.vo.response.DepositResponse;
-import com.example.deposit.model.vo.response.DepositTransactionResponse;
+import com.example.deposit.model.vo.response.*;
 import com.example.deposit.service.DepositService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,8 +25,7 @@ public class DepositController {
 
     @GetMapping
     public ResponseEntity<BaseResponse<DepositResponse>> getDeposit(
-            @NotNull(message = "userCode 는 필수입력값입니다.")
-            @NotBlank(message = "userCode 는 공백일 수 없습니다.")
+            @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
             @RequestParam String userCode
     ) {
         return BaseResponse.ok(depositService.getDepositByUserCode(userCode));
@@ -31,8 +33,7 @@ public class DepositController {
 
     @PostMapping
     public ResponseEntity<BaseResponse<DepositResponse>> createDeposit(
-            @NotNull(message = "userCode 는 필수입력값입니다.")
-            @NotBlank(message = "userCode 는 공백일 수 없습니다.")
+            @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
             @RequestParam String userCode
     ) {
         return BaseResponse.created(depositService.createDeposit(userCode));
@@ -40,8 +41,7 @@ public class DepositController {
 
     @PostMapping("/charge")
     public ResponseEntity<BaseResponse<DepositTransactionResponse>> chargeDeposit(
-            @NotNull(message = "userCode 는 필수입력값입니다.")
-            @NotBlank(message = "userCode 는 공백일 수 없습니다.")
+            @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
             @RequestParam String userCode,
             @Valid @RequestBody DepositTransactionRequest request
     ) {
@@ -50,8 +50,7 @@ public class DepositController {
 
     @PostMapping("/withdraw")
     public ResponseEntity<BaseResponse<DepositTransactionResponse>> withdrawDeposit(
-            @NotNull(message = "userCode 는 필수입력값입니다.")
-            @NotBlank(message = "userCode 는 공백일 수 없습니다.")
+            @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
             @RequestParam String userCode,
             @Valid @RequestBody DepositTransactionRequest request
     ) {
@@ -60,13 +59,27 @@ public class DepositController {
 
     @PatchMapping("/close")
     public ResponseEntity<BaseResponse<DepositDeleteResponse>> deleteDeposit(
-            @NotNull(message = "userCode 는 필수입력값입니다.")
-            @NotBlank(message = "userCode 는 공백일 수 없습니다.")
+            @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
             @RequestParam String userCode,
             @Valid @RequestBody DepositDeleteRequest request
     ) {
         return BaseResponse.ok(depositService.deleteDepositByUserCode(userCode, request));
     }
 
+    @GetMapping("/histories")
+    public ResponseEntity<BaseResponse<DepositHistoryPageResponse>> getDepositHistories(
+            @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
+            @RequestParam String userCode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            Pageable pageable
+    ) {
+        LocalDateTime start = fromDate != null ? fromDate.atStartOfDay() : null;
+        LocalDateTime end = toDate != null ? toDate.plusDays(1).atStartOfDay() : null;
+        if (fromDate != null && toDate != null && toDate.isBefore(fromDate)) {
+            throw new InvalidDateRangeException("조회 종료일은 시작일보다 빠를 수 없습니다.");
+        }
+        return BaseResponse.ok(depositService.getDepositHistoryByUserCode(userCode, start, end, pageable));
+    }
 
 }

@@ -15,6 +15,7 @@ public record DepositHistoryResponse (
         DepositHistoryType historyType,
         TransactionStatus transactionStatus,
         String referenceCode,
+        LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
     public static DepositHistoryResponse from(DepositHistory depositHistory) {
@@ -27,6 +28,7 @@ public record DepositHistoryResponse (
                 depositHistory.getHistoryType(),
                 depositHistory.getTransactionStatus(),
                 depositHistory.getReferenceCode(),
+                depositHistory.getCreatedAt(),
                 depositHistory.getUpdatedAt()
         );
     }

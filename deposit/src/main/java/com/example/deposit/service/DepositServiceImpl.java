@@ -10,16 +10,17 @@ import com.example.deposit.model.exception.DuplicateDepositTransactionException;
 import com.example.deposit.model.exception.UserNotFoundException;
 import com.example.deposit.model.vo.request.DepositDeleteRequest;
 import com.example.deposit.model.vo.request.DepositTransactionRequest;
-import com.example.deposit.model.vo.response.DepositDeleteResponse;
-import com.example.deposit.model.vo.response.DepositTransactionResponse;
-import com.example.deposit.model.vo.response.DepositResponse;
-import com.example.deposit.model.vo.response.UserInfoResponse;
+import com.example.deposit.model.vo.response.*;
 import com.example.deposit.repository.DepositHistoryRepository;
 import com.example.deposit.repository.DepositRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -116,15 +117,23 @@ public class DepositServiceImpl implements DepositService {
         return DepositTransactionResponse.from(userCode, depositHistory);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public DepositHistoryPageResponse getDepositHistoryByUserCode(String userCode, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
+        UserInfoResponse userInfo = getUserInfo(userCode);
+        Deposit deposit = getDepositByUserId(userInfo.userId());
+
+        System.out.println("fromDate = " + fromDate);
+        System.out.println("toDate = " + toDate);
+
+        Page<DepositHistory> histories = depositHistoryRepository.findAllByDepositAndCreatedAtBetween(deposit, fromDate, toDate, pageable);
+
+        return DepositHistoryPageResponse.from(userCode, histories.map(DepositHistoryResponse::from));
+    }
+
     private Deposit getDepositByUserId(Long userId) {
         return depositRepository.findByUserId(userId)
                 .orElseThrow(() -> new DepositNotFoundException("해당 회원의 예치금 계좌가 존재하지 않습니다."));
-    }
-
-    private void isDuplicateTransaction(String referenceCode) {
-        if (depositHistoryRepository.existsByReferenceCode(referenceCode)) {
-            throw new DuplicateDepositTransactionException("이미 처리된 거래요청입니다.");
-        }
     }
 
     private UserInfoResponse getUserInfo(String userCode) {
@@ -133,6 +142,12 @@ public class DepositServiceImpl implements DepositService {
             throw new UserNotFoundException("해당 유저를 찾을 수 없습니다: " + userCode);
         }
         return userInfo;
+    }
+
+    private void isDuplicateTransaction(String referenceCode) {
+        if (depositHistoryRepository.existsByReferenceCode(referenceCode)) {
+            throw new DuplicateDepositTransactionException("이미 처리된 거래요청입니다.");
+        }
     }
 }
 
