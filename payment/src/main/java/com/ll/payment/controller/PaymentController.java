@@ -1,6 +1,9 @@
 package com.ll.payment.controller;
 
 import com.ll.payment.model.entity.Payment;
+import com.ll.payment.model.vo.PaymentRequest;
+import com.ll.payment.service.PaymentService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -9,29 +12,33 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/payments")
-public class PaymentController {
+@RequiredArgsConstructor
+public class PaymentController { // TODO : 결제 실패 시 주문 상태 갱신 또는 트랜잭션 롤백 정책
 
-    @PostMapping("/process")
-    public ResponseEntity processPayment(@RequestBody Payment payment) {
-
-        return ResponseEntity.ok("Payment processed successfully");
-    }
+    private final PaymentService paymentService;
 
     @PostMapping("/toss")
-    public ResponseEntity tossPayment(@RequestBody Payment payment) {
+    public ResponseEntity<?> tossPayment(
+            @RequestBody PaymentRequest request
+            ) {
+        paymentService.tossPayment(request);
 
         return ResponseEntity.ok("Toss payment handled successfully");
     }
 
     @PostMapping("/deposit")
-    public ResponseEntity depositPayment(@RequestBody Payment payment) {
+    public ResponseEntity<?> depositPayment(
+            @RequestBody PaymentRequest request
+    ) {
+        paymentService.depositPayment(request);
 
         return ResponseEntity.ok("Deposit managed successfully");
     }
 
     @PostMapping("/refund")
-    public  ResponseEntity refundPayment(@RequestBody Payment payment) {
+    public ResponseEntity<?> refundPayment(@RequestBody Payment payment) {
 
         return ResponseEntity.ok("Refund processed successfully");
     }
+
 }
