@@ -2,12 +2,18 @@ package com.ll.order.domain.controller;
 
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
+import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
+import com.ll.order.domain.model.vo.request.OrderValidateRequest;
 import com.ll.order.domain.model.vo.response.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.OrderDetailResponse;
 import com.ll.order.domain.model.vo.response.OrderPageResponse;
+import com.ll.order.domain.model.vo.response.OrderStatusUpdateResponse;
 import com.ll.order.domain.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -47,28 +53,13 @@ public class OrderController {
                 .body(response);
     }
 
-//    @DeleteMapping("/{orderCode}")
-//    public ResponseEntity deleteOrder(
-//            @RequestParam String buyerCode,
-//            @RequestParam String orderCode
-//    ) {
-//
-//        return ResponseEntity.ok(null);
-//    }
-//
-
-    //Pageable 객체로 controller 파라미터에서 바로 받을 수 있습니다!
-    //@PageableDefault 어노테이션도 같이 참조해보시면 좋을 거 같아요
     @GetMapping
     public ResponseEntity<OrderPageResponse> getOrderList(
             @RequestParam String userCode,
             @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortOrder
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        OrderPageResponse orderPageResponse = orderService.findAllOrders(userCode, keyword, page, size, sortBy, sortOrder);
+        OrderPageResponse orderPageResponse = orderService.findAllOrders(userCode, keyword, pageable);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -85,42 +76,29 @@ public class OrderController {
                 .status(HttpStatus.OK)
                 .body(response);
     }
-//
-//    @PostMapping
-//    public ResponseEntity getPaymentRequest(
-//            @RequestParam String buyerCode
-//    ) {
-//
-//        return ResponseEntity.ok(null);
-//    }
-//
 
-//
-//    @PatchMapping("/{orderCode}/status")
-//    public ResponseEntity updateOrderStatus(
-//            @RequestParam String orderCode
-//    ) {
-//
-//        return ResponseEntity.ok(null);
-//    }
-//
-//    @PostMapping("/{orderCode}/payment/complete")
-//    public ResponseEntity completePayment(
-//            @RequestParam String buyerCode,
-//            @RequestParam String orderCode
-//    ) {
-//
-//        return ResponseEntity.ok(null);
-//    }
-//
-//    @PostMapping("/{orderCode}/payment/validate")
-//    public ResponseEntity validatePayment(
-//            @RequestParam String buyerCode,
-//            @RequestParam String orderCode
-//    ) {
-//
-//        return ResponseEntity.ok(null);
-//    }
+
+    @PatchMapping("/{orderCode}/status")
+    public ResponseEntity<OrderStatusUpdateResponse> updateOrderStatus(
+            @PathVariable String orderCode,
+            @Valid @RequestBody OrderStatusUpdateRequest request
+    ) {
+        OrderStatusUpdateResponse response = orderService.updateOrderStatus(orderCode, request);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(response);
+    }
+
+    // 주문 가능 여부 확인
+    @PostMapping("/validate")
+    public ResponseEntity<?> validateOrder(
+            @RequestBody OrderValidateRequest request
+    ) {
+        orderService.validateOrder(request);
+
+        return ResponseEntity.ok(null);
+    }
 //
 //
 //    @PostMapping("/{orderCode}/complete")
