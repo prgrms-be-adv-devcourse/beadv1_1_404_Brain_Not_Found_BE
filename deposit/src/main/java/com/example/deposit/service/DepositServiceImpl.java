@@ -8,7 +8,9 @@ import com.example.deposit.model.enums.TransactionStatus;
 import com.example.deposit.model.exception.DepositNotFoundException;
 import com.example.deposit.model.exception.DuplicateDepositTransactionException;
 import com.example.deposit.model.exception.UserNotFoundException;
+import com.example.deposit.model.vo.request.DepositDeleteRequest;
 import com.example.deposit.model.vo.request.DepositTransactionRequest;
+import com.example.deposit.model.vo.response.DepositDeleteResponse;
 import com.example.deposit.model.vo.response.DepositTransactionResponse;
 import com.example.deposit.model.vo.response.DepositResponse;
 import com.example.deposit.model.vo.response.UserInfoResponse;
@@ -47,6 +49,15 @@ public class DepositServiceImpl implements DepositService {
         UserInfoResponse userInfo = getUserInfo(userCode);
         Deposit deposit = getDepositByUserId(userInfo.userId());
         return DepositResponse.from(userCode, deposit);
+    }
+
+    @Override
+    @Transactional
+    public DepositDeleteResponse deleteDepositByUserCode(String userCode, DepositDeleteRequest request) {
+        UserInfoResponse userInfo = getUserInfo(userCode);
+        Deposit deposit = getDepositByUserId(userInfo.userId());
+        deposit.setClosed();
+        return DepositDeleteResponse.from(userCode, deposit, request.closedReason());
     }
 
     // TODO: Redis 분산 락 적용 필요

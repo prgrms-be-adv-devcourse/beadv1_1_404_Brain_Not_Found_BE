@@ -1,7 +1,9 @@
 package com.example.deposit.controller;
 
 import com.example.core.model.response.BaseResponse;
+import com.example.deposit.model.vo.request.DepositDeleteRequest;
 import com.example.deposit.model.vo.request.DepositTransactionRequest;
+import com.example.deposit.model.vo.response.DepositDeleteResponse;
 import com.example.deposit.model.vo.response.DepositResponse;
 import com.example.deposit.model.vo.response.DepositTransactionResponse;
 import com.example.deposit.service.DepositService;
@@ -54,6 +56,16 @@ public class DepositController {
             @Valid @RequestBody DepositTransactionRequest request
     ) {
         return BaseResponse.created(depositService.withdrawDeposit(userCode, request));
+    }
+
+    @PatchMapping("/close")
+    public ResponseEntity<BaseResponse<DepositDeleteResponse>> deleteDeposit(
+            @NotNull(message = "userCode 는 필수입력값입니다.")
+            @NotBlank(message = "userCode 는 공백일 수 없습니다.")
+            @RequestParam String userCode,
+            @Valid @RequestBody DepositDeleteRequest request
+    ) {
+        return BaseResponse.ok(depositService.deleteDepositByUserCode(userCode, request));
     }
 
 

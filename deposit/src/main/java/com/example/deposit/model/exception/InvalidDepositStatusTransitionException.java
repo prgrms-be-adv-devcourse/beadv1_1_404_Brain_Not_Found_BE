@@ -6,10 +6,10 @@ import com.example.core.exception.ErrorCode;
 public class InvalidDepositStatusTransitionException extends BaseException {
 
     public InvalidDepositStatusTransitionException() {
-        super(ErrorCode.CONFLICT);
+        super(ErrorCode.DEPOSIT_ALREADY_CLOSED);
     }
 
     public InvalidDepositStatusTransitionException(String customMessage) {
-        super(ErrorCode.CONFLICT, customMessage);
+        super(ErrorCode.DEPOSIT_ALREADY_CLOSED, customMessage);
     }
 }

@@ -17,7 +17,7 @@ public record DepositHistoryResponse (
         String referenceCode,
         LocalDateTime updatedAt
 ) {
-    public static DepositHistoryResponse from(String userCode, DepositHistory depositHistory) {
+    public static DepositHistoryResponse from(DepositHistory depositHistory) {
         return new DepositHistoryResponse(
                 depositHistory.getCode(),
                 depositHistory.getDeposit().getCode(),

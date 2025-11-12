@@ -2,6 +2,7 @@ package com.example.deposit.model.entity;
 
 import com.example.core.model.persistence.BaseEntity;
 import com.example.deposit.model.enums.DepositStatus;
+import com.example.deposit.model.exception.DepositBalanceNotEmptyException;
 import com.example.deposit.model.exception.InsufficientDepositBalanceException;
 import com.example.deposit.model.exception.InvalidDepositAmountException;
 import com.example.deposit.model.exception.InvalidDepositStatusTransitionException;
@@ -77,23 +78,12 @@ public class Deposit extends BaseEntity {
         this.balance -= amount;
     }
 
-    public void setInActive() {
-        if (this.depositStatus == DepositStatus.INACTIVE) {
-            throw new InvalidDepositStatusTransitionException("이미 비활성 상태인 입금 계좌입니다.");
-        }
-        this.depositStatus = DepositStatus.INACTIVE;
-    }
-
-    public void setActive() {
-        if (this.depositStatus == DepositStatus.ACTIVE) {
-            throw new InvalidDepositStatusTransitionException("이미 활성 상태인 입금 계좌입니다.");
-        }
-        this.depositStatus = DepositStatus.ACTIVE;
-    }
-
     public void setClosed() {
         if (this.depositStatus == DepositStatus.CLOSED) {
-            throw new InvalidDepositStatusTransitionException("이미 종료 상태인 입금 계좌입니다.");
+            throw new InvalidDepositStatusTransitionException();
+        }
+        if (this.balance > 0) {
+            throw new DepositBalanceNotEmptyException();
         }
         this.depositStatus = DepositStatus.CLOSED;
     }
