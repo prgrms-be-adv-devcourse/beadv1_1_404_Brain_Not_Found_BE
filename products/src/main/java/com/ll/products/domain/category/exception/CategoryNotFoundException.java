@@ -1,4 +1,4 @@
-package org.ss.products.domain.category.exception;
+package com.ll.products.domain.category.exception;
 
 public class CategoryNotFoundException extends RuntimeException {
     public CategoryNotFoundException(String message) {

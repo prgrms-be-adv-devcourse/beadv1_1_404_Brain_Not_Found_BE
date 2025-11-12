@@ -1,15 +1,15 @@
-package org.ss.products.domain.category.service;
+package com.ll.products.domain.category.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.ss.products.domain.category.exception.CategoryNotFoundException;
-import org.ss.products.domain.category.model.dto.request.CategoryCreateRequest;
-import org.ss.products.domain.category.model.dto.request.CategoryUpdateRequest;
-import org.ss.products.domain.category.model.dto.response.CategoryResponse;
-import org.ss.products.domain.category.model.entity.Category;
-import org.ss.products.domain.category.repository.CategoryRepository;
+import com.ll.products.domain.category.exception.CategoryNotFoundException;
+import com.ll.products.domain.category.model.dto.request.CategoryCreateRequest;
+import com.ll.products.domain.category.model.dto.request.CategoryUpdateRequest;
+import com.ll.products.domain.category.model.dto.response.CategoryResponse;
+import com.ll.products.domain.category.model.entity.Category;
+import com.ll.products.domain.category.repository.CategoryRepository;
 
 import java.util.List;
 import java.util.Map;

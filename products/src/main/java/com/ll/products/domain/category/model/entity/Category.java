@@ -1,4 +1,4 @@
-package org.ss.products.domain.category.model.entity;
+package com.ll.products.domain.category.model.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

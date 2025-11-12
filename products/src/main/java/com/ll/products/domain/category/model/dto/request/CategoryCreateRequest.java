@@ -1,4 +1,4 @@
-package org.ss.products.domain.category.model.dto.request;
+package com.ll.products.domain.category.model.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

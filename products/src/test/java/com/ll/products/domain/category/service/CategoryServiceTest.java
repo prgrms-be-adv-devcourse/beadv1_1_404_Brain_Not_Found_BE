@@ -1,4 +1,4 @@
-package org.ss.products.domain.category.service;
+package com.ll.products.domain.category.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -8,11 +8,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.ss.products.domain.category.model.dto.request.CategoryCreateRequest;
-import org.ss.products.domain.category.model.dto.request.CategoryUpdateRequest;
-import org.ss.products.domain.category.model.dto.response.CategoryResponse;
-import org.ss.products.domain.category.model.entity.Category;
-import org.ss.products.domain.category.repository.CategoryRepository;
+import com.ll.products.domain.category.model.dto.request.CategoryCreateRequest;
+import com.ll.products.domain.category.model.dto.request.CategoryUpdateRequest;
+import com.ll.products.domain.category.model.dto.response.CategoryResponse;
+import com.ll.products.domain.category.model.entity.Category;
+import com.ll.products.domain.category.repository.CategoryRepository;
 
 import java.util.ArrayList;
 import java.util.List;

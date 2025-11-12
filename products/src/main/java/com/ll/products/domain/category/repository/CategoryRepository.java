@@ -1,8 +1,8 @@
-package org.ss.products.domain.category.repository;
+package com.ll.products.domain.category.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import org.ss.products.domain.category.model.entity.Category;
+import com.ll.products.domain.category.model.entity.Category;
 
 import java.util.List;
 

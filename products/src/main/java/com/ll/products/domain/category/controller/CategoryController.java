@@ -1,14 +1,14 @@
-package org.ss.products.domain.category.controller;
+package com.ll.products.domain.category.controller;
 
 import com.example.core.model.response.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.ss.products.domain.category.model.dto.request.CategoryCreateRequest;
-import org.ss.products.domain.category.model.dto.request.CategoryUpdateRequest;
-import org.ss.products.domain.category.model.dto.response.CategoryResponse;
-import org.ss.products.domain.category.service.CategoryService;
+import com.ll.products.domain.category.model.dto.request.CategoryCreateRequest;
+import com.ll.products.domain.category.model.dto.request.CategoryUpdateRequest;
+import com.ll.products.domain.category.model.dto.response.CategoryResponse;
+import com.ll.products.domain.category.service.CategoryService;
 
 import java.util.List;
 
