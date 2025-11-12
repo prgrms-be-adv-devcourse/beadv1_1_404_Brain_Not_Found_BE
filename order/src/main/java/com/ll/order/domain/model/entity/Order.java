@@ -1,16 +1,12 @@
 package com.ll.order.domain.model.entity;
 
+import com.example.core.model.persistence.BaseEntity;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.OrderType;
-import com.ll.order.global.baseEntity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Getter
@@ -28,7 +24,7 @@ public class Order extends BaseEntity {
     private Long buyerId;
 
     @Column(nullable = false)
-    private Integer totalPrice;
+    private Integer totalPrice = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -41,22 +37,41 @@ public class Order extends BaseEntity {
     @Column(nullable = false)
     private String address;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> orderItems = new ArrayList<>();
-
-    @Builder
-    public Order(String orderCode, Long buyerId, Integer totalPrice, OrderType orderType, OrderStatus orderStatus, String address) {
-        this.orderCode = orderCode;
-        this.buyerId = buyerId;
-        this.totalPrice = totalPrice;
-        this.orderType = orderType;
-        this.orderStatus = orderStatus;
-        this.address = address;
-        this.orderItems = new ArrayList<>();
+    public static Order create(String orderCode, Long buyerId, OrderType orderType, String address) {
+        Order order = new Order();
+        order.orderCode = orderCode;
+        order.buyerId = buyerId;
+        order.orderType = orderType;
+        order.orderStatus = OrderStatus.CREATED;
+        order.address = address;
+        order.totalPrice = 0;
+        return order;
     }
-    
-    public void addOrderItem(OrderItem orderItem) {
-        this.orderItems.add(orderItem);
-        orderItem.setOrder(this);
+
+    public OrderItem createOrderItem(Long productId,
+                                     Long sellerId,
+                                     String orderItemCode,
+                                     String productName,
+                                     int quantity,
+                                     int pricePerUnit) {
+        OrderItem orderItem = OrderItem.create(
+                this,
+                productId,
+                sellerId,
+                orderItemCode,
+                productName,
+                quantity,
+                pricePerUnit
+        );
+        increaseTotalPrice(pricePerUnit * quantity);
+        return orderItem;
+    }
+
+    public void changeStatus(OrderStatus orderStatus) {
+        this.orderStatus = orderStatus;
+    }
+
+    private void increaseTotalPrice(int amount) {
+        this.totalPrice += amount;
     }
 }

@@ -1,9 +1,8 @@
 package com.ll.order.domain.model.entity;
 
-import com.ll.order.global.baseEntity.BaseEntity;
+import com.example.core.model.persistence.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -38,8 +37,13 @@ public class OrderItem extends BaseEntity {
     @Column(nullable = false)
     private Integer price;
 
-    @Builder
-    public OrderItem(Order order, Long productId, Long sellerId, String orderItemCode, String productName, Integer quantity, Integer price) {
+    private OrderItem(Order order,
+                      Long productId,
+                      Long sellerId,
+                      String orderItemCode,
+                      String productName,
+                      Integer quantity,
+                      Integer price) {
         this.order = order;
         this.productId = productId;
         this.sellerId = sellerId;
@@ -48,9 +52,15 @@ public class OrderItem extends BaseEntity {
         this.quantity = quantity;
         this.price = price;
     }
-    
-    public void setOrder(Order order) {
-        this.order = order;
+
+    public static OrderItem create(Order order,
+                                   Long productId,
+                                   Long sellerId,
+                                   String orderItemCode,
+                                   String productName,
+                                   Integer quantity,
+                                   Integer price) {
+        return new OrderItem(order, productId, sellerId, orderItemCode, productName, quantity, price);
     }
 }
 

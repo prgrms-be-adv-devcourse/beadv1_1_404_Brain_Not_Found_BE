@@ -1,11 +1,12 @@
 package com.ll.payment.model.vo;
 
+import com.ll.payment.model.enums.PaidType;
+
 public record PaymentRequest(
-        String userCode,
-        String orderCode,
-        boolean useDeposit,
-        Long depositAmount,
-        Long paymentAmount,
-        String paymentKey
+        Long orderId,
+        Long buyerId,
+        int paidAmount,
+        PaidType paidType,
+        String paymentKey // 토스 승인용
 ) {
 }
