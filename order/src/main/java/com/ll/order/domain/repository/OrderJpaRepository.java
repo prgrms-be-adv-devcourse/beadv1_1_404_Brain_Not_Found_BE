@@ -21,7 +21,7 @@ public interface OrderJpaRepository extends JpaRepository<Order, Long> {
                WHERE o.buyerId = :buyerId
                AND oi.productName LIKE %:keyword%
             """)
-    Page<Order> findByBuyerIdAndProductNameContaining(@Param("buyerId") Long buyerId,
+    Page<Order> findByBuyerIdAndProductNameContaining(@Param("sellerId") Long buyerId,
                                                       @Param("keyword") String keyword,
                                                       Pageable pageable);
 }
