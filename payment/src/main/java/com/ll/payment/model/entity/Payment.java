@@ -75,6 +75,22 @@ public class Payment {
         );
     }
 
+    public static Payment createDepositPayment(Long orderId,
+                                               Long buyerId,
+                                               int paidAmount,
+                                               long depositHistoryId) {
+        return new Payment(
+                paidAmount,
+                buyerId,
+                orderId,
+                PaymentCodeGenerator.newPaymentCode(),
+                PaymentStatus.COMPLETED,
+                PaidType.DEPOSIT,
+                depositHistoryId,
+                LocalDateTime.now()
+        );
+    }
+
     public void markSuccess(PaymentStatus status, LocalDateTime approvedAt) {
         this.paymentStatus = status;
         this.paidAt = approvedAt;

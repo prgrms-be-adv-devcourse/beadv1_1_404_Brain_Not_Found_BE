@@ -1,21 +1,17 @@
 package com.ll.order.domain.controller;
 
+import com.example.core.model.response.BaseResponse;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
 import com.ll.order.domain.model.vo.request.OrderValidateRequest;
-import com.ll.order.domain.model.vo.response.OrderCreateResponse;
-import com.ll.order.domain.model.vo.response.OrderDetailResponse;
-import com.ll.order.domain.model.vo.response.OrderPageResponse;
-import com.ll.order.domain.model.vo.response.OrderStatusUpdateResponse;
-import com.ll.order.domain.model.vo.response.OrderValidateResponse;
+import com.ll.order.domain.model.vo.response.*;
 import com.ll.order.domain.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,74 +29,62 @@ public class OrderController {
     → 주문 상태 업데이트 : 결제 결과에 따라 주문 상태 변경 (created → paid / failed)
     * */
     @PostMapping("/cartItems")
-    public ResponseEntity<OrderCreateResponse> createCartItemOrder(
+    public ResponseEntity<BaseResponse<OrderCreateResponse>> createCartItemOrder(
             @Valid @RequestBody OrderCartItemRequest request
     ) {
         OrderCreateResponse response = orderService.createCartItemOrder(request);
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+        return BaseResponse.created(response);
     }
 
     @PostMapping("/direct")
-    public ResponseEntity<OrderCreateResponse> createDirectOrder(
+    public ResponseEntity<BaseResponse<OrderCreateResponse>> createDirectOrder(
             @Valid @RequestBody OrderDirectRequest request
     ) {
         OrderCreateResponse response = orderService.createDirectOrder(request);
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+        return BaseResponse.created(response);
     }
 
     @GetMapping
-    public ResponseEntity<OrderPageResponse> getOrderList(
+    public ResponseEntity<BaseResponse<OrderPageResponse>> getOrderList(
             @RequestParam String userCode,
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         OrderPageResponse orderPageResponse = orderService.findAllOrders(userCode, keyword, pageable);
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(orderPageResponse);
+        return BaseResponse.ok(orderPageResponse);
     }
 
     @GetMapping("/{orderCode}/details")
-    public ResponseEntity<OrderDetailResponse> getOrderDetails(
+    public ResponseEntity<BaseResponse<OrderDetailResponse>> getOrderDetails(
             @PathVariable String orderCode
     ) {
         OrderDetailResponse response = orderService.findOrderDetails(orderCode);
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return BaseResponse.ok(response);
     }
 
 
     @PatchMapping("/{orderCode}/status")
-    public ResponseEntity<OrderStatusUpdateResponse> updateOrderStatus(
+    public ResponseEntity<BaseResponse<OrderStatusUpdateResponse>> updateOrderStatus(
             @PathVariable String orderCode,
             @Valid @RequestBody OrderStatusUpdateRequest request
     ) {
         OrderStatusUpdateResponse response = orderService.updateOrderStatus(orderCode, request);
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return BaseResponse.ok(response);
     }
 
     // 주문 가능 여부 확인
     @PostMapping("/validate")
-    public ResponseEntity<OrderValidateResponse> validateOrder(
+    public ResponseEntity<BaseResponse<OrderValidateResponse>> validateOrder(
             @RequestBody OrderValidateRequest request
     ) {
         OrderValidateResponse response = orderService.validateOrder(request);
 
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(response);
+        return BaseResponse.ok(response);
     }
 //
 //

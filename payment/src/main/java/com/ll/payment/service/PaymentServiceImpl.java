@@ -2,8 +2,13 @@ package com.ll.payment.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ll.payment.client.DepositServiceClient;
+import com.ll.payment.model.dto.DepositBalanceResponse;
+import com.ll.payment.model.dto.DepositUseRequest;
+import com.ll.payment.model.dto.DepositUseResponse;
 import com.ll.payment.model.dto.TossPaymentResponse;
 import com.ll.payment.model.entity.Payment;
+import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
 import com.ll.payment.model.vo.PaymentRequest;
 import com.ll.payment.model.vo.TossPaymentRequest;
@@ -23,10 +28,10 @@ import java.util.Map;
 public class PaymentServiceImpl implements  PaymentService {
 
     private final PaymentJpaRepository paymentJpaRepository;
-//    private final DepositRepository depositRepository;
 
     private final RestClient restClient;
     private final ObjectMapper om;
+    private final DepositServiceClient depositServiceClient;
 
     @Value("${payment.secretKey}")
     private String secretKey;
@@ -54,49 +59,31 @@ public class PaymentServiceImpl implements  PaymentService {
 
     @Override
     public void depositPayment(PaymentRequest payment) {
-        // 예치금 먼저 확인 (동시성 이슈 고려하면 락 걸어서 가져오도록)
-        // Long balance = depositRepository.findByUserId(payment.getBuyerId());
+        DepositBalanceResponse balanceResponse = depositServiceClient.getBalance(payment.buyerCode());
+        long currentBalance = balanceResponse != null ? balanceResponse.balance() : 0L;
+        long requestedAmount = payment.paidAmount();
 
-//        if (payment.getPaidAmount() > balance) { // 예치금이 부족한 경우
-//            토스 호출 성공 확인
-//            true -> 예치금 차감 + 잔액 토스로 결제
-//            false -> 예치금 차감 취소 + 오류 메시지 반환
-//        } else { // 예치금이 충분한 경우
-//             예치금 차감 > 결제 성공 기록 저장 > 주문 도메인에게 결제 완료 반환되도록
+        if (currentBalance >= requestedAmount) {
+            completeDepositPayment(payment, requestedAmount);
+            return;
+        }
 
-        // 1. 사용자 예치금 계좌 조회 (동시성 대비를 위해 PESSIMISTIC_WRITE 잠금 권장)
-//        DepositAccount account = depositAccountRepository
-//                .findByMemberIdWithLock(payment.getBuyerId())
-//                .orElseThrow(() -> new DepositNotFoundException(payment.getBuyerId()));
-//
-//        long balance = account.getBalance();
-//        long amount   = payment.getPaidAmount();
-//
-//        // 2. 예치금 부족 검증
-//        if (balance < amount) {
-//            throw new InsufficientDepositException(balance, amount);
-//        }
-//
-//        // 3. 예치금 차감
-//        account.decreaseBalance(amount);
-//
-//        // 4. 결제 엔티티 저장 (예치금 결제 완료 상태)
-//        payment.markSuccess(PaidType.DEPOSIT, amount);
-//        Payment savedPayment = paymentJpaRepository.save(payment);
-//
-//        // 5. 예치금 사용 이력 기록
-//        DepositHistory history = DepositHistory.use(
-//                account,
-//                amount,
-//                "주문 결제",
-//                payment.getOrderCode()
-//        );
-//        paymentHistoryRepository.save(history);
-//
-//        // 6. 결과 DTO 반환 (주문 도메인이 사용할 정보만 추려서)
-//        return PaymentRe
-//        }
+        if (currentBalance > 0) {
+            completeDepositPayment(payment, currentBalance);
+        }
 
+        long shortageAmount = requestedAmount - currentBalance;
+        if (shortageAmount > 0) {
+            PaymentRequest tossRequest = new PaymentRequest(
+                    payment.orderId(),
+                    payment.buyerId(),
+                    payment.buyerCode(),
+                    (int) shortageAmount,
+                    PaidType.TOSS_PAYMENT,
+                    payment.paymentKey()
+            );
+            tossPayment(tossRequest);
+        }
     }
 
     @Override
@@ -143,5 +130,23 @@ public class PaymentServiceImpl implements  PaymentService {
         if (request.paidAmount() != tossPaymentResponse.approvedAmount()) {
             throw new IllegalStateException("토스 승인 금액과 요청 금액이 일치하지 않습니다.");
         }
+    }
+
+    private void completeDepositPayment(PaymentRequest payment, long amount) {
+        DepositUseResponse useResponse = depositServiceClient.useDeposit(new DepositUseRequest(
+                payment.buyerCode(),
+                amount,
+                payment.orderId(),
+                "주문 결제"
+        ));
+
+        long depositHistoryId = useResponse != null ? useResponse.historyId() : 0L;
+        Payment depositPayment = Payment.createDepositPayment(
+                payment.orderId(),
+                payment.buyerId(),
+                (int) amount,
+                depositHistoryId
+        );
+        paymentJpaRepository.save(depositPayment);
     }
 }

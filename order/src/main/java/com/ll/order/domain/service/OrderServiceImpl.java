@@ -34,12 +34,12 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderJpaRepository orderJpaRepository;
+    private final OrderItemJpaRepository orderItemJpaRepository;
 
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
     private final CartServiceClient cartServiceClient;
     private final PaymentServiceClient paymentApiClient;
-    private final OrderItemJpaRepository orderItemJpaRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -86,11 +86,11 @@ public class OrderServiceImpl implements OrderService {
         Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
-//        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
-//
-//         for (OrderItem item : orderItems) {
-//             ProductResponse product = productServiceClient.getProductById(item.getProductId());
-//         }
+        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+
+         for (OrderItem item : orderItems) {
+             ProductResponse product = productServiceClient.getProductById(item.getProductId());
+         }
 
         // 생성자 파라미터안에 생성자가 있는 구조는 가독성 측면에서 생각해봐야한다고 봅니다! 인스턴스화해서 변수로 활용하는 게 어떨까요?
         return new OrderDetailResponse(
@@ -154,6 +154,7 @@ public class OrderServiceImpl implements OrderService {
         OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
                 savedOrder.getId(),
                 savedOrder.getBuyerId(),
+                request.buyerCode(),
                 savedOrder.getTotalPrice(),
                 request.paidType(),
                 request.paymentKey()
