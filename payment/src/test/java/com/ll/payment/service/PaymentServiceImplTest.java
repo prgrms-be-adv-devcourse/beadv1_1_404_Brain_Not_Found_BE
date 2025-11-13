@@ -5,13 +5,13 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ll.payment.client.DepositServiceClient;
 import com.ll.payment.client.OrderServiceClient;
-import com.ll.payment.model.vo.response.DepositInfoResponse;
-import com.ll.payment.model.vo.PaymentProcessResult;
+import com.ll.payment.model.dto.DepositInfoResponse;
+import com.ll.payment.model.dto.PaymentProcessResult;
 import com.ll.payment.model.entity.Payment;
 import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
-import com.ll.payment.model.vo.request.PaymentRefundRequest;
-import com.ll.payment.model.vo.request.PaymentRequest;
+import com.ll.payment.model.vo.PaymentRefundRequest;
+import com.ll.payment.model.vo.PaymentRequest;
 import com.ll.payment.repository.PaymentJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,9 +47,6 @@ class PaymentServiceImplTest {
     @Mock
     private OrderServiceClient orderServiceClient;
 
-    @Mock
-    private PaymentValidator paymentValidator;
-
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -65,7 +62,6 @@ class PaymentServiceImplTest {
         PaymentServiceImpl service = createServiceSpy();
         PaymentRequest paymentRequest = new PaymentRequest(
                 1L,
-                "ORD-1",
                 2L,
                 "USER-001",
                 5_000,
@@ -84,10 +80,10 @@ class PaymentServiceImplTest {
         PaymentProcessResult result = service.depositPayment(paymentRequest);
         assertThat(result).isNotNull();
 
-        verify(depositServiceClient).withdraw(eq("USER-001"), eq(5_000L), referenceCaptor.capture());
+        verify(depositServiceClient).withdraw(eq("USER-001"), eq(5_000), referenceCaptor.capture());
         assertThat(referenceCaptor.getValue()).startsWith("ORDER-1-");
 
-        verify(service, never()).tossPayment(any(PaymentRequest.class), PaymentStatus.CHARGE);
+        verify(service, never()).tossPayment(any(PaymentRequest.class));
 
         verify(paymentJpaRepository, times(1)).save(paymentCaptor.capture());
         Payment savedPayment = paymentCaptor.getValue();
@@ -106,7 +102,6 @@ class PaymentServiceImplTest {
         PaymentServiceImpl service = createServiceSpy();
         PaymentRequest paymentRequest = new PaymentRequest(
                 1L,
-                "ORD-1",
                 2L,
                 "USER-001",
                 5_000,
@@ -120,7 +115,7 @@ class PaymentServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         Payment tossResult = mock(Payment.class);
-        doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class), PaymentStatus.CHARGE);
+        doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class));
 
         ArgumentCaptor<String> referenceCaptor = ArgumentCaptor.forClass(String.class);
         // 토스 결제 요청이 어떤 PaymentRequest로 호출되었는지 검증하기 위한 캡처
@@ -130,7 +125,7 @@ class PaymentServiceImplTest {
         PaymentProcessResult result = service.depositPayment(paymentRequest);
         assertThat(result).isNotNull();
 
-        verify(depositServiceClient).withdraw(eq("USER-001"), eq(3_000L), referenceCaptor.capture());
+        verify(depositServiceClient).withdraw(eq("USER-001"), eq(3_000), referenceCaptor.capture());
         assertThat(referenceCaptor.getValue()).startsWith("ORDER-1-");
 
         verify(paymentJpaRepository, times(1)).save(paymentCaptor.capture());
@@ -139,12 +134,11 @@ class PaymentServiceImplTest {
         assertThat(savedPayment.getPaidType()).isEqualTo(PaidType.DEPOSIT);
         assertThat(result.depositPayment()).isSameAs(savedPayment);
 
-        verify(service).tossPayment(tossRequestCaptor.capture(), PaymentStatus.CHARGE);
+        verify(service).tossPayment(tossRequestCaptor.capture());
         PaymentRequest tossRequest = tossRequestCaptor.getValue();
         assertThat(tossRequest.paidAmount()).isEqualTo(2_000);
         assertThat(tossRequest.paidType()).isEqualTo(PaidType.TOSS_PAYMENT);
         assertThat(tossRequest.orderId()).isEqualTo(paymentRequest.orderId());
-        assertThat(tossRequest.orderCode()).isEqualTo(paymentRequest.orderCode());
         assertThat(tossRequest.buyerId()).isEqualTo(paymentRequest.buyerId());
         assertThat(tossRequest.buyerCode()).isEqualTo(paymentRequest.buyerCode());
         assertThat(tossRequest.paymentKey()).isEqualTo(paymentRequest.paymentKey());
@@ -157,7 +151,6 @@ class PaymentServiceImplTest {
         PaymentServiceImpl service = createServiceSpy();
         PaymentRequest paymentRequest = new PaymentRequest(
                 1L,
-                "ORD-1",
                 2L,
                 "USER-001",
                 5_000,
@@ -168,17 +161,17 @@ class PaymentServiceImplTest {
         when(depositServiceClient.getDepositInfo("USER-001"))
                 .thenReturn(new DepositInfoResponse("USER-001", 0));
         Payment tossResult = mock(Payment.class);
-        doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class), PaymentStatus.CHARGE);
+        doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class));
 
         ArgumentCaptor<PaymentRequest> tossRequestCaptor = ArgumentCaptor.forClass(PaymentRequest.class);
 
         PaymentProcessResult result = service.depositPayment(paymentRequest);
         assertThat(result).isNotNull();
 
-        verify(depositServiceClient, never()).withdraw(anyString(), anyLong(), anyString());
+        verify(depositServiceClient, never()).withdraw(anyString(), anyInt(), anyString());
         verify(paymentJpaRepository, never()).save(any(Payment.class));
 
-        verify(service).tossPayment(tossRequestCaptor.capture(), PaymentStatus.CHARGE);
+        verify(service).tossPayment(tossRequestCaptor.capture());
         PaymentRequest tossRequest = tossRequestCaptor.getValue();
         assertThat(tossRequest.paidAmount()).isEqualTo(5_000);
         assertThat(tossRequest.paidType()).isEqualTo(PaidType.TOSS_PAYMENT);
@@ -192,8 +185,7 @@ class PaymentServiceImplTest {
                 restClient,
                 objectMapper,
                 depositServiceClient,
-                orderServiceClient,
-                paymentValidator
+                orderServiceClient
         );
         setField(service, "secretKey", "test-secret");
         setField(service, "targetUrl", "http://test-url");
@@ -227,17 +219,16 @@ class PaymentServiceImplTest {
                 5_000,
                 "사용자 환불",
                 PaidType.DEPOSIT,
+                null,
                 "USER-001"
         );
 
         when(paymentJpaRepository.findById(10L)).thenReturn(java.util.Optional.of(payment));
-        when(paymentValidator.validateRefundEligibility(any(Payment.class), any(PaymentRefundRequest.class)))
-                .thenReturn(5000);
         PaymentServiceImpl service = createServiceSpy();
 
         Payment result = service.refundPayment(request);
 
-        verify(depositServiceClient).chargeDeposit(eq("USER-001"), eq(5_000L), startsWith("ORDER-1-"));
+        verify(depositServiceClient).deposit(eq("USER-001"), eq(5_000), startsWith("ORDER-1-"));
         verify(payment).markRefund(any(LocalDateTime.class));
         verify(paymentJpaRepository).save(payment);
         verify(orderServiceClient).updateOrderStatus("ORD-1", "REFUNDED");
@@ -252,7 +243,6 @@ class PaymentServiceImplTest {
         when(payment.getPaidType()).thenReturn(PaidType.TOSS_PAYMENT);
         when(payment.getPaidAmount()).thenReturn(7000);
         when(payment.getOrderId()).thenReturn(3L);
-        when(payment.getPaymentKey()).thenReturn("PAY-KEY-3");
         PaymentRefundRequest request = new PaymentRefundRequest(
                 null,
                 "PAY-3",
@@ -261,12 +251,11 @@ class PaymentServiceImplTest {
                 7_000,
                 "사용자 환불",
                 PaidType.TOSS_PAYMENT,
+                "PAY-KEY-3",
                 "USER-003"
         );
 
         when(paymentJpaRepository.findByPaymentCode("PAY-3")).thenReturn(java.util.Optional.of(payment));
-        when(paymentValidator.validateRefundEligibility(any(Payment.class), any(PaymentRefundRequest.class)))
-                .thenReturn(7000);
         RestClient.RequestBodyUriSpec requestSpec = mock(RestClient.RequestBodyUriSpec.class);
         RestClient.RequestBodySpec bodySpec = mock(RestClient.RequestBodySpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
