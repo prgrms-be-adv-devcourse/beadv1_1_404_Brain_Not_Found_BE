@@ -14,35 +14,41 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @ToString
-@Table(name = "settlements")
+@Table(
+        name = "settlements",
+        indexes = {
+                @Index(name = "idx_settlement_query", columnList = "settlement_status, settlement_date, created_at")
+        }
+)
 @NoArgsConstructor( access = AccessLevel.PROTECTED )
 public class Settlement extends BaseEntity {
 
-    @Column( nullable = false )
+    @Column( name = "seller_code", nullable = false )
     private String sellerCode;
 
-    @Column( nullable = false )
+    @Column( name = "buyer_code", nullable = false )
     private String buyerCode;
 
-    @Column( nullable = false )
+    @Column( name = "order_item_code", nullable = false )
     private String orderItemCode;
 
-    @Column( nullable = false )
+    @Column( name = "settlement_status", nullable = false )
     @Enumerated(EnumType.STRING)
     private SettlementStatus settlementStatus;
 
-    @Column( nullable = false )
+    @Column( name = "total_amount", nullable = false )
     private Long totalAmount;
 
-    @Column( nullable = false )
+    @Column( name = "settlement_rate", nullable = false )
     private BigDecimal settlementRate;
 
-    @Column( nullable = false )
+    @Column( name = "settlement_commission", nullable = false )
     private Long settlementCommission;
 
-    @Column( nullable = false )
+    @Column( name = "settlement_balance", nullable = false )
     private Long settlementBalance;
 
+    @Column( name = "settlement_date" )
     private LocalDateTime settlementDate;
 
     @Builder

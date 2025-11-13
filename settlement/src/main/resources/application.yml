@@ -40,3 +40,9 @@ spring:
       group-id: settlement-service
       properties:
         allow.auto.create.topics: false
+
+
+custom:
+  batch:
+    chunk:
+      size: 500
