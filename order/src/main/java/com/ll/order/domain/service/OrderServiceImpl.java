@@ -11,7 +11,6 @@ import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.*;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.order.global.util.OrderCodeGenerator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -123,7 +122,6 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Order order = Order.create(
-                OrderCodeGenerator.newOrderCode(),
                 userInfo.id(),
                 request.orderType(),
                 request.address()
@@ -137,7 +135,6 @@ public class OrderServiceImpl implements OrderService {
             OrderItem orderItem = savedOrder.createOrderItem(
                     productInfo.productId(),
                     productInfo.sellerId(),
-                    OrderCodeGenerator.newOrderItemCode(),
                     productInfo.productName(),
                     cartItem.quantity(),
                     cartItem.price()
@@ -177,7 +174,6 @@ public class OrderServiceImpl implements OrderService {
         ProductResponse productInfo = getProductInfo(request.productCode());
 
         Order order = Order.create(
-                OrderCodeGenerator.newOrderCode(),
                 userInfo.id(),
                 request.orderType(),
                 request.address()
@@ -187,12 +183,26 @@ public class OrderServiceImpl implements OrderService {
         OrderItem orderItem = savedOrder.createOrderItem(
                 productInfo.productId(),
                 productInfo.sellerId(),
-                OrderCodeGenerator.newOrderItemCode(),
                 productInfo.productName(),
                 request.quantity(),
                 productInfo.totalPrice()
         );
         orderItemJpaRepository.save(orderItem);
+
+        OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
+                savedOrder.getId(),
+                savedOrder.getBuyerId(),
+                request.userCode(),
+                savedOrder.getTotalPrice(),
+                request.paidType(),
+                request.paymentKey()
+        );
+
+        switch (request.paidType()) {
+            case DEPOSIT -> paymentApiClient.requestDepositPayment(orderPaymentRequest);
+            case TOSS_PAYMENT -> paymentApiClient.requestTossPayment(orderPaymentRequest);
+            default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+        }
 
         return convertToOrderCreateResponse(savedOrder);
     }

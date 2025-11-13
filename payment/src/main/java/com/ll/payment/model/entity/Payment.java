@@ -2,7 +2,6 @@ package com.ll.payment.model.entity;
 
 import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
-import com.ll.payment.util.PaymentCodeGenerator;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -14,6 +13,9 @@ import java.time.LocalDateTime;
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
+
+    private static final String PAYMENT_PREFIX = "PAY-";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -67,7 +69,7 @@ public class Payment {
                 paidAmount,
                 buyerId,
                 orderId,
-                PaymentCodeGenerator.newPaymentCode(),
+                generatePaymentCode(),
                 PaymentStatus.PENDING,
                 PaidType.TOSS_PAYMENT,
                 0L,
@@ -83,7 +85,7 @@ public class Payment {
                 paidAmount,
                 buyerId,
                 orderId,
-                PaymentCodeGenerator.newPaymentCode(),
+                generatePaymentCode(),
                 PaymentStatus.COMPLETED,
                 PaidType.DEPOSIT,
                 depositHistoryId,
@@ -94,5 +96,9 @@ public class Payment {
     public void markSuccess(PaymentStatus status, LocalDateTime approvedAt) {
         this.paymentStatus = status;
         this.paidAt = approvedAt;
+    }
+
+    private static String generatePaymentCode() {
+        return PAYMENT_PREFIX + System.currentTimeMillis();
     }
 }

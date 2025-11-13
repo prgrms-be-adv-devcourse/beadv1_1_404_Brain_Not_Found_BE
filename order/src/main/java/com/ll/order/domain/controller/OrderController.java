@@ -29,6 +29,7 @@ public class OrderController {
     → 주문 상태 업데이트 : 결제 결과에 따라 주문 상태 변경 (created → paid / failed)
     * */
     @PostMapping("/cartItems")
+    // TODO 토스 보완 결제 시 paymentKey 필수 여부와 검증 로직 추가 필요
     public ResponseEntity<BaseResponse<OrderCreateResponse>> createCartItemOrder(
             @Valid @RequestBody OrderCartItemRequest request
     ) {
@@ -58,6 +59,7 @@ public class OrderController {
     }
 
     @GetMapping("/{orderCode}/details")
+    // TODO 상품 상세 응답에 외부 상품 정보 포함하거나 불필요 호출 제거 검토
     public ResponseEntity<BaseResponse<OrderDetailResponse>> getOrderDetails(
             @PathVariable String orderCode
     ) {

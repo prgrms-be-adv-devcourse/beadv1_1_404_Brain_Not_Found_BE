@@ -240,7 +240,8 @@ class OrderServiceImplTest {
                 2,
                 "서울시 강남구",
                 OrderType.ONLINE,
-                PaidType.DEPOSIT
+                PaidType.DEPOSIT,
+                null
         );
 
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUserInfo);
@@ -254,6 +255,7 @@ class OrderServiceImplTest {
             return item;
         }).when(orderItemJpaRepository).save(any(OrderItem.class));
         when(orderItemJpaRepository.findByOrderId(any())).thenAnswer(invocation -> storedOrderItems);
+        when(paymentServiceClient.requestDepositPayment(any(OrderPaymentRequest.class))).thenReturn("OK");
 
         // when
         OrderCreateResponse result = orderService.createDirectOrder(request);
@@ -295,6 +297,14 @@ class OrderServiceImplTest {
         verify(productServiceClient).getProductByCode(productCodeCaptor.capture());
         assertThat(productCodeCaptor.getAllValues()).hasSize(1);
         assertThat(productCodeCaptor.getValue()).isEqualTo("PROD-001");
+
+        ArgumentCaptor<OrderPaymentRequest> paymentCaptor = ArgumentCaptor.forClass(OrderPaymentRequest.class);
+        verify(paymentServiceClient).requestDepositPayment(paymentCaptor.capture());
+        OrderPaymentRequest paymentRequest = paymentCaptor.getValue();
+        assertThat(paymentRequest.orderId()).isEqualTo(capturedOrder.getId());
+        assertThat(paymentRequest.buyerId()).isEqualTo(capturedOrder.getBuyerId());
+        assertThat(paymentRequest.paidAmount()).isEqualTo(capturedOrder.getTotalPrice());
+        assertThat(paymentRequest.paidType()).isEqualTo(PaidType.DEPOSIT);
     }
 
     @DisplayName("주문 목록 조회 - 성공")

@@ -3,9 +3,8 @@ package com.ll.payment.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.payment.client.DepositServiceClient;
-import com.ll.payment.model.dto.DepositBalanceResponse;
-import com.ll.payment.model.dto.DepositUseRequest;
-import com.ll.payment.model.dto.DepositUseResponse;
+import com.ll.payment.model.dto.DepositInfoResponse;
+import com.ll.payment.model.dto.PaymentProcessResult;
 import com.ll.payment.model.dto.TossPaymentResponse;
 import com.ll.payment.model.entity.Payment;
 import com.ll.payment.model.enums.PaidType;
@@ -58,21 +57,23 @@ public class PaymentServiceImpl implements  PaymentService {
     }
 
     @Override
-    public void depositPayment(PaymentRequest payment) {
-        DepositBalanceResponse balanceResponse = depositServiceClient.getBalance(payment.buyerCode());
-        long currentBalance = balanceResponse != null ? balanceResponse.balance() : 0L;
+    public PaymentProcessResult depositPayment(PaymentRequest payment) {
+        DepositInfoResponse depositInfo = depositServiceClient.getDepositInfo(payment.buyerCode());
+        long currentBalance = depositInfo != null && depositInfo.balance() != null ? depositInfo.balance() : 0L;
         long requestedAmount = payment.paidAmount();
 
         if (currentBalance >= requestedAmount) {
-            completeDepositPayment(payment, requestedAmount);
-            return;
+            Payment depositPayment = completeDepositPayment(payment, requestedAmount);
+            return new PaymentProcessResult(depositPayment, null);
         }
 
+        Payment depositPayment = null;
         if (currentBalance > 0) {
-            completeDepositPayment(payment, currentBalance);
+            depositPayment = completeDepositPayment(payment, currentBalance);
         }
 
         long shortageAmount = requestedAmount - currentBalance;
+        Payment tossPayment = null;
         if (shortageAmount > 0) {
             PaymentRequest tossRequest = new PaymentRequest(
                     payment.orderId(),
@@ -82,8 +83,10 @@ public class PaymentServiceImpl implements  PaymentService {
                     PaidType.TOSS_PAYMENT,
                     payment.paymentKey()
             );
-            tossPayment(tossRequest);
+            tossPayment = tossPayment(tossRequest);
         }
+
+        return new PaymentProcessResult(depositPayment, tossPayment);
     }
 
     @Override
@@ -115,6 +118,16 @@ public class PaymentServiceImpl implements  PaymentService {
         return payment;
     }
 
+    @Override
+    public Payment refundPayment(Payment payment) {
+        // TODO 환불 절차
+        // 1) paymentCode / orderId 등 식별자로 기존 결제 내역을 조회하고 환불 가능 여부를 검증한다.
+        // 2) 결제 수단(PaidType)에 따라 외부 시스템(예: 예치금 입금, 토스 취소 API)에 환불을 요청한다.
+        // 3) 환불 성공 시 Payment 상태를 REFUNDED로 갱신하고 환불 일시·금액·외부 환불 키 등을 저장한다.
+        // 4) 환불 결과에 맞춰 주문 상태도 업데이트하거나 후속 도메인 이벤트를 발행한다.
+        return payment;
+    }
+
     private TossPaymentResponse parseTossResponse(String response) {
         try {
             return om.readValue(response, TossPaymentResponse.class);
@@ -132,21 +145,19 @@ public class PaymentServiceImpl implements  PaymentService {
         }
     }
 
-    private void completeDepositPayment(PaymentRequest payment, long amount) {
-        DepositUseResponse useResponse = depositServiceClient.useDeposit(new DepositUseRequest(
-                payment.buyerCode(),
-                amount,
-                payment.orderId(),
-                "주문 결제"
-        ));
-
-        long depositHistoryId = useResponse != null ? useResponse.historyId() : 0L;
+    private Payment completeDepositPayment(PaymentRequest payment, long amount) {
+        depositServiceClient.withdraw(payment.buyerCode(), amount, createReferenceCode(payment));
         Payment depositPayment = Payment.createDepositPayment(
                 payment.orderId(),
                 payment.buyerId(),
                 (int) amount,
-                depositHistoryId
+                0L
         );
         paymentJpaRepository.save(depositPayment);
+        return depositPayment;
+    }
+
+    private String createReferenceCode(PaymentRequest payment) {
+        return "ORDER-" + payment.orderId() + "-" + System.currentTimeMillis();
     }
 }
