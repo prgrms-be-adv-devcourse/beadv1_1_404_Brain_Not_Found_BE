@@ -25,12 +25,6 @@ spring:
       properties:
         allow.auto.create.topics: false
 
-# External Service URLs
-external:
-  user-service:
-    url: http://localhost:8081
-
-
 
 
 management:
