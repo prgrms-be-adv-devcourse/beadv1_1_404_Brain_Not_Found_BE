@@ -28,7 +28,7 @@ import java.util.Map;
 @Configuration
 @EnableConfigurationProperties(KafkaProperties.class)
 @RequiredArgsConstructor
-public class KafkaCommonConfig {
+public class KafkaCommonConfiguration {
 
     @Value("${custom.config.kafka.acks:all}")
     private String ack;
@@ -48,16 +48,6 @@ public class KafkaCommonConfig {
         return new DefaultKafkaProducerFactory<>(config);
     }
 
-    // Consumer Configuration
-    @Bean
-    public ConsumerFactory<String, Object> consumerFactory() {
-        Map<String, Object> config = new HashMap<>(properties.buildConsumerProperties());
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class); // Key 에 대한 Deserializer 설정
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class); // Value 에 대한 Deserializer 설정
-        config.put(JsonDeserializer.TRUSTED_PACKAGES, "*"); // 모든 패키지 신뢰 설정
-        return new DefaultKafkaConsumerFactory<>(config);
-    }
-
     @Bean
     public KafkaTemplate<String, Object> kafkaTemplate(
             ProducerFactory<String, Object> factory,
@@ -68,6 +58,17 @@ public class KafkaCommonConfig {
         log.info("KafkaTemplate started");
         return kafkaTemplate;
     }
+
+    // Consumer Configuration
+    @Bean
+    public ConsumerFactory<String, Object> consumerFactory() {
+        Map<String, Object> config = new HashMap<>(properties.buildConsumerProperties());
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class); // Key 에 대한 Deserializer 설정
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class); // Value 에 대한 Deserializer 설정
+        config.put(JsonDeserializer.TRUSTED_PACKAGES, "*"); // 모든 패키지 신뢰 설정
+        return new DefaultKafkaConsumerFactory<>(config);
+    }
+
 
     // DLQ Configuration
 
