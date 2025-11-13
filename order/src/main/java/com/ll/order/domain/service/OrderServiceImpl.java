@@ -11,7 +11,6 @@ import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.*;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.order.global.util.OrderCodeGenerator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,12 +33,12 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderJpaRepository orderJpaRepository;
+    private final OrderItemJpaRepository orderItemJpaRepository;
 
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
     private final CartServiceClient cartServiceClient;
     private final PaymentServiceClient paymentApiClient;
-    private final OrderItemJpaRepository orderItemJpaRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -82,25 +81,40 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public OrderDetailResponse findOrderDetails(String orderCode) {
         Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
-//        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
-//
-//         for (OrderItem item : orderItems) {
-//             ProductResponse product = productServiceClient.getProductById(item.getProductId());
-//         }
+        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+        List<OrderDetailResponse.ItemInfo> itemInfos = orderItems.stream()
+                .map(item -> {
+                    ProductResponse product = Optional.ofNullable(productServiceClient.getProductById(item.getProductId()))
+                            .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.getProductId()));
+                    return new OrderDetailResponse.ItemInfo(
+                            item.getOrderItemCode(),
+                            item.getProductId(),
+                            item.getSellerId(),
+                            item.getProductName(),
+                            item.getQuantity(),
+                            item.getPrice(),
+                            product.image()
+                    );
+                })
+                .collect(Collectors.toList());
 
-        // 생성자 파라미터안에 생성자가 있는 구조는 가독성 측면에서 생각해봐야한다고 봅니다! 인스턴스화해서 변수로 활용하는 게 어떨까요?
+        // 생성자 파라미터안에 생성자가 있는 구조는 가독성 측면에서 생각해봐야한다고 봅니다! 인스턴스화해서 변수로 활용하는 게 어떨까요? 넵.
+        OrderDetailResponse.UserInfo userInfo = new OrderDetailResponse.UserInfo(
+                order.getBuyerId(),
+                order.getAddress()
+        );
+
         return new OrderDetailResponse(
                 order.getId(),
                 order.getOrderStatus(),
                 order.getTotalPrice(),
-                new OrderDetailResponse.UserInfo(
-                        order.getBuyerId(),
-                        order.getAddress()
-                )
+                userInfo,
+                itemInfos
         );
     }
 
@@ -123,7 +137,6 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Order order = Order.create(
-                OrderCodeGenerator.newOrderCode(),
                 userInfo.id(),
                 request.orderType(),
                 request.address()
@@ -137,7 +150,6 @@ public class OrderServiceImpl implements OrderService {
             OrderItem orderItem = savedOrder.createOrderItem(
                     productInfo.productId(),
                     productInfo.sellerId(),
-                    OrderCodeGenerator.newOrderItemCode(),
                     productInfo.productName(),
                     cartItem.quantity(),
                     cartItem.price()
@@ -154,6 +166,7 @@ public class OrderServiceImpl implements OrderService {
         OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
                 savedOrder.getId(),
                 savedOrder.getBuyerId(),
+                request.buyerCode(),
                 savedOrder.getTotalPrice(),
                 request.paidType(),
                 request.paymentKey()
@@ -176,7 +189,6 @@ public class OrderServiceImpl implements OrderService {
         ProductResponse productInfo = getProductInfo(request.productCode());
 
         Order order = Order.create(
-                OrderCodeGenerator.newOrderCode(),
                 userInfo.id(),
                 request.orderType(),
                 request.address()
@@ -186,12 +198,26 @@ public class OrderServiceImpl implements OrderService {
         OrderItem orderItem = savedOrder.createOrderItem(
                 productInfo.productId(),
                 productInfo.sellerId(),
-                OrderCodeGenerator.newOrderItemCode(),
                 productInfo.productName(),
                 request.quantity(),
                 productInfo.totalPrice()
         );
         orderItemJpaRepository.save(orderItem);
+
+        OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
+                savedOrder.getId(),
+                savedOrder.getBuyerId(),
+                request.userCode(),
+                savedOrder.getTotalPrice(),
+                request.paidType(),
+                request.paymentKey()
+        );
+
+        switch (request.paidType()) {
+            case DEPOSIT -> paymentApiClient.requestDepositPayment(orderPaymentRequest);
+            case TOSS_PAYMENT -> paymentApiClient.requestTossPayment(orderPaymentRequest);
+            default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+        }
 
         return convertToOrderCreateResponse(savedOrder);
     }
@@ -199,10 +225,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request) {
-        Order order = orderJpaRepository.findByOrderCode(orderCode);
-        if (order == null) {
-            throw new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode);
-        }
+        Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
         OrderStatus current = order.getOrderStatus();
         OrderStatus target = request.status();

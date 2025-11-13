@@ -23,7 +23,9 @@ public record OrderDirectRequest(
         OrderType orderType,
 
         @NotNull(message = "결제 수단이 필요합니다.")
-        PaidType paidType
+        PaidType paidType,
+
+        String paymentKey // 토스 승인용
         // name: 사용자 서비스에서 조회
         // totalPrice: 상품 서비스에서 조회하여 계산
         // image: 응답에만 포함
