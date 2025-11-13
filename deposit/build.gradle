@@ -1,34 +1,37 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.5.7'
-    id 'io.spring.dependency-management' version '1.1.7'
-    id"io.freefair.lombok" version "9.1.0"
+
+//    id 'org.springframework.boot' version '3.5.7'
+//    id 'io.spring.dependency-management' version '1.1.7'
+    id "io.freefair.lombok" version "9.1.0"
 }
 
 group = 'com.example'
-version = '0.0.1-SNAPSHOT'
+//root에서 상속받아 관리중, 필요하시면 추가
+//version = '0.0.1-SNAPSHOT'
 description = 'deposit'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
+//java {
+//    toolchain {
+//        languageVersion = JavaLanguageVersion.of(21)
+//    }
+//}
 
-configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
-    }
-}
+//configurations {
+//    compileOnly {
+//        extendsFrom annotationProcessor
+//    }
+//}
 
-repositories {
-    mavenCentral()
-}
+//repositories {
+//    mavenCentral()
+//}
 
 ext {
     set('springCloudVersion', "2025.0.0")
 }
-
+springBoot {
+    mainClass = 'com.example.deposit.DepositApplication'
+}
 
 def querydslDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
 
@@ -44,12 +47,11 @@ tasks.withType(JavaCompile).configureEach {
     options.getGeneratedSourceOutputDirectory().set(file(querydslDir))
     options.encoding = 'UTF-8'
 }
-
 dependencies {
-    implementation project(':core')
+
+
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
 
     implementation 'org.springframework.kafka:spring-kafka'
 
@@ -62,9 +64,12 @@ dependencies {
 
     implementation 'com.github.f4b6a3:uuid-creator:5.3.7'
 
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
     testImplementation 'org.springframework.kafka:spring-kafka-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    //    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+//    implementation 'org.springframework.boot:spring-boot-starter-web'
+//    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 dependencyManagement {
