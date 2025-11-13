@@ -2,6 +2,7 @@ package com.example.deposit.model.entity;
 
 import com.example.core.model.persistence.BaseEntity;
 import com.example.deposit.model.enums.DepositStatus;
+import com.example.deposit.model.exception.DepositAlreadyExistsException;
 import com.example.deposit.model.exception.DepositBalanceNotEmptyException;
 import com.example.deposit.model.exception.InsufficientDepositBalanceException;
 import com.example.deposit.model.exception.InvalidDepositStatusTransitionException;
@@ -20,7 +21,7 @@ import java.util.*;
 public class Deposit extends BaseEntity {
 
     @Column( unique = true, nullable = false )
-    private Long userId;
+    private String userCode;
 
     @Column( nullable = false )
     private Long balance;
@@ -38,15 +39,15 @@ public class Deposit extends BaseEntity {
     private List<DepositHistory> histories = new ArrayList<>();
 
     @Builder
-    public Deposit(Long userId, Long balance, DepositStatus depositStatus) {
-        this.userId = userId;
+    public Deposit(String userCode, Long balance, DepositStatus depositStatus) {
+        this.userCode = userCode;
         this.balance = balance;
         this.depositStatus = depositStatus;
     }
 
-    public static Deposit createInitialDeposit(Long userId) {
+    public static Deposit createInitialDeposit(String userCode) {
         return Deposit.builder()
-                .userId(userId)
+                .userCode(userCode)
                 .balance(0L)
                 .depositStatus(DepositStatus.ACTIVE)
                 .build();
@@ -82,5 +83,12 @@ public class Deposit extends BaseEntity {
             throw new DepositBalanceNotEmptyException();
         }
         this.depositStatus = DepositStatus.CLOSED;
+    }
+
+    public void setActive() {
+        if (this.depositStatus == DepositStatus.ACTIVE) {
+            throw new DepositAlreadyExistsException();
+        }
+        this.depositStatus = DepositStatus.ACTIVE;
     }
 }

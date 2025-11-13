@@ -8,7 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface DepositRepository extends JpaRepository<Deposit, Long> {
-    boolean existsByUserId(Long userId);
-    Optional<Deposit> findByCode(String code);
-    Optional<Deposit> findByUserId(Long userId);
+    Optional<Deposit> findByUserCode(String userCode);
 }

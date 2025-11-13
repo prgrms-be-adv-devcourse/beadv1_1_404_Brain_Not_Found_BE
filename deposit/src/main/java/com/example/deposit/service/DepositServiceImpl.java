@@ -1,14 +1,13 @@
 package com.example.deposit.service;
 
-import com.example.deposit.client.UserServiceClient;
 import com.example.deposit.model.entity.Deposit;
 import com.example.deposit.model.entity.DepositHistory;
 import com.example.deposit.model.enums.DepositHistoryType;
+import com.example.deposit.model.enums.DepositStatus;
 import com.example.deposit.model.enums.TransactionStatus;
 import com.example.deposit.model.exception.DepositAlreadyExistsException;
 import com.example.deposit.model.exception.DepositNotFoundException;
 import com.example.deposit.model.exception.DuplicateDepositTransactionException;
-import com.example.deposit.model.exception.UserNotFoundException;
 import com.example.deposit.model.vo.request.DepositDeleteRequest;
 import com.example.deposit.model.vo.request.DepositTransactionRequest;
 import com.example.deposit.model.vo.response.*;
@@ -22,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -29,34 +29,35 @@ import java.time.LocalDateTime;
 public class DepositServiceImpl implements DepositService {
     private final DepositRepository depositRepository;
     private final DepositHistoryRepository depositHistoryRepository;
-    private final UserServiceClient userServiceClient;
 
     @Override
     @Transactional
     public DepositResponse createDeposit(String userCode) {
-        UserInfoResponse userInfo = getUserInfo(userCode);
-        if ( depositRepository.existsByUserId(userInfo.userId()) ) {
-            log.warn("User {} already exists", userCode);
-            throw new DepositAlreadyExistsException();
+        Optional<Deposit> optional = depositRepository.findByUserCode(userCode);
+        if (optional.isPresent()) {
+            Deposit d = optional.get();
+            if (d.getDepositStatus() == DepositStatus.ACTIVE) {
+                throw new DepositAlreadyExistsException();
+            }
+            log.warn("Closed deposit found for user {}. Reactivating...", userCode);
+            d.setActive();
+            return DepositResponse.from(userCode, d);
         }
-        Deposit deposit = Deposit.createInitialDeposit(userInfo.userId());
-        depositRepository.save(deposit);
+        Deposit deposit = depositRepository.save(Deposit.createInitialDeposit(userCode));
         return DepositResponse.from(userCode, deposit);
     }
 
     @Override
     @Transactional(readOnly = true)
     public DepositResponse getDepositByUserCode(String userCode) {
-        UserInfoResponse userInfo = getUserInfo(userCode);
-        Deposit deposit = getDepositByUserId(userInfo.userId());
+        Deposit deposit = getDepositByUserId(userCode);
         return DepositResponse.from(userCode, deposit);
     }
 
     @Override
     @Transactional
     public DepositDeleteResponse deleteDepositByUserCode(String userCode, DepositDeleteRequest request) {
-        UserInfoResponse userInfo = getUserInfo(userCode);
-        Deposit deposit = getDepositByUserId(userInfo.userId());
+        Deposit deposit = getDepositByUserId(userCode);
         deposit.setClosed();
         return DepositDeleteResponse.from(userCode, deposit, request.closedReason());
     }
@@ -65,8 +66,7 @@ public class DepositServiceImpl implements DepositService {
     @Override
     @Transactional
     public DepositTransactionResponse chargeDeposit(String userCode, DepositTransactionRequest request) {
-        UserInfoResponse userInfo = getUserInfo(userCode);
-        Deposit deposit = getDepositByUserId(userInfo.userId());
+        Deposit deposit = getDepositByUserId(userCode);
         isDuplicateTransaction(request.referenceCode());
 
         deposit.charge(request.amount());
@@ -93,8 +93,7 @@ public class DepositServiceImpl implements DepositService {
     @Override
     @Transactional
     public DepositTransactionResponse withdrawDeposit(String userCode, DepositTransactionRequest request) {
-        UserInfoResponse userInfo = getUserInfo(userCode);
-        Deposit deposit = getDepositByUserId(userInfo.userId());
+        Deposit deposit = getDepositByUserId(userCode);
         isDuplicateTransaction(request.referenceCode());
 
         deposit.withdraw(request.amount());
@@ -120,23 +119,14 @@ public class DepositServiceImpl implements DepositService {
     @Override
     @Transactional(readOnly = true)
     public DepositHistoryPageResponse getDepositHistoryByUserCode(String userCode, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
-        UserInfoResponse userInfo = getUserInfo(userCode);
-        Deposit deposit = getDepositByUserId(userInfo.userId());
+        Deposit deposit = getDepositByUserId(userCode);
         Page<DepositHistory> histories = depositHistoryRepository.findAllByDepositAndCreatedAtBetween(deposit, fromDate, toDate, pageable);
         return DepositHistoryPageResponse.from(userCode, histories.map(DepositHistoryResponse::from));
     }
 
-    private Deposit getDepositByUserId(Long userId) {
-        return depositRepository.findByUserId(userId)
+    private Deposit getDepositByUserId(String userCode) {
+        return depositRepository.findByUserCode(userCode)
                 .orElseThrow(() -> new DepositNotFoundException("해당 회원의 예치금 계좌가 존재하지 않습니다."));
-    }
-
-    private UserInfoResponse getUserInfo(String userCode) {
-        UserInfoResponse userInfo = userServiceClient.getUserByCode(userCode);
-        if (userInfo == null) {
-            throw new UserNotFoundException("해당 유저를 찾을 수 없습니다: " + userCode);
-        }
-        return userInfo;
     }
 
     private void isDuplicateTransaction(String referenceCode) {
