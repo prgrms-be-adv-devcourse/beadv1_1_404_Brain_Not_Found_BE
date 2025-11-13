@@ -5,6 +5,7 @@ import com.ll.payment.model.enums.PaidType;
 public record OrderPaymentRequest(
         Long orderId,
         Long buyerId,
+        String buyerCode,
         int paidAmount,
         PaidType paidType,
         String paymentKey // 토스 승인용
