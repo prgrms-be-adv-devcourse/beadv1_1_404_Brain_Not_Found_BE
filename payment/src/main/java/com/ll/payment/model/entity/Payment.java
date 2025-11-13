@@ -1,5 +1,6 @@
 package com.ll.payment.model.entity;
 
+import com.github.f4b6a3.uuid.UuidCreator;
 import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -8,13 +9,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
-
-    private static final String PAYMENT_PREFIX = "PAY-";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -104,6 +102,9 @@ public class Payment {
     }
 
     private static String generatePaymentCode() {
-        return PAYMENT_PREFIX + System.currentTimeMillis();
+        return "PAY-" + UuidCreator.getTimeOrderedEpoch()
+                .toString()
+                .substring(0, 8)
+                .toUpperCase();
     }
 }

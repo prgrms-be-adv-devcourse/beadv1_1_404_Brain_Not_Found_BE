@@ -81,25 +81,40 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public OrderDetailResponse findOrderDetails(String orderCode) {
         Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+        List<OrderDetailResponse.ItemInfo> itemInfos = orderItems.stream()
+                .map(item -> {
+                    ProductResponse product = Optional.ofNullable(productServiceClient.getProductById(item.getProductId()))
+                            .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.getProductId()));
+                    return new OrderDetailResponse.ItemInfo(
+                            item.getOrderItemCode(),
+                            item.getProductId(),
+                            item.getSellerId(),
+                            item.getProductName(),
+                            item.getQuantity(),
+                            item.getPrice(),
+                            product.image()
+                    );
+                })
+                .collect(Collectors.toList());
 
-         for (OrderItem item : orderItems) {
-             ProductResponse product = productServiceClient.getProductById(item.getProductId());
-         }
+        // 생성자 파라미터안에 생성자가 있는 구조는 가독성 측면에서 생각해봐야한다고 봅니다! 인스턴스화해서 변수로 활용하는 게 어떨까요? 넵.
+        OrderDetailResponse.UserInfo userInfo = new OrderDetailResponse.UserInfo(
+                order.getBuyerId(),
+                order.getAddress()
+        );
 
-        // 생성자 파라미터안에 생성자가 있는 구조는 가독성 측면에서 생각해봐야한다고 봅니다! 인스턴스화해서 변수로 활용하는 게 어떨까요?
         return new OrderDetailResponse(
                 order.getId(),
                 order.getOrderStatus(),
                 order.getTotalPrice(),
-                new OrderDetailResponse.UserInfo(
-                        order.getBuyerId(),
-                        order.getAddress()
-                )
+                userInfo,
+                itemInfos
         );
     }
 

@@ -352,7 +352,18 @@ class OrderServiceImplTest {
         when(order.getBuyerId()).thenReturn(5L);
         when(order.getAddress()).thenReturn("부산 해운대");
 
+        OrderItem orderItem = mock(OrderItem.class);
+        when(orderItem.getOrderItemCode()).thenReturn("ITEM-001");
+        when(orderItem.getProductId()).thenReturn(1L);
+        when(orderItem.getSellerId()).thenReturn(21L);
+        when(orderItem.getProductName()).thenReturn("상품1");
+        when(orderItem.getQuantity()).thenReturn(2);
+        when(orderItem.getPrice()).thenReturn(10000);
+
         when(orderJpaRepository.findByOrderCode("ORD-999")).thenReturn(order);
+        when(orderItemJpaRepository.findByOrderId(10L)).thenReturn(List.of(orderItem));
+        when(productServiceClient.getProductById(1L))
+                .thenReturn(new ProductResponse(1L, 21L, "상품1", 10, 10000, ProductSaleStatus.ON_SALE, "image.png"));
 
         // when
         OrderDetailResponse response = orderService.findOrderDetails("ORD-999");
@@ -363,6 +374,15 @@ class OrderServiceImplTest {
         assertThat(response.totalPrice()).isEqualTo(45000);
         assertThat(response.userInfo().userId()).isEqualTo(5L);
         assertThat(response.userInfo().address()).isEqualTo("부산 해운대");
+        assertThat(response.items()).hasSize(1);
+        OrderDetailResponse.ItemInfo itemInfo = response.items().get(0);
+        assertThat(itemInfo.orderItemCode()).isEqualTo("ITEM-001");
+        assertThat(itemInfo.productId()).isEqualTo(1L);
+        assertThat(itemInfo.sellerId()).isEqualTo(21L);
+        assertThat(itemInfo.productName()).isEqualTo("상품1");
+        assertThat(itemInfo.quantity()).isEqualTo(2);
+        assertThat(itemInfo.price()).isEqualTo(10000);
+        assertThat(itemInfo.productImage()).isEqualTo("image.png");
     }
 
     @DisplayName("주문 상태 변경 - 성공")
