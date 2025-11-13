@@ -28,10 +28,8 @@ springBoot {
     mainClass = 'com.ll.payment.PaymentApplication'  // 실제 존재하는 main class
 }
 dependencies {
-
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'mysql:mysql-connector-java:8.0.33'
-
 
 //    implementation 'org.springframework.boot:spring-boot-starter-web'
 //    runtimeOnly 'com.mysql:mysql-connector-j'
