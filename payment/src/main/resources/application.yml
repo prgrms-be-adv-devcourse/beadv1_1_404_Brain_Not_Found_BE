@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: payment
+
+payment:
+  targetUrl: https://api.tosspayments.com/v1/payments/confirm
+  clientKey: test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
+  secretKey: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6

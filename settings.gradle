@@ -1,1 +1,8 @@
 rootProject.name = 'Gooream'
+
+include "core"
+include "order"
+include "payment"
+include "products"
+include "user"
+include "deposit"
