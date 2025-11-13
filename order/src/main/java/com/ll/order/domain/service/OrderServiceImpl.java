@@ -210,10 +210,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request) {
-        Order order = orderJpaRepository.findByOrderCode(orderCode);
-        if (order == null) {
-            throw new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode);
-        }
+        Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
         OrderStatus current = order.getOrderStatus();
         OrderStatus target = request.status();

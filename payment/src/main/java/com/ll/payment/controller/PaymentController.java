@@ -3,6 +3,7 @@ package com.ll.payment.controller;
 import com.example.core.model.response.BaseResponse;
 import com.ll.payment.model.dto.PaymentProcessResult;
 import com.ll.payment.model.entity.Payment;
+import com.ll.payment.model.vo.PaymentRefundRequest;
 import com.ll.payment.model.vo.PaymentRequest;
 import com.ll.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
@@ -38,9 +39,9 @@ public class PaymentController { // TODO : 결제 실패 시 주문 상태 갱�
 
     @PostMapping("/refund")
     public ResponseEntity<BaseResponse<Payment>> refundPayment(
-            @RequestBody Payment payment
+            @RequestBody PaymentRefundRequest request
     ) {
-        Payment result = paymentService.refundPayment(payment);
+        Payment result = paymentService.refundPayment(request);
         return BaseResponse.ok(result);
     }
 

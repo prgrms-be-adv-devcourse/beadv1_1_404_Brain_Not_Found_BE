@@ -88,15 +88,4 @@ public class OrderController {
 
         return BaseResponse.ok(response);
     }
-//
-//
-//    @PostMapping("/{orderCode}/complete")
-//    public ResponseEntity completeOrder(
-//            @RequestParam String buyerCode,
-//            @RequestParam String orderCode
-//    ) {
-//
-//
-//        return ResponseEntity.ok(null);
-//    }
 }

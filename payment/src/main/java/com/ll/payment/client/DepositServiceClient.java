@@ -31,7 +31,20 @@ public class DepositServiceClient {
         return response != null ? response.getData() : null;
     }
 
-    public void withdraw(String userCode, long amount, String referenceCode) {
+    public void deposit(String userCode, int amount, String referenceCode) {
+        String url = depositServiceUrl + "/api/deposits/deposit";
+        restClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path(url)
+                        .queryParam("userCode", userCode)
+                        .build())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new DepositWithdrawRequest(amount, referenceCode))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    public void withdraw(String userCode, int amount, String referenceCode) {
         String url = depositServiceUrl + "/api/deposits/withdraw";
         restClient.post()
                 .uri(uriBuilder -> uriBuilder

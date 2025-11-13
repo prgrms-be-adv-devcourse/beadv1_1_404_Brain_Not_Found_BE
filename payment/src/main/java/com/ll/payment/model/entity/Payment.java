@@ -98,6 +98,11 @@ public class Payment {
         this.paidAt = approvedAt;
     }
 
+    public void markRefund(LocalDateTime refundedAt) {
+        this.paymentStatus = PaymentStatus.REFUNDED;
+        this.paidAt = refundedAt;
+    }
+
     private static String generatePaymentCode() {
         return PAYMENT_PREFIX + System.currentTimeMillis();
     }
