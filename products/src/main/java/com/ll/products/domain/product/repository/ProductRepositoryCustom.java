@@ -11,7 +11,6 @@ public interface ProductRepositoryCustom {
             Long sellerId,
             Long categoryId,
             ProductStatus status,
-            Boolean isDeleted,
             String name,
             Pageable pageable
     );
