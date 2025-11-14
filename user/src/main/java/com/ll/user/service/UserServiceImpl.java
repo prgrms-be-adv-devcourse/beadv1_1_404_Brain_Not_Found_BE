@@ -31,15 +31,22 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
-    public UserResponse updateUser(UserPatchRequest request, Long userId) {
+    public UserResponse getUserByUserCode(String userCode) {
+        User user = userRepository.findByUserCode(userCode).orElseThrow(NoSuchElementException::new);
+        return UserResponse.from(user);
+    }
 
-        if (userId == null) {
-            throw new IllegalArgumentException("유저아이디가 필요합니다");
+
+    @Override
+    @Transactional
+    public UserResponse updateUser(UserPatchRequest request, String userCode) {
+
+        if (userCode == null) {
+            throw new IllegalArgumentException("유저코드가 필요합니다");
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NoSuchElementException("유저를 찾을 수 없습니다:" + userId));
+        User user = userRepository.findByUserCode(userCode)
+                .orElseThrow(() -> new NoSuchElementException("유저를 찾을 수 없습니다:" + userCode));
 
         modelMapper.map(request,user);
 

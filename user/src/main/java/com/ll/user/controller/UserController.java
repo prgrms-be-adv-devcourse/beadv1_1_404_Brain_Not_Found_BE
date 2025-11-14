@@ -22,14 +22,24 @@ public class UserController {
 
     // 회원 정보 조회
     @GetMapping("/info")
-    public ResponseEntity<BaseResponse<UserResponse>> getUser(@RequestParam Long id) {
+    public ResponseEntity<BaseResponse<UserResponse>> getUser(
+            @RequestHeader(value = "X-User-Code", required = false) String userCode,
+            @RequestParam(value = "id", required = false) Long id) {
         try {
-            UserResponse user = userService.getUserById(id);
+            UserResponse user;
+            if (userCode != null && !userCode.isBlank()) {
+                user = userService.getUserByUserCode(userCode);
+            }
+            else if (id != null) {
+                user = userService.getUserById(id);
+            }
+            else {
+                return BaseResponse.error(ErrorCode.BAD_REQUEST, "userCode (헤더) 또는 id (쿼리 파라미터) 중 하나가 필요합니다.");
+            }
             return BaseResponse.ok(user);
         } catch (NoSuchElementException e) {
             return BaseResponse.error(ErrorCode.NOT_FOUND,"유저를 찾을 수 없습니다.");
         }
-
     }
 
     // 소셜로그인
@@ -41,9 +51,12 @@ public class UserController {
 
     // 회원 정보 수정
     @PatchMapping
-    public ResponseEntity<BaseResponse<UserResponse>> updateUser(@RequestBody UserPatchRequest request, @RequestParam Long id) {
+    public ResponseEntity<BaseResponse<UserResponse>> updateUser(
+            @RequestBody UserPatchRequest request,
+            @RequestHeader(value = "X-User-Code", required = true) String userCode
+    ){
         try {
-            UserResponse updatedUser = userService.updateUser(request, id);
+            UserResponse updatedUser = userService.updateUser(request, userCode);
             return BaseResponse.ok(updatedUser);
         } catch (NoSuchElementException e) {
             return BaseResponse.error(ErrorCode.NOT_FOUND);

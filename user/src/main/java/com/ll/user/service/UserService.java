@@ -10,7 +10,8 @@ import java.util.List;
 public interface UserService {
 
     UserResponse getUserById(Long id);
-    UserResponse updateUser(UserPatchRequest request , Long userId);
+    UserResponse updateUser(UserPatchRequest request , String userCode);
     List<UserResponse> getUserList();
     UserLoginResponse createOrUpdateUser(UserLoginRequest request);
+    UserResponse getUserByUserCode(String userCode);
 }
