@@ -5,14 +5,16 @@ public enum OrderStatus {
     CANCELLED,
     PAID,
     DELIVERY,
-    COMPLETED;
+    COMPLETED,
+    REFUNDED;
 
     public boolean canTransitionTo(OrderStatus target) {
         return switch (this) {
             case CREATED -> target == PAID || target == CANCELLED;
-            case PAID -> target == DELIVERY || target == CANCELLED;
-            case DELIVERY -> target == COMPLETED;
-            case CANCELLED, COMPLETED -> false;
+            case PAID -> target == DELIVERY || target == CANCELLED || target == REFUNDED;
+            case DELIVERY -> target == COMPLETED || target == REFUNDED;
+            case COMPLETED -> target == REFUNDED;
+            case CANCELLED, REFUNDED -> false;
         };
     }
 }

@@ -1,6 +1,11 @@
 spring:
   application:
     name: payment
+  datasource:
+    url: jdbc:h2:mem:paymentdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
 
 payment:
   targetUrl: https://api.tosspayments.com/v1/payments/confirm

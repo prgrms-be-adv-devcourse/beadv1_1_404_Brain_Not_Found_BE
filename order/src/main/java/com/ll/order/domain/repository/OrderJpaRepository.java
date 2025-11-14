@@ -17,11 +17,11 @@ public interface OrderJpaRepository extends JpaRepository<Order, Long> {
 
     @Query("""
                SELECT DISTINCT o FROM Order o 
-               JOIN o.orderItems oi
+               JOIN OrderItem oi ON oi.order = o
                WHERE o.buyerId = :buyerId
                AND oi.productName LIKE %:keyword%
             """)
-    Page<Order> findByBuyerIdAndProductNameContaining(@Param("sellerId") Long buyerId,
+    Page<Order> findByBuyerIdAndProductNameContaining(@Param("buyerId") Long buyerId,
                                                       @Param("keyword") String keyword,
                                                       Pageable pageable);
 }
