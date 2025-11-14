@@ -1,3 +1,4 @@
+
 spring:
   application:
     name: user
@@ -24,3 +25,5 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
+server:
+  port: 8081
