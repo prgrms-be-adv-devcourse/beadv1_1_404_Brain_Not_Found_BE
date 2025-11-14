@@ -1,5 +1,6 @@
 package com.ll.cart.model;
 
+import com.example.core.model.persistence.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -11,13 +12,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "cart_items")
+@AttributeOverride(name = "code", column = @Column(name = "cart_item_code", nullable = false, unique = true, updatable = false))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class CartItem {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class CartItem extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", nullable = false)
@@ -25,9 +23,6 @@ public class CartItem {
 
     @Column(name = "product_id", nullable = false)
     private Long productId;
-
-    @Column(name = "cart_item_code", nullable = false, unique = true)
-    private String cartItemCode;
 
     @Column(nullable = false)
     private Integer quantity;
@@ -43,12 +38,10 @@ public class CartItem {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public CartItem(Long productId,
-                    String cartItemCode,
-                    Integer quantity,
-                    Integer totalPrice) {
+    private CartItem(Long productId,
+                     Integer quantity,
+                     Integer totalPrice) {
         this.productId = productId;
-        this.cartItemCode = cartItemCode;
         this.quantity = quantity;
         this.totalPrice = totalPrice;
     }
@@ -61,5 +54,13 @@ public class CartItem {
         this.quantity = quantity;
         this.totalPrice = totalPrice;
     }
-}
 
+    public static CartItem create(Cart cart,
+                                  Long productId,
+                                  Integer quantity,
+                                  Integer totalPrice) {
+        CartItem cartItem = new CartItem(productId, quantity, totalPrice);
+        cartItem.assignCart(cart);
+        return cartItem;
+    }
+}
