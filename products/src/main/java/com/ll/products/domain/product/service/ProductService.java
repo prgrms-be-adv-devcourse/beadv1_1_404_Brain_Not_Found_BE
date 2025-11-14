@@ -19,6 +19,8 @@ import com.ll.products.domain.product.model.dto.response.ProductResponse;
 import com.ll.products.domain.product.model.entity.Product;
 import com.ll.products.domain.product.model.entity.ProductStatus;
 import com.ll.products.domain.product.repository.ProductRepository;
+import com.ll.products.domain.search.document.ProductDocument;
+import com.ll.products.domain.search.repository.ProductSearchRepository;
 import com.ll.products.global.client.UserClient;
 
 import java.util.List;
@@ -32,6 +34,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final UserClient userClient;
+    private final ProductSearchRepository productSearchRepository;
 
     // 1. 상품 생성
     @Transactional
@@ -52,6 +55,10 @@ public class ProductService {
         setImages(request.images(), product);
         Product savedProduct = productRepository.save(product);
         log.info("상품 생성 완료: {} (ID: {})", savedProduct.getName(), savedProduct.getId());
+
+        // Elasticsearch 동기화
+        syncToElasticsearch(savedProduct);
+
         return ProductResponse.from(savedProduct);
     }
 
@@ -66,11 +73,10 @@ public class ProductService {
             Long sellerId,
             Long categoryId,
             ProductStatus status,
-            Boolean isDeleted,
             String name,
             Pageable pageable
     ) {
-        Page<Product> products = productRepository.searchProducts(sellerId, categoryId, status, isDeleted, name, pageable);
+        Page<Product> products = productRepository.searchProducts(sellerId, categoryId, status, name, pageable);
         return products.map(ProductListResponse::from);
     }
 
@@ -80,6 +86,9 @@ public class ProductService {
         Product product = getProductByCode(code);
         product.softDelete();
         log.info("상품 삭제 완료: {} (ID: {})", product.getName(), product.getId());
+
+        // Elasticsearch 동기화 (삭제된 상품도 동기화하여 isDeleted 상태 반영)
+        syncToElasticsearch(product);
     }
 
     // 5. 상품 수정
@@ -96,6 +105,10 @@ public class ProductService {
         product.updateCategory(category);
         setImages(request.images(), product);
         log.info("상품 수정 완료: {} (ID: {})", product.getName(), product.getId());
+
+        // Elasticsearch 동기화
+        syncToElasticsearch(product);
+
         return ProductResponse.from(product);
     }
 
@@ -105,6 +118,10 @@ public class ProductService {
         Product product = getProductByCode(code);
         product.updateStatus(request.status());
         log.info("상품 상태변경 완료: {} -> {} (ID: {})", product.getName(), request.status(), product.getId());
+
+        // Elasticsearch 동기화
+        syncToElasticsearch(product);
+
         return ProductResponse.from(product);
     }
 
@@ -125,7 +142,7 @@ public class ProductService {
 
     // 판매자명 조회 TODO. User API 호출
     private String getSellerName(Long sellerId) {
-        return null;
+        return "API 호출 전 임시 데이터";
 //        return userClient.getSellerName(sellerId);
     }
 
@@ -144,5 +161,22 @@ public class ProductService {
         Product product = productRepository.findByCodeAndIsDeletedFalse(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
         return product;
+    }
+
+    /**
+     * Elasticsearch 동기화
+     * - Product Entity를 ProductDocument로 변환하여 Elasticsearch에 저장
+     * - 생성/수정/삭제 모두 save로 처리 (upsert)
+     */
+    private void syncToElasticsearch(Product product) {
+        try {
+            ProductDocument document = ProductDocument.from(product);
+            productSearchRepository.save(document);
+            log.debug("Elasticsearch 동기화 완료: Product ID={}", product.getId());
+        } catch (Exception e) {
+            // Elasticsearch 동기화 실패 시 로그만 남기고 트랜잭션은 롤백하지 않음
+            // (검색 기능이 중단되더라도 핵심 기능은 동작해야 함)
+            log.error("Elasticsearch 동기화 실패: Product ID={}, error={}", product.getId(), e.getMessage(), e);
+        }
     }
 }
