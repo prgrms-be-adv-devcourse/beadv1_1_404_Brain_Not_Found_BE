@@ -5,10 +5,6 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "cart_items")
@@ -18,25 +14,13 @@ import java.time.LocalDateTime;
 public class CartItem extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id", nullable = false)
     private Cart cart;
 
-    @Column(name = "product_id", nullable = false)
     private Long productId;
 
-    @Column(nullable = false)
     private Integer quantity;
 
-    @Column(name = "total_price", nullable = false)
     private Integer totalPrice;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
 
     private CartItem(Long productId,
                      Integer quantity,
