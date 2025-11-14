@@ -11,20 +11,6 @@ springBoot {
     mainClass = 'com.example.deposit.DepositApplication'
 }
 
-def querydslDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
-
-sourceSets {
-    main {
-        java {
-            srcDirs += querydslDir
-        }
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.getGeneratedSourceOutputDirectory().set(file(querydslDir))
-    options.encoding = 'UTF-8'
-}
 dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
