@@ -25,20 +25,6 @@ description = 'core'
 //	mavenCentral()
 //}
 
-def querydslDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
-
-sourceSets {
-    main {
-        java {
-            srcDirs += querydslDir
-        }
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.getGeneratedSourceOutputDirectory().set(file(querydslDir))
-    options.encoding = 'UTF-8'
-}
 
 dependencies {
 	implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.1'
