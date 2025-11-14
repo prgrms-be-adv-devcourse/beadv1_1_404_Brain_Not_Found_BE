@@ -16,25 +16,25 @@ public record SettlementRequestEvent(
         @DecimalMin(value = "0.0", message = "settlementRate 는 0.0 이상이어야 합니다.")
         @DecimalMax(value = "1.0", message = "settlementRate 는 1.0 이하이어야 합니다.")
         BigDecimal settlementRate,
-        @NotNull(message = "totalAmount 는 필수입력값입니다.")
-        @PositiveOrZero(message = "totalAmount 는 0 이상이어야 합니다.")
-        Long totalAmount
+        @NotNull(message = "amount 는 필수입력값입니다.")
+        @PositiveOrZero(message = "amount 는 0 이상이어야 합니다.")
+        Long amount
 ) {
 
     private static final BigDecimal DEFAULT_SETTLEMENT_RATE = new BigDecimal("0.3");
 
-    public static SettlementRequestEvent of(String buyerCode, String sellerCode, String orderItemCode, String settlementRate, Long totalAmount) {
+    public static SettlementRequestEvent of(String buyerCode, String sellerCode, String orderItemCode, String settlementRate, Long amount) {
         if (settlementRate == null || settlementRate.isBlank()) {
             throw new InvalidSettlementEventException("settlementRate 는 null 또는 공백일 수 없습니다.");
         }
         try {
-            return new SettlementRequestEvent(buyerCode, sellerCode, orderItemCode, new BigDecimal(settlementRate), totalAmount);
+            return new SettlementRequestEvent(buyerCode, sellerCode, orderItemCode, new BigDecimal(settlementRate), amount);
         } catch (NumberFormatException e) {
             throw new InvalidSettlementEventException("settlementRate 값이 올바른 숫자 형식이 아닙니다.");
         }
     }
 
-    public static SettlementRequestEvent of(String buyerCode, String sellerCode, String orderItemCode, Long totalAmount) {
-        return new SettlementRequestEvent(buyerCode, sellerCode, orderItemCode, DEFAULT_SETTLEMENT_RATE, totalAmount);
+    public static SettlementRequestEvent of(String buyerCode, String sellerCode, String orderItemCode, Long amount) {
+        return new SettlementRequestEvent(buyerCode, sellerCode, orderItemCode, DEFAULT_SETTLEMENT_RATE, amount);
     }
 }

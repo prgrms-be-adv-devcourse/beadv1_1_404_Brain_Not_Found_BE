@@ -17,15 +17,23 @@ public class SettlementBatchStepLogger implements StepExecutionListener {
     }
 
     @Override
-    public ExitStatus afterStep(StepExecution se) {
+    public ExitStatus afterStep(StepExecution stepExecution) {
 
         long durMs = (System.nanoTime()-start) / 1_000_000;
 
-        log.info("BATCH_METRIC Step Name = {}, Read Count = {}, Write Count = {}, Commit Count = {}, Skip Count = {} During Milli Sec ={}",
-                se.getStepName(), se.getReadCount(), se.getWriteCount(),
-                se.getCommitCount(), se.getSkipCount(), durMs);
+        log.info("BATCH_METRIC | Step={} | read={} | write={} | commit={} | skip={} | duration={}ms",
+                stepExecution.getStepName(),
+                stepExecution.getReadCount(),
+                stepExecution.getWriteCount(),
+                stepExecution.getCommitCount(),
+                stepExecution.getSkipCount(),
+                durMs);
 
-        return se.getExitStatus();
+        if (stepExecution.getSkipCount() > 0) {
+            log.warn("SKIP DETECTED in Step {} - skipCount={}", stepExecution.getStepName(), stepExecution.getSkipCount());
+        }
+
+        return stepExecution.getExitStatus();
 
     }
 }
