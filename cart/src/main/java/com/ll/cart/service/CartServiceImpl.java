@@ -32,34 +32,30 @@ public class CartServiceImpl implements CartService {
 
         UserResponse user = userServiceClient.getUserByCode(userCode);
 
-        // 장바구니 조회해서 없으면 생성
-        Cart cart = cartRepository.findByCode(cartCode)
+        Cart cart = cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE)
                 .orElseGet(() -> getOrCreateCart(user.id()));
 
         if (!cart.getUserId().equals(user.id())) {
             throw new IllegalArgumentException("다른 사용자의 장바구니에는 아이템을 추가할 수 없습니다.");
         }
 
-        // 장바구니 상태 검증
-        validateCartStatus(cart);
-
         Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndProductId(cart, request.getProductId());
 
         CartItem cartItem;
-        if (existingCartItem.isPresent()) {
+        if (existingCartItem.isPresent()) { // 기존 아이템이 있으면 수량 업데이트
             cartItem = existingCartItem.get();
             int previousTotal = cartItem.getTotalPrice();
             cartItem.changeQuantity(request.getQuantity(), request.getTotalPrice());
             int difference = request.getTotalPrice() - previousTotal;
             adjustCartTotalPrice(cart, difference);
-        } else {
+        } else { // 기존 아이템이 없으면 새로운 아이템 생성
             cartItem = CartItem.create(
                     cart,
                     request.getProductId(),
                     request.getQuantity(),
                     request.getTotalPrice()
             );
-            cartItemRepository.save(cartItem);
+            cartItemRepository.save(cartItem); // 새로운 아이템 저장
             cart.increaseTotalPrice(request.getTotalPrice());
         }
 
@@ -73,23 +69,22 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public CartItemRemoveResponse removeCartItem(String userCode, String cartItemCode) {
-        // 사용자 정보 조회
+    public CartItemRemoveResponse removeCartItem(String userCode, String cartCode, String cartItemCode) {
         UserResponse user = userServiceClient.getUserByCode(userCode);
 
-        // 장바구니 아이템 조회
-        CartItem cartItem = cartItemRepository.findByCode(cartItemCode)
-                .orElseThrow(() -> new IllegalArgumentException("장바구니 아이템을 찾을 수 없습니다: " + cartItemCode));
+        Cart cart = cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없거나 활성 상태가 아닙니다: " + cartCode));
 
-        Cart cart = cartItem.getCart();
-
-        // 권한 검증: 삭제하려는 아이템이 해당 사용자의 장바구니에 속하는지 확인
         if (!cart.getUserId().equals(user.id())) {
-            throw new IllegalArgumentException("다른 사용자의 장바구니 아이템은 삭제할 수 없습니다.");
+            throw new IllegalArgumentException("다른 사용자의 장바구니에는 접근할 수 없습니다.");
         }
 
-        // 장바구니 상태 검증
-        validateCartStatus(cart);
+        CartItem cartItem = cartItemRepository.findByCodeAndCartStatus(cartItemCode, CartStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니 아이템을 찾을 수 없거나 활성 상태의 장바구니가 아닙니다: " + cartItemCode));
+
+        if (!cartItem.getCart().getCode().equals(cartCode)) {
+            throw new IllegalArgumentException("해당 장바구니에 속하지 않은 아이템입니다.");
+        }
 
         cart.decreaseTotalPrice(cartItem.getTotalPrice());
         cartItemRepository.delete(cartItem);
@@ -122,12 +117,6 @@ public class CartServiceImpl implements CartService {
         }
         if (request.getProductId() == null) {
             throw new IllegalArgumentException("상품 ID는 필수입니다.");
-        }
-    }
-
-    private void validateCartStatus(Cart cart) {
-        if (cart.getStatus() != CartStatus.ACTIVE) {
-            throw new IllegalStateException("장바구니가 활성 상태가 아닙니다. 현재 상태: " + cart.getStatus());
         }
     }
 

@@ -19,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,7 +63,7 @@ class CartServiceImplTest {
         CartItemAddRequest secondRequest = new CartItemAddRequest(100L, 5, 50000);
 
         when(userServiceClient.getUserByCode(userCode)).thenReturn(testUser);
-        when(cartRepository.findByCode(cartCode))
+        when(cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE))
                 .thenReturn(Optional.of(testCart));
 
         // 첫 번째 추가: 새로운 아이템 (빈 결과 반환)
@@ -106,7 +107,7 @@ class CartServiceImplTest {
         assertThat(testCart.getTotalPrice()).isEqualTo(50000);
 
         verify(userServiceClient, times(2)).getUserByCode(userCode);
-        verify(cartRepository, times(2)).findByCode(cartCode);
+        verify(cartRepository, times(2)).findByCodeAndStatus(cartCode, CartStatus.ACTIVE);
         verify(cartItemRepository, times(2)).findByCartAndProductId(testCart, 100L);
         verify(cartItemRepository, times(1)).save(any(CartItem.class));
     }
@@ -120,7 +121,7 @@ class CartServiceImplTest {
         CartItemAddRequest request = new CartItemAddRequest(100L, 1, 10000);
 
         when(userServiceClient.getUserByCode(userCode)).thenReturn(testUser);
-        when(cartRepository.findByCode(cartCode))
+        when(cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE))
                 .thenReturn(Optional.of(testCart));
         when(cartItemRepository.findByCartAndProductId(testCart, 100L))
                 .thenReturn(Optional.empty());
@@ -145,28 +146,37 @@ class CartServiceImplTest {
         assertThat(testCart.getTotalPrice()).isEqualTo(10000);
 
         verify(userServiceClient).getUserByCode(userCode);
-        verify(cartRepository).findByCode(cartCode);
+        verify(cartRepository).findByCodeAndStatus(cartCode, CartStatus.ACTIVE);
     }
 
     @DisplayName("장바구니 아이템 삭제 및 총액 차감 - 성공")
     @Test
-    void removeCartItem_DecreaseTotalPrice_Success() {
+    void removeCartItem_DecreaseTotalPrice_Success() throws Exception {
         // given
         String userCode = "USER-001";
+        String cartCode = "CART-001";
+        
+        // testCart의 code를 cartCode로 설정
+        Field codeField = testCart.getClass().getSuperclass().getDeclaredField("code");
+        codeField.setAccessible(true);
+        codeField.set(testCart, cartCode);
+        
         CartItem cartItem1 = CartItem.create(testCart, 100L, 2, 20000);
         CartItem cartItem2 = CartItem.create(testCart, 200L, 1, 15000);
         testCart.increaseTotalPrice(20000);
         testCart.increaseTotalPrice(15000);
 
         when(userServiceClient.getUserByCode(userCode)).thenReturn(testUser);
+        when(cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE))
+                .thenReturn(Optional.of(testCart));
 
         // 첫 번째 삭제: cartItem1 삭제
         String firstCartItemCode = "CART-ITEM-001";
-        when(cartItemRepository.findByCode(firstCartItemCode))
+        when(cartItemRepository.findByCodeAndCartStatus(firstCartItemCode, CartStatus.ACTIVE))
                 .thenReturn(Optional.of(cartItem1));
 
         // when - 첫 번째 아이템 삭제
-        CartItemRemoveResponse firstResponse = cartService.removeCartItem(userCode, firstCartItemCode);
+        CartItemRemoveResponse firstResponse = cartService.removeCartItem(userCode, cartCode, firstCartItemCode);
 
         // then - 첫 번째 삭제 검증
         assertThat(firstResponse.cartItemCode()).isEqualTo(firstCartItemCode);
@@ -179,11 +189,11 @@ class CartServiceImplTest {
 
         // 두 번째 삭제: cartItem2 삭제
         String secondCartItemCode = "CART-ITEM-002";
-        when(cartItemRepository.findByCode(secondCartItemCode))
+        when(cartItemRepository.findByCodeAndCartStatus(secondCartItemCode, CartStatus.ACTIVE))
                 .thenReturn(Optional.of(cartItem2));
 
         // when - 두 번째 아이템 삭제
-        CartItemRemoveResponse secondResponse = cartService.removeCartItem(userCode, secondCartItemCode);
+        CartItemRemoveResponse secondResponse = cartService.removeCartItem(userCode, cartCode, secondCartItemCode);
 
         // then - 두 번째 삭제 검증
         assertThat(secondResponse.cartItemCode()).isEqualTo(secondCartItemCode);
@@ -193,8 +203,9 @@ class CartServiceImplTest {
         verify(cartItemRepository, times(2)).delete(cartItemCaptor.capture());
         assertThat(cartItemCaptor.getAllValues()).containsExactly(cartItem1, cartItem2);
 
-        verify(cartItemRepository).findByCode(firstCartItemCode);
-        verify(cartItemRepository).findByCode(secondCartItemCode);
+        verify(cartItemRepository).findByCodeAndCartStatus(firstCartItemCode, CartStatus.ACTIVE);
+        verify(cartItemRepository).findByCodeAndCartStatus(secondCartItemCode, CartStatus.ACTIVE);
+        verify(cartRepository, times(2)).findByCodeAndStatus(cartCode, CartStatus.ACTIVE);
         verify(userServiceClient, times(2)).getUserByCode(userCode);
     }
 }

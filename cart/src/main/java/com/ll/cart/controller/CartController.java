@@ -27,12 +27,13 @@ public class CartController {
         return BaseResponse.ok(response);
     }
 
-    @DeleteMapping("/cartItems/{cartItemCode}")
+    @DeleteMapping("/{cartCode}/cartItems/{cartItemCode}")
     public ResponseEntity<BaseResponse<CartItemRemoveResponse>> removeCartItem(
+            @PathVariable String cartCode,
             @PathVariable String cartItemCode,
             @RequestHeader("userCode") String userCode
     ) {
-        CartItemRemoveResponse response = cartService.removeCartItem(userCode, cartItemCode);
+        CartItemRemoveResponse response = cartService.removeCartItem(userCode, cartCode, cartItemCode);
 
         return BaseResponse.ok(response);
     }

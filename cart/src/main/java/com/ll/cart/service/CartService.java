@@ -7,5 +7,5 @@ import com.ll.cart.dto.response.CartItemRemoveResponse;
 public interface CartService {
     CartItemAddResponse addCartItem(String userCode, String cartCode, CartItemAddRequest request);
 
-    CartItemRemoveResponse removeCartItem(String userCode, String cartItemCode);
+    CartItemRemoveResponse removeCartItem(String userCode, String cartCode, String cartItemCode);
 }
