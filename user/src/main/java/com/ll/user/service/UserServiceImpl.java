@@ -1,5 +1,6 @@
 package com.ll.user.service;
 
+import com.ll.user.exception.UserNotFoundException;
 import com.ll.user.model.entity.User;
 import com.ll.user.model.vo.request.UserLoginRequest;
 import com.ll.user.model.vo.request.UserPatchRequest;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -25,13 +25,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse getUserById(Long id) {
-        User user = userRepository.findById(id).orElseThrow(NoSuchElementException::new);
+        User user = userRepository.findById(id).orElseThrow(UserNotFoundException::new);
         return UserResponse.from(user);
     }
 
     @Override
     public UserResponse getUserByUserCode(String userCode) {
-        User user = userRepository.findByCode(userCode).orElseThrow(NoSuchElementException::new);
+        User user = userRepository.findByCode(userCode).orElseThrow(UserNotFoundException::new);
         return UserResponse.from(user);
     }
 
@@ -39,14 +39,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse updateUser(UserPatchRequest request, String userCode) {
-
-        if (userCode == null) {
-            throw new IllegalArgumentException("유저코드가 필요합니다");
-        }
-
         User user = userRepository.findByCode(userCode)
-                .orElseThrow(() -> new NoSuchElementException("유저를 찾을 수 없습니다:" + userCode));
-
+                .orElseThrow(UserNotFoundException::new);
         modelMapper.map(request,user);
 
         User savedUser = userRepository.save(user);

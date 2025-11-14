@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/users")
@@ -25,7 +24,6 @@ public class UserController {
     public ResponseEntity<BaseResponse<UserResponse>> getUser(
             @RequestHeader(value = "X-User-Code", required = false) String userCode,
             @RequestParam(value = "id", required = false) Long id) {
-        try {
             UserResponse user;
             if (userCode != null && !userCode.isBlank()) {
                 user = userService.getUserByUserCode(userCode);
@@ -37,9 +35,7 @@ public class UserController {
                 return BaseResponse.error(ErrorCode.BAD_REQUEST, "userCode (헤더) 또는 id (쿼리 파라미터) 중 하나가 필요합니다.");
             }
             return BaseResponse.ok(user);
-        } catch (NoSuchElementException e) {
-            return BaseResponse.error(ErrorCode.NOT_FOUND,"유저를 찾을 수 없습니다.");
-        }
+
     }
 
     // 소셜로그인
@@ -53,16 +49,10 @@ public class UserController {
     @PatchMapping
     public ResponseEntity<BaseResponse<UserResponse>> updateUser(
             @RequestBody UserPatchRequest request,
-            @RequestHeader(value = "X-User-Code", required = true) String userCode
+            @RequestHeader(value = "X-User-Code") String userCode
     ){
-        try {
-            UserResponse updatedUser = userService.updateUser(request, userCode);
-            return BaseResponse.ok(updatedUser);
-        } catch (NoSuchElementException e) {
-            return BaseResponse.error(ErrorCode.NOT_FOUND);
-        } catch (Exception e) {
-            return BaseResponse.error(ErrorCode.BAD_REQUEST);
-        }
+            return BaseResponse.ok(userService.updateUser(request, userCode));
+
     }
 
     // 회원 목록 조회
