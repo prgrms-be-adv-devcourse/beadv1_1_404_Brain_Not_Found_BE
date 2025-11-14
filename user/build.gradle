@@ -1,47 +1,28 @@
 plugins {
-//주석처리부분 root에서 상속 이상없을 시 삭제해주셔도되요
-//    id 'java'
-//    id 'org.springframework.boot' version '3.5.7'
-//    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.example'
 //version = '0.0.1-SNAPSHOT'
 description = 'user'
 
-//java {
-//    toolchain {
-//        languageVersion = JavaLanguageVersion.of(21)
-//    }
-//}
-//
-//repositories {
-//    mavenCentral()
-//}
 springBoot {
     mainClass = 'com.example.user.UserApplication'
 }
 dependencies {
 
-
     implementation 'org.modelmapper:modelmapper:3.2.0'
-    runtimeOnly 'mysql:mysql-connector-java:8.0.33'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    implementation 'com.github.f4b6a3:uuid-creator:5.3.7'
 
     // https://mvnrepository.com/artifact/com.h2database/h2
     implementation("com.h2database:h2:2.3.232")
 
+    runtimeOnly "mysql:mysql-connector-java:${mysqlVersion}"
 
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
-    //    compileOnly 'org.projectlombok:lombok'
-    //    annotationProcessor 'org.projectlombok:lombok'
-    //    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    //    implementation 'org.springframework.boot:spring-boot-starter-web'
-    //    runtimeOnly 'com.mysql:mysql-connector-j'
-    //    implementation project(':core')
 }
 
 tasks.named('test') {

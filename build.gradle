@@ -36,13 +36,11 @@ subprojects {
     }
 
     dependencies {
-        implementation 'org.springframework.boot:spring-boot-starter-web'
-        implementation 'org.springframework.boot:spring-boot-starter-actuator'
-        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
         compileOnly 'org.projectlombok:lombok'
         annotationProcessor 'org.projectlombok:lombok'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-        runtimeOnly 'mysql:mysql-connector-java:8.0.33'
+
     }
 
     tasks.named('test') {
@@ -51,4 +49,6 @@ subprojects {
 }
 ext {
     querydslVersion = '5.1.0'
+    mysqlVersion = "8.0.33"
+    set('springCloudVersion', "2025.0.0")
 }

@@ -28,15 +28,14 @@ springBoot {
     mainClass = 'com.ll.payment.PaymentApplication'  // 실제 존재하는 main class
 }
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    runtimeOnly 'mysql:mysql-connector-java:8.0.33'
 
-//    implementation 'org.springframework.boot:spring-boot-starter-web'
-//    runtimeOnly 'com.mysql:mysql-connector-j'
-//    compileOnly 'org.projectlombok:lombok'
-//    annotationProcessor 'org.projectlombok:lombok'
-//    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-//    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    runtimeOnly "mysql:mysql-connector-java:${mysqlVersion}"
+
 }
 
 tasks.named('test') {
