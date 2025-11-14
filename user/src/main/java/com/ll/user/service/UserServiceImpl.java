@@ -65,9 +65,6 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserLoginResponse createOrUpdateUser(UserLoginRequest request) {
         Optional<User> existing = userRepository.findBySocialIdAndSocialProvider(request.socialId(), request.socialProvider());
-
-        String userCode = "USER-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
-
         User user;
         if(existing.isPresent()) {
             user = existing.get();
@@ -79,12 +76,13 @@ public class UserServiceImpl implements UserService {
             );
         }
         else{
+
             user = User.builder()
                     .socialId(request.socialId())
                     .socialProvider(request.socialProvider())
-                    .userCode(userCode)
                     .email(request.email())
                     .name(request.name()).build();
+            user.generateUserCode();
         }
 
         User savedUser = userRepository.save(user);

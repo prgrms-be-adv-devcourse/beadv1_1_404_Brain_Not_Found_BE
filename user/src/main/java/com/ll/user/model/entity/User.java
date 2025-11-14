@@ -1,5 +1,6 @@
 package com.ll.user.model.entity;
 
+import com.github.f4b6a3.uuid.UuidCreator;
 import com.ll.user.model.enums.AccountStatus;
 import com.ll.user.model.enums.Grade;
 import com.ll.user.model.enums.Role;
@@ -62,6 +63,7 @@ public class User {
     private Grade grade = Grade.BRONZE;
 
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
 
@@ -76,6 +78,10 @@ public class User {
         this.socialProvider = socialProvider;
         this.email = email;
         this.name = name;
+    }
+
+    public void generateUserCode(){
+        this.userCode = "USER-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
     }
 
 
