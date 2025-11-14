@@ -6,7 +6,6 @@ import com.ll.user.model.vo.request.UserPatchRequest;
 import com.ll.user.model.vo.response.UserLoginResponse;
 import com.ll.user.model.vo.response.UserResponse;
 import com.ll.user.repository.UserRepository;
-import com.github.f4b6a3.uuid.UuidCreator;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -32,7 +31,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse getUserByUserCode(String userCode) {
-        User user = userRepository.findByUserCode(userCode).orElseThrow(NoSuchElementException::new);
+        User user = userRepository.findByCode(userCode).orElseThrow(NoSuchElementException::new);
         return UserResponse.from(user);
     }
 
@@ -45,7 +44,7 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("유저코드가 필요합니다");
         }
 
-        User user = userRepository.findByUserCode(userCode)
+        User user = userRepository.findByCode(userCode)
                 .orElseThrow(() -> new NoSuchElementException("유저를 찾을 수 없습니다:" + userCode));
 
         modelMapper.map(request,user);
@@ -81,8 +80,9 @@ public class UserServiceImpl implements UserService {
                     .socialId(request.socialId())
                     .socialProvider(request.socialProvider())
                     .email(request.email())
-                    .name(request.name()).build();
-            user.generateUserCode();
+                    .name(request.name())
+                    .build();
+
         }
 
         User savedUser = userRepository.save(user);
