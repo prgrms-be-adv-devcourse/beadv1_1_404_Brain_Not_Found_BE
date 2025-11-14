@@ -1,8 +1,8 @@
 package com.ll.payment.model.entity;
 
+import com.github.f4b6a3.uuid.UuidCreator;
 import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
-import com.ll.payment.util.PaymentCodeGenerator;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -67,7 +68,7 @@ public class Payment {
                 paidAmount,
                 buyerId,
                 orderId,
-                PaymentCodeGenerator.newPaymentCode(),
+                generatePaymentCode(),
                 PaymentStatus.PENDING,
                 PaidType.TOSS_PAYMENT,
                 0L,
@@ -75,8 +76,36 @@ public class Payment {
         );
     }
 
+    public static Payment createDepositPayment(Long orderId,
+                                               Long buyerId,
+                                               int paidAmount,
+                                               long depositHistoryId) {
+        return new Payment(
+                paidAmount,
+                buyerId,
+                orderId,
+                generatePaymentCode(),
+                PaymentStatus.COMPLETED,
+                PaidType.DEPOSIT,
+                depositHistoryId,
+                LocalDateTime.now()
+        );
+    }
+
     public void markSuccess(PaymentStatus status, LocalDateTime approvedAt) {
         this.paymentStatus = status;
         this.paidAt = approvedAt;
+    }
+
+    public void markRefund(LocalDateTime refundedAt) {
+        this.paymentStatus = PaymentStatus.REFUNDED;
+        this.paidAt = refundedAt;
+    }
+
+    private static String generatePaymentCode() {
+        return "PAY-" + UuidCreator.getTimeOrderedEpoch()
+                .toString()
+                .substring(0, 8)
+                .toUpperCase();
     }
 }
