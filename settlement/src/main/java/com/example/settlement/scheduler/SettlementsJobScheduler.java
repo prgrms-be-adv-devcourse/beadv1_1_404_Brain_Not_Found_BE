@@ -11,6 +11,7 @@ public class SettlementsJobScheduler {
 
     private final SettlementJobLauncher settlementJobLauncher;
 
+    // Todo : 실 사용시 cron expression 변경 필요
     @Scheduled(cron = "0 * * * * *")
     public void executeSettlement() throws Exception {
         settlementJobLauncher.run();

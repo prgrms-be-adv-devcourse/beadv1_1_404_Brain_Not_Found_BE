@@ -1,5 +1,6 @@
 package com.example.settlement.batch.proccessor;
 
+import com.example.core.model.vo.kafka.SettlementCompleteEvent;
 import com.example.settlement.messaging.producer.SettlementEventProducer;
 import com.example.settlement.model.entity.Settlement;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,11 @@ public class SettlementProcessor implements ItemProcessor<Settlement, Settlement
     @Override
     public Settlement process(Settlement settlement) {
         settlement.done();
-        settlementEventProducer.send(settlement);
+        settlementEventProducer.send(SettlementCompleteEvent.settlementFrom(
+                settlement.getSellerCode(),
+                settlement.getOrderItemCode(),
+                settlement.getSettlementBalance()
+        ));
         return settlement;
     }
 

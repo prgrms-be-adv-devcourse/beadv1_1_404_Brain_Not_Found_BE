@@ -10,7 +10,8 @@ public class SettlementTimeUtils {
     private static final DateTimeFormatter yearMonthFormatter = DateTimeFormatter.ofPattern("yyyy-MM");
 
     public static String getPreviousMonthStr() {
-        return LocalDateTime.now().minusMonths(1).format(yearMonthFormatter);
+        // Todo: 실제 사용할 때는 0 -> 1
+        return LocalDateTime.now().minusMonths(0).format(yearMonthFormatter);
     }
 
     public static YearMonth getYearMonth(String dateStr) {

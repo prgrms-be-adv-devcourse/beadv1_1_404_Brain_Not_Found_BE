@@ -11,4 +11,7 @@ public record DepositTransactionRequest(
         @NotBlank(message = "referenceCode 는 공백이거나 null일 수 없습니다.")
         String referenceCode
 ) {
+    public static DepositTransactionRequest of(Long amount, String referenceCode) {
+        return new DepositTransactionRequest(amount, referenceCode);
+    }
 }

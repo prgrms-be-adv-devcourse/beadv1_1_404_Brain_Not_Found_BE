@@ -14,9 +14,10 @@ public class SettlementEventConsumer {
 
     private final SettlementService settlementService;
 
-    @KafkaListener(topics = "order-events", groupId = "settlement-service")
+    @KafkaListener(topics = "order-event", groupId = "settlement-service")
     public void handleOrderCompleteEvent(SettlementRequestEvent event) {
         try {
+            log.info("Received order complete event from settlement service : {}", event.toString());
             settlementService.createSettlement(event);
         } catch (Exception e) {
             log.error("Failed to process OrderCompleteEvent for OrderItemCode {}: {}", event.orderItemCode(), e.getMessage());

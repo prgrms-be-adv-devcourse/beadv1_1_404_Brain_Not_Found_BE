@@ -8,25 +8,28 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@StepScope
+@Configuration
 @RequiredArgsConstructor
-@Component("pagingSettlementReader")
-public class SettlementReader extends JpaPagingItemReader<Settlement> {
+public class SettlementReader  {
 
-    public SettlementReader(
+    @StepScope
+    @Bean("pagingSettlementReader")
+    public JpaPagingItemReader<Settlement> PagingSettlementReader(
             @Value("#{jobParameters['dateStr']}") String dateStr,
             @Value("${custom.batch.chunk.size}") Integer batchSize,
             EntityManagerFactory entityManagerFactory
     ) {
+        JpaPagingItemReader<Settlement> reader = new JpaPagingItemReader<>();
 
-        setEntityManagerFactory(entityManagerFactory);
+        reader.setEntityManagerFactory(entityManagerFactory);
 
-        setQueryString("""
+        reader.setQueryString("""
             select
                 s
             from
@@ -40,16 +43,17 @@ public class SettlementReader extends JpaPagingItemReader<Settlement> {
             order by s.id asc
         """);
 
-        setPageSize(batchSize);
+        reader.setPageSize(batchSize);
 
         Map<String, Object> params = new HashMap<>();
         params.put("settlementStatus", SettlementStatus.CREATED);
         params.put("startDate", SettlementTimeUtils.getStartDay(dateStr));
         params.put("endDate", SettlementTimeUtils.getEndDay(dateStr));
 
-        setName("pagingSettlementReader");
-        setParameterValues(params);
+        reader.setName("pagingSettlementReader");
+        reader.setParameterValues(params);
 
+        return reader;
     }
 
 }

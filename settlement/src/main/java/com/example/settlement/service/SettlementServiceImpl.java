@@ -21,4 +21,5 @@ public class SettlementServiceImpl implements SettlementService {
         settlementRepository.save(settlement);
         log.info("Created settlement : {}", settlement);
     }
+
 }

@@ -9,7 +9,8 @@ public class SettlementMapper {
                 event.sellerCode(),
                 event.buyerCode(),
                 event.orderItemCode(),
-                event.totalAmount(),
+                event.referenceCode(),
+                event.amount(),
                 event.settlementRate()
         );
     }

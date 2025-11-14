@@ -32,6 +32,9 @@ public class Settlement extends BaseEntity {
     @Column( name = "order_item_code", nullable = false )
     private String orderItemCode;
 
+    @Column( name = "reference_code", nullable = false )
+    private String referenceCode;
+
     @Column( name = "settlement_status", nullable = false )
     @Enumerated(EnumType.STRING)
     private SettlementStatus settlementStatus;
@@ -52,20 +55,22 @@ public class Settlement extends BaseEntity {
     private LocalDateTime settlementDate;
 
     @Builder
-    public Settlement(String sellerCode, String buyerCode, String orderItemCode, SettlementStatus settlementStatus, Long totalAmount, BigDecimal settlementRate) {
+    public Settlement(String sellerCode, String buyerCode, String orderItemCode, String referenceCode, SettlementStatus settlementStatus, Long totalAmount, BigDecimal settlementRate) {
         this.sellerCode = sellerCode;
         this.buyerCode = buyerCode;
         this.orderItemCode = orderItemCode;
+        this.referenceCode = referenceCode;
         this.settlementStatus = settlementStatus;
         this.totalAmount = totalAmount;
         this.settlementRate = settlementRate;
     }
 
-    public static Settlement create(String sellerCode, String buyerCode, String orderItemCode, Long totalAmount, BigDecimal settlementRate) {
+    public static Settlement create(String sellerCode, String buyerCode, String orderItemCode, String referenceCode, Long totalAmount, BigDecimal settlementRate) {
         Settlement settlement = Settlement.builder()
                 .sellerCode(sellerCode)
                 .buyerCode(buyerCode)
                 .orderItemCode(orderItemCode)
+                .referenceCode(referenceCode)
                 .settlementStatus(SettlementStatus.CREATED)
                 .totalAmount(totalAmount)
                 .settlementRate(settlementRate)

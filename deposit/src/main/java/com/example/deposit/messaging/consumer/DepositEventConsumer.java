@@ -1,6 +1,7 @@
 package com.example.deposit.messaging.consumer;
 
 import com.example.core.model.vo.kafka.DepositChargeEvent;
+import com.example.core.model.vo.kafka.SettlementCompleteEvent;
 import com.example.core.model.vo.kafka.UserCreateEvent;
 import com.example.deposit.model.vo.request.DepositTransactionRequest;
 import com.example.deposit.service.DepositService;
@@ -9,12 +10,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import java.util.function.Function;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DepositEventConsumer {
 
-    DepositService depositService;
+    private final DepositService depositService;
 
 //    @KafkaListener(topics = "user-events", groupId = "deposit-service")
 //    public void handleUserCreateEvent(UserCreateEvent event) {
@@ -35,5 +38,25 @@ public class DepositEventConsumer {
 //            // TODO: 보상 처리 로직 추가 ( Dead Letter Queue 는 KafkaConfig 에서 설정 완료 )
 //        }
 //    }
+
+    @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
+    public void handleSettlementCompleteEvent(SettlementCompleteEvent event) {
+        try {
+            if ( event.type().toString().equals("SETTLEMENT") ) {
+                depositService.chargeDeposit(event.selleCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));
+            } else if ( event.type().toString().equals("REFUND") ) {
+                // 환불 처리 로직 추가 예정
+                log.info("Received REFUND event for sellerCode {}: amount={}, referenceCode={}", event.selleCode(), event.amount(), settlementCompleteReferenceFormatter.apply(event));
+            }
+        } catch (Exception e) {
+            log.error("Failed to process DepositChargeEvent for userId: {} |  errorMessage: {} | reference: {}", event.selleCode(), e.getMessage(), settlementFailReferenceFormatter.apply(event), e);
+        }
+    }
+
+    private final Function<SettlementCompleteEvent, String> settlementCompleteReferenceFormatter =
+            event -> String.format("%s Complete | orderItemCode : %s | amount : %d", event.type().toString(), event.orderItemCode(), event.amount());
+
+    private final Function<SettlementCompleteEvent, String> settlementFailReferenceFormatter =
+            event -> String.format("%s Fail | orderItemCode : %s | amount : %d", event.type().toString(), event.orderItemCode(), event.amount());
 
 }
