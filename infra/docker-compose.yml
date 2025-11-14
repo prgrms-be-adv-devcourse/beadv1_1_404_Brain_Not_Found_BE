@@ -1,33 +1,107 @@
-
 networks:
   gooream-net:
     name: ${NETWORK_NAME}
     driver: ${NETWORK_DRIVER}
 
 services:
-  #spring <--
-#  spring-app:
+#module <--
+#  gateway-module:
+#    container_name: ${GATEWAY_CONTAINER_NAME}
 #    build:
 #      context: ${DOCKER_FILE_CONTEXT}
+#      dockerfile: ${GATEWAY_DOCKER_FILE}
+#    environment:
+#      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+#    env_file: ${ENV_FILE}
+#    ports:
+#      - ${GATEWAY_PORTS}
+#    networks:
+#      - ${NETWORK_NAME}
+
+  order-module:
+    container_name: ${ORDER_CONTAINER_NAME}
+    build:
+      context: ${DOCKER_FILE_CONTEXT}
+      dockerfile: ${ORDER_DOCKER_FILE}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+    env_file: ${ENV_FILE}
+    ports:
+      - ${ORDER_PORTS}
+    networks:
+      - ${NETWORK_NAME}
+    depends_on:
+      order-db:
+        condition: service_healthy
+
+  user-module:
+    container_name: ${USER_CONTAINER_NAME}
+    build:
+      context: ${DOCKER_FILE_CONTEXT}
+      dockerfile: ${USER_DOCKER_FILE}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+    env_file: ${ENV_FILE}
+    ports:
+      - ${USER_PORTS}
+    networks:
+      - ${NETWORK_NAME}
+    depends_on:
+      user-db:
+        condition: service_healthy
+
+#  auth-module:
+#    container_name: ${AUTH_CONTAINER_NAME}
+#    build:
+#      context: ${AUTH_FILE_CONTEXT}
 #      dockerfile: ${DOCKER_FILE}
 #    environment:
 #      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-#      MYSQL_USER: ${MYSQL_USER}
-#      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-#
+#    env_file: ${ENV_FILE}
 #    ports:
-#      - ${SPRING_PORTS}
+#      - ${AUTH_PORTS}
 #    networks:
 #      - ${NETWORK_NAME}
 #    depends_on:
-#      order-db:
+#      auth-db:
 #        condition: service_healthy
-#      kafka-1:
-#        condition: service_healthy
-#      elasticsearch-1:
-#        condition: service_healthy
-  #spring -->
-  #mysql <--
+
+  product-module:
+    container_name: ${PRODUCT_CONTAINER_NAME}
+    build:
+      context: ${DOCKER_FILE_CONTEXT}
+      dockerfile: ${PRODUCT_DOCKER_FILE}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+    env_file: ${ENV_FILE}
+    ports:
+      - ${PRODUCT_PORTS}
+    networks:
+      - ${NETWORK_NAME}
+    depends_on:
+      product-db:
+        condition: service_healthy
+      elasticsearch-1:
+        condition: service_healthy
+
+  deposit-module:
+    container_name: ${DEPOSIT_CONTAINER_NAME}
+    build:
+      context: ${DOCKER_FILE_CONTEXT}
+      dockerfile: ${DEPOSIT_DOCKER_FILE}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+    env_file: ${ENV_FILE}
+    ports:
+      - ${DEPOSIT_PORTS}
+    networks:
+      - ${NETWORK_NAME}
+    depends_on:
+      deposit-db:
+        condition: service_healthy
+
+
+#  mysql <--
 #  auth-db:
 #    ports:
 #      - ${AUTH_DB_PORTS}
@@ -39,24 +113,34 @@ services:
 #      - MYSQL_USER=${MYSQL_USER}
 #      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
 #      - TZ=${TZ}
-#    volumes:
-#      - ./data/${AUTH_DB_NAME}:/var/lib/mysql
+##    volumes:
+##      - ./data/${AUTH_DB_NAME}:/var/lib/mysql
 #    networks:
 #      - ${NETWORK_NAME}
-#
-#  user-db:
-#    ports:
-#      - ${USER_DB_PORTS}
-#    container_name: ${USER_DB_CONTAINER_NAME}
-#    image: ${MYSQL_VERSION}
-#    environment:
-#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-#      - MYSQL_DATABASE=${USER_DB_NAME}
-#      - MYSQL_USER=${MYSQL_USER}
-#      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-#      - TZ=${TZ}
-#    networks:
-#      - ${NETWORK_NAME}
+#    healthcheck:
+#      test: [ "CMD-SHELL", "mysqladmin ping -h auth-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+#      interval: 5s
+#      retries: 10
+
+  user-db:
+    ports:
+      - ${USER_DB_PORTS}
+    container_name: ${USER_DB_CONTAINER_NAME}
+    image: ${MYSQL_VERSION}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${USER_DB_NAME}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - TZ=${TZ}
+    networks:
+      - ${NETWORK_NAME}
+    #    volumes:
+    #      - ./data/${USER_DB_NAME}:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h user-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+      interval: 5s
+      retries: 10
 #
   order-db:
     ports:
@@ -69,45 +153,54 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - TZ=${TZ}
+#    volumes:
+#      - ./data/${ORDER_DB_NAME}:/var/lib/mysql
     networks:
       - ${NETWORK_NAME}
     healthcheck:
       test: [ "CMD-SHELL", "mysqladmin ping -h order-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
       interval: 5s
       retries: 10
-
-#  product-db:
-#    ports:
-#      - ${PRODUCT_DB_PORTS}
-#    container_name: ${PRODUCT_DB_CONTAINER_NAME}
-#    image: ${MYSQL_VERSION}
-#    environment:
-#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-#      - MYSQL_DATABASE=${PRODUCT_DB_NAME}
-#      - MYSQL_USER=${MYSQL_USER}
-#      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-#      - TZ=${TZ}
+#
+  product-db:
+    ports:
+      - ${PRODUCT_DB_PORTS}
+    container_name: ${PRODUCT_DB_CONTAINER_NAME}
+    image: ${MYSQL_VERSION}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${PRODUCT_DB_NAME}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - TZ=${TZ}
 #    volumes:
 #      - ./data/${PRODUCT_DB_NAME}:/var/lib/mysql
-#    networks:
-#      - ${NETWORK_NAME}
-#
-#  deposit-db:
-#    ports:
-#      - ${DEPOSIT_DB_PORTS}
-#    container_name: ${DEPOSIT_DB_CONTAINER_NAME}
-#    image: ${MYSQL_VERSION}
-#    environment:
-#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-#      - MYSQL_DATABASE=${DEPOSIT_DB_NAME}
-#      - MYSQL_USER=${MYSQL_USER}
-#      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-#      - TZ=${TZ}
+    networks:
+      - ${NETWORK_NAME}
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h product-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+      interval: 5s
+      retries: 10
+
+  deposit-db:
+    ports:
+      - ${DEPOSIT_DB_PORTS}
+    container_name: ${DEPOSIT_DB_CONTAINER_NAME}
+    image: ${MYSQL_VERSION}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DEPOSIT_DB_NAME}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - TZ=${TZ}
 #    volumes:
 #      - ./data/${DEPOSIT_DB_NAME}:/var/lib/mysql
-#    networks:
-#      - ${NETWORK_NAME}
-
+    networks:
+      - ${NETWORK_NAME}
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h deposit-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+      interval: 5s
+      retries: 10
   #mysql -->
 
   #kafka <--
@@ -187,20 +280,20 @@ services:
 #      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-3:9090 --list"]
 #      interval: 5s
 #      retries: 10
-
-  kafka-init:
-    image: ${KAFKA_IMAGE}
-    container_name: kafka-init
-    depends_on:
-      - kafka-1
-    #      - kafka-2
-    #      - kafka-3
-    volumes:
-      - ./scripts:/scripts
-    entrypoint: ["/bin/bash", "-c", "/scripts/init-topics.sh"]
-    restart: "no"
-    networks:
-      - ${NETWORK_NAME}
+#
+#  kafka-init:
+#    image: ${KAFKA_IMAGE}
+#    container_name: kafka-init
+#    depends_on:
+#      - kafka-1
+#    #      - kafka-2
+#    #      - kafka-3
+#    volumes:
+#      - ./scripts:/scripts
+#    entrypoint: ["/bin/bash", "-c", "/scripts/init-topics.sh"]
+#    restart: "no"
+#    networks:
+#      - ${NETWORK_NAME}
 
   #kafka -->
 
