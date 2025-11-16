@@ -1,7 +1,5 @@
 package com.example.settlement.batch.proccessor;
 
-import com.example.core.model.vo.kafka.SettlementCompleteEvent;
-import com.example.settlement.messaging.producer.SettlementEventProducer;
 import com.example.settlement.model.entity.Settlement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,19 +12,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Component("settlementProcessor")
 public class SettlementProcessor implements ItemProcessor<Settlement, Settlement> {
-
-    private final SettlementEventProducer settlementEventProducer;
-
     @Override
     public Settlement process(Settlement settlement) {
         settlement.done();
-        settlementEventProducer.send(SettlementCompleteEvent.settlementFrom(
-                settlement.getId(),
-                settlement.getSellerCode(),
-                settlement.getOrderItemCode(),
-                settlement.getSettlementBalance()
-        ));
         return settlement;
     }
-
 }

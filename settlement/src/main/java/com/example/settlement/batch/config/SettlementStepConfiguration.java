@@ -37,6 +37,9 @@ public class SettlementStepConfiguration {
                 .processor(settlementProcessor)
                 .writer(settlementWriter)
                 .listener(logger)
+                .faultTolerant()
+                .skip(Exception.class)
+                .skipLimit(10)
                 .build();
     }
 

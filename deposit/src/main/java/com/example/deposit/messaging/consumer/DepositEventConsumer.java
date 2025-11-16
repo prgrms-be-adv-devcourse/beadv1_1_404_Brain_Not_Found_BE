@@ -1,6 +1,6 @@
 package com.example.deposit.messaging.consumer;
 
-import com.example.core.model.vo.kafka.SettlementCompleteEvent;
+import com.example.core.model.vo.kafka.SettlementEvent;
 import com.example.deposit.model.vo.request.DepositTransactionRequest;
 import com.example.deposit.service.DepositService;
 import jakarta.validation.Valid;
@@ -39,19 +39,11 @@ public class DepositEventConsumer {
 //    }
 
     @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
-    public void handleSettlementCompleteEvent(@Valid SettlementCompleteEvent event) {
-        if ( event.type().toString().equals("SETTLEMENT") ) {
-            depositService.chargeDeposit(event.sellerCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));
-        } else if ( event.type().toString().equals("REFUND") ) {
-            // 환불 처리 로직 추가 예정
-            log.info("Received REFUND event for sellerCode {}: amount={}, referenceCode={}", event.sellerCode(), event.amount(), settlementCompleteReferenceFormatter.apply(event));
-        }
+    public void handleSettlementCompleteEvent(@Valid SettlementEvent event) {
+        depositService.chargeDeposit(event.sellerCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));
     }
 
-    private final Function<SettlementCompleteEvent, String> settlementCompleteReferenceFormatter =
-            event -> String.format("%s Complete | orderItemCode : %s | amount : %d", event.type().toString(), event.orderItemCode(), event.amount());
-
-    private final Function<SettlementCompleteEvent, String> settlementFailReferenceFormatter =
-            event -> String.format("%s Fail | orderItemCode : %s | amount : %d", event.type().toString(), event.orderItemCode(), event.amount());
+    private final Function<SettlementEvent, String> settlementCompleteReferenceFormatter =
+            event -> String.format("Settlement Complete | orderItemCode : %s | amount : %d", event.orderItemCode(), event.amount());
 
 }

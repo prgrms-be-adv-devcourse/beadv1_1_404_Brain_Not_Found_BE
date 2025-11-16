@@ -51,8 +51,14 @@ public class Settlement extends BaseEntity {
     @Column( name = "settlement_balance", nullable = false )
     private Long settlementBalance;
 
+    @Column( name = "error_message" )
+    private String errorMessage;
+
     @Column( name = "settlement_date" )
     private LocalDateTime settlementDate;
+
+    @Column( name = "error_date" )
+    private LocalDateTime errorDate;
 
     @Builder
     public Settlement(String sellerCode, String buyerCode, String orderItemCode, String referenceCode, SettlementStatus settlementStatus, Long totalAmount, BigDecimal settlementRate) {
@@ -83,17 +89,16 @@ public class Settlement extends BaseEntity {
 
     public void done() {
         if (this.settlementStatus != SettlementStatus.CREATED) {
-            throw new SettlementStateTransitionException("이미 완료된 정산입니다.");
+            throw new SettlementStateTransitionException("SUCCESS 상태로 전환할 수 없습니다.");
         }
         this.settlementStatus = SettlementStatus.SUCCESS;
         this.settlementDate = LocalDateTime.now();
     }
 
-    public void fail() {
-        if (this.settlementStatus != SettlementStatus.CREATED) {
-            throw new SettlementStateTransitionException("이미 실패처리된 정산입니다.");
-        }
+    public void fail(String errorMessage) {
         this.settlementStatus = SettlementStatus.FAILED;
+        this.errorMessage = errorMessage;
+        this.errorDate = LocalDateTime.now();
     }
 
     public Long calculateSettlementCommission() {
