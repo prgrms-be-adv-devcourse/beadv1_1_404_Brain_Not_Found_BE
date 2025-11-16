@@ -1,7 +1,7 @@
 package com.ll.cart.repository;
 
-import com.ll.cart.model.Cart;
-import com.ll.cart.model.CartStatus;
+import com.ll.cart.model.entity.Cart;
+import com.ll.cart.model.enums.CartStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

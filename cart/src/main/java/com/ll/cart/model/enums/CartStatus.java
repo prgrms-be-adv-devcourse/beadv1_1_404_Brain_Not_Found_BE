@@ -1,4 +1,4 @@
-package com.ll.cart.model;
+package com.ll.cart.model.enums;
 
 public enum CartStatus {
     ACTIVE,          // 담기/수정 중인 기본 장바구니

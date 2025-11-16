@@ -1,20 +1,24 @@
 package com.ll.cart.service;
 
 import com.ll.cart.client.UserServiceClient;
-import com.ll.cart.dto.request.CartItemAddRequest;
-import com.ll.cart.dto.response.CartItemAddResponse;
-import com.ll.cart.dto.response.CartItemRemoveResponse;
-import com.ll.cart.dto.response.UserResponse;
-import com.ll.cart.model.Cart;
-import com.ll.cart.model.CartItem;
-import com.ll.cart.model.CartStatus;
+import com.ll.cart.model.entity.Cart;
+import com.ll.cart.model.entity.CartItem;
+import com.ll.cart.model.enums.CartStatus;
+import com.ll.cart.model.vo.request.CartItemAddRequest;
+import com.ll.cart.model.vo.response.CartItemAddResponse;
+import com.ll.cart.model.vo.response.CartItemInfo;
+import com.ll.cart.model.vo.response.CartItemRemoveResponse;
+import com.ll.cart.model.vo.response.CartItemsResponse;
+import com.ll.cart.model.vo.response.UserResponse;
 import com.ll.cart.repository.CartItemRepository;
 import com.ll.cart.repository.CartRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -87,11 +91,48 @@ public class CartServiceImpl implements CartService {
         }
 
         cart.decreaseTotalPrice(cartItem.getTotalPrice());
+        
+        // 삭제 전 정보 저장
+        Long productId = cartItem.getProductId();
+        Integer quantity = cartItem.getQuantity();
+        Integer totalPrice = cartItem.getTotalPrice();
+        
         cartItemRepository.delete(cartItem);
 
         return new CartItemRemoveResponse(
                 cartItemCode,
-                "장바구니 아이템이 삭제되었습니다."
+                productId,
+                quantity,
+                totalPrice
+        );
+    }
+
+    @Override
+    public CartItemsResponse getCartItems(String cartCode, String userCode) {
+        UserResponse user = userServiceClient.getUserByCode(userCode);
+
+        Cart cart = cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없거나 활성 상태가 아닙니다: " + cartCode));
+
+        if (!cart.getUserId().equals(user.id())) {
+            throw new IllegalArgumentException("다른 사용자의 장바구니에는 접근할 수 없습니다.");
+        }
+
+        List<CartItem> items = cartItemRepository.findByCart(cart);
+
+        List<CartItemInfo> itemInfos = items.stream()
+                .map(ci -> new CartItemInfo(
+                        ci.getCode(),
+                        ci.getProductId(),
+                        ci.getQuantity(),
+                        ci.getTotalPrice()
+                ))
+                .collect(Collectors.toList());
+
+        return new CartItemsResponse(
+                cart.getCode(),
+                cart.getTotalPrice(),
+                itemInfos
         );
     }
 
