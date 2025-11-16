@@ -1,4 +1,4 @@
-package com.example.core.model.persistence;
+package com.ll.core.model.persistence;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
