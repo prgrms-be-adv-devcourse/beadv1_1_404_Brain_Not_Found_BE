@@ -7,7 +7,7 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
 public record OrderEvent(
-        @NotBlank(message = "orderEventType 는 공백이거나 null일 수 없습니다.")
+        @NotNull(message = "orderEventType 은 필수입력값입니다.")
         OrderEventType orderEventType,
         @NotBlank(message = "buyerCode 는 공백이거나 null일 수 없습니다.")
         String buyerCode,
