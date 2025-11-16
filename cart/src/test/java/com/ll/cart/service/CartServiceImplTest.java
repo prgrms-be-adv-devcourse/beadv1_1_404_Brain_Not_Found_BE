@@ -1,13 +1,13 @@
 package com.ll.cart.service;
 
 import com.ll.cart.client.UserServiceClient;
-import com.ll.cart.dto.request.CartItemAddRequest;
-import com.ll.cart.dto.response.CartItemAddResponse;
-import com.ll.cart.dto.response.CartItemRemoveResponse;
-import com.ll.cart.dto.response.UserResponse;
-import com.ll.cart.model.Cart;
-import com.ll.cart.model.CartItem;
-import com.ll.cart.model.CartStatus;
+import com.ll.cart.model.vo.request.CartItemAddRequest;
+import com.ll.cart.model.vo.response.CartItemAddResponse;
+import com.ll.cart.model.vo.response.CartItemRemoveResponse;
+import com.ll.cart.model.vo.response.UserResponse;
+import com.ll.cart.model.entity.Cart;
+import com.ll.cart.model.entity.CartItem;
+import com.ll.cart.model.enums.CartStatus;
 import com.ll.cart.repository.CartItemRepository;
 import com.ll.cart.repository.CartRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -180,7 +180,9 @@ class CartServiceImplTest {
 
         // then - 첫 번째 삭제 검증
         assertThat(firstResponse.cartItemCode()).isEqualTo(firstCartItemCode);
-        assertThat(firstResponse.message()).isEqualTo("장바구니 아이템이 삭제되었습니다.");
+        assertThat(firstResponse.productId()).isEqualTo(100L);
+        assertThat(firstResponse.quantity()).isEqualTo(2);
+        assertThat(firstResponse.totalPrice()).isEqualTo(20000);
         assertThat(testCart.getTotalPrice()).isEqualTo(15000);
 
         ArgumentCaptor<CartItem> cartItemCaptor = ArgumentCaptor.forClass(CartItem.class);
@@ -197,7 +199,9 @@ class CartServiceImplTest {
 
         // then - 두 번째 삭제 검증
         assertThat(secondResponse.cartItemCode()).isEqualTo(secondCartItemCode);
-        assertThat(secondResponse.message()).isEqualTo("장바구니 아이템이 삭제되었습니다.");
+        assertThat(secondResponse.productId()).isEqualTo(200L);
+        assertThat(secondResponse.quantity()).isEqualTo(1);
+        assertThat(secondResponse.totalPrice()).isEqualTo(15000);
         assertThat(testCart.getTotalPrice()).isEqualTo(0);
 
         verify(cartItemRepository, times(2)).delete(cartItemCaptor.capture());

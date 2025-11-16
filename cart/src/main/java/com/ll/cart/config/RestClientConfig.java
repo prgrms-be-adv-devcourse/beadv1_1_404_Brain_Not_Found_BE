@@ -1,4 +1,4 @@
-package com.ll.cart;
+package com.ll.cart.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

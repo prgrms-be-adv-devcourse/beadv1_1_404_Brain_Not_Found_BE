@@ -1,4 +1,4 @@
-package com.ll.cart.dto.response;
+package com.ll.cart.model.vo.response;
 
 public record CartItemAddResponse(
         String cartItemCode,

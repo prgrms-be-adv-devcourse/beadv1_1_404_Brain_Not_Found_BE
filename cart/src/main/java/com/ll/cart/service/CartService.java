@@ -1,11 +1,14 @@
 package com.ll.cart.service;
 
-import com.ll.cart.dto.request.CartItemAddRequest;
-import com.ll.cart.dto.response.CartItemAddResponse;
-import com.ll.cart.dto.response.CartItemRemoveResponse;
+import com.ll.cart.model.vo.request.CartItemAddRequest;
+import com.ll.cart.model.vo.response.CartItemAddResponse;
+import com.ll.cart.model.vo.response.CartItemRemoveResponse;
+import com.ll.cart.model.vo.response.CartItemsResponse;
 
 public interface CartService {
     CartItemAddResponse addCartItem(String userCode, String cartCode, CartItemAddRequest request);
 
     CartItemRemoveResponse removeCartItem(String userCode, String cartCode, String cartItemCode);
+
+    CartItemsResponse getCartItems(String cartCode, String userCode);
 }

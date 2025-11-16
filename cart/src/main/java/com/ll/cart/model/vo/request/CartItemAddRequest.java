@@ -1,4 +1,4 @@
-package com.ll.cart.dto.request;
+package com.ll.cart.model.vo.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;

@@ -1,6 +1,7 @@
-package com.ll.cart.model;
+package com.ll.cart.model.entity;
 
 import com.example.core.model.persistence.BaseEntity;
+import com.ll.cart.model.enums.CartStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

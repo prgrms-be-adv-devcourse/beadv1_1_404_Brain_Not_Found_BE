@@ -83,10 +83,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderDetailResponse findOrderDetails(String orderCode) {
+        // 명확한 행위 메서드인데, 예외를 던지는 것들은 전부 repo impl같은 곳에 모아두는 걸 추천
         Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
-        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId()); // 쿼리 날리는지 디버깅 해보도록.
         List<OrderDetailResponse.ItemInfo> itemInfos = orderItems.stream()
                 .map(item -> {
                     ProductResponse product = Optional.ofNullable(productServiceClient.getProductById(item.getProductId()))
@@ -125,7 +126,7 @@ public class OrderServiceImpl implements OrderService {
 
         CartResponse cartInfo = getCartInfo(request.cartCode());
 
-        if (cartInfo.items() == null || cartInfo.items().isEmpty()) {
+        if (cartInfo.items() == null || cartInfo.items().isEmpty()) { // 이것도 response 안에 행위로 둘 것 같음.
             throw new IllegalArgumentException("장바구니가 비어있습니다: " + request.cartCode());
         }
 

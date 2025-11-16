@@ -1,9 +1,10 @@
 package com.ll.cart.controller;
 
 import com.example.core.model.response.BaseResponse;
-import com.ll.cart.dto.request.CartItemAddRequest;
-import com.ll.cart.dto.response.CartItemAddResponse;
-import com.ll.cart.dto.response.CartItemRemoveResponse;
+import com.ll.cart.model.vo.request.CartItemAddRequest;
+import com.ll.cart.model.vo.response.CartItemAddResponse;
+import com.ll.cart.model.vo.response.CartItemRemoveResponse;
+import com.ll.cart.model.vo.response.CartItemsResponse;
 import com.ll.cart.service.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -39,13 +40,18 @@ public class CartController {
     }
 
     @GetMapping("/cartItems/{cartCode}")
-    public ResponseEntity<BaseResponse<Void>> getCartItems(@PathVariable String cartCode) {
-        return BaseResponse.ok(null);
+    public ResponseEntity<BaseResponse<CartItemsResponse>> getCartItems(
+            @PathVariable String cartCode,
+            @RequestHeader("userCode") String userCode
+    ) {
+        CartItemsResponse response = cartService.getCartItems(cartCode, userCode);
+        return BaseResponse.ok(response);
     }
 
-    @PostMapping("/{cartCode}/complete")
-    public ResponseEntity<BaseResponse<Void>> completeCart(@PathVariable String cartCode) {
-        return BaseResponse.ok(null);
-    }
+    // 장바구니 주문 완료 처리 - 주문 생성 api에서 주문 완료까지 처라하는걸로 현재는 구현돼있고, 장바구니에 넣어야 할 지는 고민중.
+//    @PostMapping("/{cartCode}/complete")
+//    public ResponseEntity<BaseResponse<Void>> completeCart(@PathVariable String cartCode) {
+//        return BaseResponse.ok(null);
+//    }
 
 }

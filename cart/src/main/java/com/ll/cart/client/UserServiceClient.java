@@ -1,6 +1,6 @@
 package com.ll.cart.client;
 
-import com.ll.cart.dto.response.UserResponse;
+import com.ll.cart.model.vo.response.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
