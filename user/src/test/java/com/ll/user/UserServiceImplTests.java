@@ -1,18 +1,32 @@
 package com.ll.user;
 
+import com.ll.user.model.entity.User;
+import com.ll.user.model.enums.Grade;
+import com.ll.user.model.enums.SocialProvider;
+import com.ll.user.model.vo.request.UserLoginRequest;
+import com.ll.user.model.vo.request.UserPatchRequest;
+import com.ll.user.repository.UserRepository;
+import com.ll.user.service.UserServiceImpl;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
-@ExtendWith(MockitoExtension.class)
-@DisplayName("UserServiceImpl 테스트")
-class UserServiceImplTests {
-
+//@ExtendWith(MockitoExtension.class)
+//@DisplayName("UserServiceImpl 테스트")
+//class UserServiceImplTests {
+//
 //    @Mock
 //    private UserRepository userRepository;
 //
@@ -175,4 +189,4 @@ class UserServiceImplTests {
 //        // Note: No save is called in the implementation
 //        then(userRepository).should().findBySocialIdAndSocialProvider(socialId, socialProvider);
 //    }
-}
+//}

@@ -1,5 +1,6 @@
 package com.ll.user.model.vo.response;
 
+import com.ll.user.model.entity.User;
 import com.ll.user.model.enums.AccountStatus;
 import com.ll.user.model.enums.Grade;
 import com.ll.user.model.enums.Role;
@@ -18,5 +19,17 @@ public record UserLoginResponse (
         AccountStatus accountStatus,
         LocalDateTime createAt
 ){
-
+    public static UserLoginResponse from(User user) {
+        return new UserLoginResponse(
+                user.getSocialId(),
+                user.getSocialProvider(),
+                user.getEmail(),
+                user.getName(),
+                user.getRole(),
+                user.getMannerScore(),
+                user.getGrade(),
+                user.getAccountStatus(),
+                user.getCreatedAt()
+        );
+    }
 }

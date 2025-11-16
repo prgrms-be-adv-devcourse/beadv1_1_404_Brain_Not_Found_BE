@@ -1,20 +1,18 @@
 package com.ll.user.service;
 
+import com.ll.user.exception.UserNotFoundException;
 import com.ll.user.model.entity.User;
 import com.ll.user.model.vo.request.UserLoginRequest;
 import com.ll.user.model.vo.request.UserPatchRequest;
 import com.ll.user.model.vo.response.UserLoginResponse;
-import com.ll.user.model.vo.response.UserPatchResponse;
 import com.ll.user.model.vo.response.UserResponse;
 import com.ll.user.repository.UserRepository;
-import com.github.f4b6a3.uuid.UuidCreator;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -27,29 +25,32 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse getUserById(Long id) {
-        User user = userRepository.findById(id).orElseThrow(NoSuchElementException::new);
-        return modelMapper.map(user, UserResponse.class);
+        User user = userRepository.findById(id).orElseThrow(UserNotFoundException::new);
+        return UserResponse.from(user);
     }
 
     @Override
+    public UserResponse getUserByUserCode(String userCode) {
+        User user = userRepository.findByCode(userCode).orElseThrow(UserNotFoundException::new);
+        return UserResponse.from(user);
+    }
+
+
+    @Override
     @Transactional
-    public UserPatchResponse updateUser(UserPatchRequest request, Long userId) {
-
-        if (userId == null) {
-            throw new IllegalArgumentException("유저아이디가 필요합니다");
-        }
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NoSuchElementException("유저를 찾을 수 없습니다:" + userId));
+    public UserResponse updateUser(UserPatchRequest request, String userCode) {
+        User user = userRepository.findByCode(userCode)
+                .orElseThrow(UserNotFoundException::new);
         modelMapper.map(request,user);
+
         User savedUser = userRepository.save(user);
-        return modelMapper.map(savedUser, UserPatchResponse.class);
+        return UserResponse.from(savedUser);
     }
 
     @Override
     public List<UserResponse> getUserList() {
         return userRepository.findAll().stream()
-                .map(user -> modelMapper.map(user,UserResponse.class))
+                .map(UserResponse::from)
                 .collect(Collectors.toList());
     }
 
@@ -57,26 +58,28 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserLoginResponse createOrUpdateUser(UserLoginRequest request) {
         Optional<User> existing = userRepository.findBySocialIdAndSocialProvider(request.socialId(), request.socialProvider());
-
-        String userCode = "USER-" + UuidCreator.getTimeOrderedEpoch().toString().substring(0, 8).toUpperCase();
-
+        User user;
         if(existing.isPresent()) {
-            User user = existing.get();
-            modelMapper.map(request,user);
-            return modelMapper.map(user,UserLoginResponse.class);
+            user = existing.get();
+            user.updateSocialInfo(
+                    request.socialId(),
+                    request.socialProvider(),
+                    request.email(),
+                    request.name()
+            );
         }
         else{
 
-            User user = User.builder()
+            user = User.builder()
                     .socialId(request.socialId())
                     .socialProvider(request.socialProvider())
-                    .userCode(userCode)
                     .email(request.email())
-                    .name(request.name()).build();
+                    .name(request.name())
+                    .build();
 
-            User savedUser = userRepository.save(user);
-            return modelMapper.map(savedUser,UserLoginResponse.class);
         }
 
+        User savedUser = userRepository.save(user);
+        return UserLoginResponse.from(savedUser);
     }
 }

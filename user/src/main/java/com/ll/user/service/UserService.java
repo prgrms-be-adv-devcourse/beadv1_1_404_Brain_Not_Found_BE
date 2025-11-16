@@ -3,7 +3,6 @@ package com.ll.user.service;
 import com.ll.user.model.vo.request.UserLoginRequest;
 import com.ll.user.model.vo.request.UserPatchRequest;
 import com.ll.user.model.vo.response.UserLoginResponse;
-import com.ll.user.model.vo.response.UserPatchResponse;
 import com.ll.user.model.vo.response.UserResponse;
 
 import java.util.List;
@@ -11,7 +10,8 @@ import java.util.List;
 public interface UserService {
 
     UserResponse getUserById(Long id);
-    UserPatchResponse updateUser(UserPatchRequest request , Long userId);
+    UserResponse updateUser(UserPatchRequest request , String userCode);
     List<UserResponse> getUserList();
     UserLoginResponse createOrUpdateUser(UserLoginRequest request);
+    UserResponse getUserByUserCode(String userCode);
 }
