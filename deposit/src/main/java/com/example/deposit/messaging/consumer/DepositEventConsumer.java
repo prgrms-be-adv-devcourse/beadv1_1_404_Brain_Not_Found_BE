@@ -1,10 +1,9 @@
 package com.example.deposit.messaging.consumer;
 
-import com.example.core.model.vo.kafka.DepositChargeEvent;
 import com.example.core.model.vo.kafka.SettlementCompleteEvent;
-import com.example.core.model.vo.kafka.UserCreateEvent;
 import com.example.deposit.model.vo.request.DepositTransactionRequest;
 import com.example.deposit.service.DepositService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -40,16 +39,12 @@ public class DepositEventConsumer {
 //    }
 
     @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
-    public void handleSettlementCompleteEvent(SettlementCompleteEvent event) {
-        try {
-            if ( event.type().toString().equals("SETTLEMENT") ) {
-                depositService.chargeDeposit(event.selleCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));
-            } else if ( event.type().toString().equals("REFUND") ) {
-                // 환불 처리 로직 추가 예정
-                log.info("Received REFUND event for sellerCode {}: amount={}, referenceCode={}", event.selleCode(), event.amount(), settlementCompleteReferenceFormatter.apply(event));
-            }
-        } catch (Exception e) {
-            log.error("Failed to process DepositChargeEvent for userId: {} |  errorMessage: {} | reference: {}", event.selleCode(), e.getMessage(), settlementFailReferenceFormatter.apply(event), e);
+    public void handleSettlementCompleteEvent(@Valid SettlementCompleteEvent event) {
+        if ( event.type().toString().equals("SETTLEMENT") ) {
+            depositService.chargeDeposit(event.sellerCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));
+        } else if ( event.type().toString().equals("REFUND") ) {
+            // 환불 처리 로직 추가 예정
+            log.info("Received REFUND event for sellerCode {}: amount={}, referenceCode={}", event.sellerCode(), event.amount(), settlementCompleteReferenceFormatter.apply(event));
         }
     }
 

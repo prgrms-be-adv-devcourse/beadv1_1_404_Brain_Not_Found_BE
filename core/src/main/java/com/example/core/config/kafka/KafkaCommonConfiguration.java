@@ -69,7 +69,6 @@ public class KafkaCommonConfiguration {
         return new DefaultKafkaConsumerFactory<>(config);
     }
 
-
     // DLQ Configuration
 
     @Bean
@@ -89,6 +88,10 @@ public class KafkaCommonConfiguration {
     public DefaultErrorHandler errorHandler(DeadLetterPublishingRecoverer recoverer) {
         log.info("DeadLetterPublishingRecoverer not implemented yet");
         DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(2000L, 3L));
+        handler.setRetryListeners((record, ex, deliveryAttempt) -> {
+            log.warn("Failed record in retry listener. topic: {}, partition: {}, offset: {}, exception: {}, message: {}, deliveryAttempt: {}",
+                    record.topic(), record.partition(), record.offset(), ex.getClass().getName(), ex.getMessage(), deliveryAttempt);
+        });
         handler.setCommitRecovered(true);
         return handler;
     }

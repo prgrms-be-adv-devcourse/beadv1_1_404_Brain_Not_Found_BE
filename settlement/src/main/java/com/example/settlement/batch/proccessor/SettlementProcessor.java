@@ -21,6 +21,7 @@ public class SettlementProcessor implements ItemProcessor<Settlement, Settlement
     public Settlement process(Settlement settlement) {
         settlement.done();
         settlementEventProducer.send(SettlementCompleteEvent.settlementFrom(
+                settlement.getId(),
                 settlement.getSellerCode(),
                 settlement.getOrderItemCode(),
                 settlement.getSettlementBalance()

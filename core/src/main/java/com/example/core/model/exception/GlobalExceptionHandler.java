@@ -1,4 +1,4 @@
-package com.example.core.exception;
+package com.example.core.model.exception;
 
 import com.example.core.model.response.BaseResponse;
 import lombok.extern.slf4j.Slf4j;

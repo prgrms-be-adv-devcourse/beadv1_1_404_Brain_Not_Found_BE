@@ -1,7 +1,7 @@
 package com.example.user.controller;
 
 
-import com.example.core.exception.ErrorCode;
+import com.example.core.model.exception.ErrorCode;
 import com.example.user.model.vo.request.UserPatchRequest;
 import com.example.user.model.vo.request.UserLoginRequest;
 import com.example.user.model.vo.response.UserLoginResponse;

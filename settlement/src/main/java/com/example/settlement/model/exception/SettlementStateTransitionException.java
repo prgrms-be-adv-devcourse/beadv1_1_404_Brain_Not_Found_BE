@@ -1,7 +1,7 @@
 package com.example.settlement.model.exception;
 
-import com.example.core.exception.BaseException;
-import com.example.core.exception.ErrorCode;
+import com.example.core.model.exception.BaseException;
+import com.example.core.model.exception.ErrorCode;
 
 public class SettlementStateTransitionException extends BaseException {
 

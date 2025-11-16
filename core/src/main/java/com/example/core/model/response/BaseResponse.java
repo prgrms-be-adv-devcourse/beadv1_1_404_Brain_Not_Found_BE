@@ -1,6 +1,6 @@
 package com.example.core.model.response;
 
-import com.example.core.exception.ErrorCode;
+import com.example.core.model.exception.ErrorCode;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

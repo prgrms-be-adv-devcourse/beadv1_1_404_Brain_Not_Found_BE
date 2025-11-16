@@ -6,8 +6,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
 public record SettlementCompleteEvent (
+        @NotNull
+        Long settlementId,
         @NotBlank(message = "SelleCode 는 공백이거나 null일 수 없습니다.")
-        String selleCode,
+        String sellerCode,
         @NotBlank(message = "OrderItemCode 는 공백이거나 null일 수 없습니다.")
         String orderItemCode,
         @NotNull(message = "amount 는 필수입력값입니다.")
@@ -16,12 +18,12 @@ public record SettlementCompleteEvent (
         @NotNull(message = "type 은 필수입력값입니다.")
         SettlementCompleteType type
 ) {
-    public static SettlementCompleteEvent settlementFrom(String selleCode, String orderItemCode, Long amount) {
-        return new SettlementCompleteEvent(selleCode, orderItemCode, amount, SettlementCompleteType.SETTLEMENT);
+    public static SettlementCompleteEvent settlementFrom(Long settlementId, String sellerCode, String orderItemCode, Long amount) {
+        return new SettlementCompleteEvent(settlementId, sellerCode, orderItemCode, amount, SettlementCompleteType.SETTLEMENT);
     }
 
-    public static SettlementCompleteEvent refundFrom(String selleCode, String orderItemCode, Long amount) {
-        return new SettlementCompleteEvent(selleCode, orderItemCode, amount, SettlementCompleteType.REFUND);
+    public static SettlementCompleteEvent refundFrom(Long settlementId, String sellerCode, String orderItemCode, Long amount) {
+        return new SettlementCompleteEvent(settlementId, sellerCode, orderItemCode, amount, SettlementCompleteType.REFUND);
     }
 
 }
