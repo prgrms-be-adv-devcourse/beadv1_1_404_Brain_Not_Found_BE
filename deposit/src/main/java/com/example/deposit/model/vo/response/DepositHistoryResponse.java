@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 
 public record DepositHistoryResponse (
         String depositHistoryCode,
-        String depositCode,
         Long amount,
         Long balanceBefore,
         Long balanceAfter,
@@ -21,7 +20,6 @@ public record DepositHistoryResponse (
     public static DepositHistoryResponse from(DepositHistory depositHistory) {
         return new DepositHistoryResponse(
                 depositHistory.getCode(),
-                depositHistory.getDeposit().getCode(),
                 depositHistory.getAmount(),
                 depositHistory.getBalanceBefore(),
                 depositHistory.getBalanceAfter(),

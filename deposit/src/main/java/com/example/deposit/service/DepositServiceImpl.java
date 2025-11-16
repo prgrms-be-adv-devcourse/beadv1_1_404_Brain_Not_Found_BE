@@ -3,9 +3,7 @@ package com.example.deposit.service;
 import com.example.deposit.model.entity.Deposit;
 import com.example.deposit.model.entity.DepositHistory;
 import com.example.deposit.model.enums.DepositHistoryType;
-import com.example.deposit.model.enums.DepositStatus;
 import com.example.deposit.model.enums.TransactionStatus;
-import com.example.deposit.model.exception.DepositAlreadyExistsException;
 import com.example.deposit.model.exception.DepositNotFoundException;
 import com.example.deposit.model.exception.DuplicateDepositTransactionException;
 import com.example.deposit.model.vo.request.DepositDeleteRequest;
@@ -21,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -31,93 +28,73 @@ public class DepositServiceImpl implements DepositService {
     private final DepositHistoryRepository depositHistoryRepository;
 
     @Override
-    @Transactional
     public DepositResponse createDeposit(String userCode) {
-        Optional<Deposit> optional = depositRepository.findByUserCode(userCode);
-        if (optional.isPresent()) {
-            Deposit d = optional.get();
-            if (d.getDepositStatus() == DepositStatus.ACTIVE) {
-                throw new DepositAlreadyExistsException();
-            }
-            log.warn("Closed deposit found for user {}. Reactivating...", userCode);
-            d.setActive();
-            return DepositResponse.from(userCode, d);
-        }
-        Deposit deposit = depositRepository.save(Deposit.createInitialDeposit(userCode));
-        return DepositResponse.from(userCode, deposit);
+        return DepositResponse.from(depositRepository.findByUserCode(userCode)
+                .map(exit -> depositRepository.save(exit.setActive()))
+                .orElseGet(() -> depositRepository.save(Deposit.createInitialDeposit(userCode))));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public DepositResponse getDepositByUserCode(String userCode) {
         Deposit deposit = getDepositByUserId(userCode);
-        return DepositResponse.from(userCode, deposit);
+        return DepositResponse.from(deposit);
     }
 
     @Override
-    @Transactional
     public DepositDeleteResponse deleteDepositByUserCode(String userCode, DepositDeleteRequest request) {
-        Deposit deposit = getDepositByUserId(userCode);
-        deposit.setClosed();
-        return DepositDeleteResponse.from(userCode, deposit, request.closedReason());
+        return DepositDeleteResponse.from(depositRepository.save(getDepositByUserId(userCode).setClosed())
+                , request.closedReason());
     }
 
     // TODO: Redis 분산 락 적용 필요
     @Override
     @Transactional
     public DepositTransactionResponse chargeDeposit(String userCode, DepositTransactionRequest request) {
-        Deposit deposit = getDepositByUserId(userCode);
         isDuplicateTransaction(request.referenceCode());
 
-        deposit.charge(request.amount());
+        Deposit deposit = getDepositByUserId(userCode).charge(request.amount());
 
-        DepositHistory depositHistory = DepositHistory.builder()
-                .deposit(deposit)
+        DepositHistory depositHistory = depositHistoryRepository.save(DepositHistory.builder()
+                .depositId(deposit.getId())
                 .amount(request.amount())
                 .balanceBefore(deposit.getBalance() - request.amount())
                 .balanceAfter(deposit.getBalance())
                 .referenceCode(request.referenceCode())
                 .historyType(DepositHistoryType.CHARGE)
                 .transactionStatus(TransactionStatus.COMPLETED)
-                .build();
-
-        deposit.addHistory(depositHistory);
-        depositHistoryRepository.save(depositHistory);
+                .build()
+        );
 
         // TODO: 카프카 이벤트 발행 필요한지 검토 ( @TransactionalEventListener(phase = AFTER_COMMIT) )
 
-        return DepositTransactionResponse.from(userCode, depositHistory);
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistory);
     }
 
     // TODO: Redis 분산 락 적용 필요
     @Override
     @Transactional
     public DepositTransactionResponse withdrawDeposit(String userCode, DepositTransactionRequest request) {
-        Deposit deposit = getDepositByUserId(userCode);
         isDuplicateTransaction(request.referenceCode());
 
-        deposit.withdraw(request.amount());
+        Deposit deposit = getDepositByUserId(userCode).withdraw(request.amount());
 
-        DepositHistory depositHistory = DepositHistory.builder()
-                .deposit(deposit)
+        DepositHistory depositHistory = depositHistoryRepository.save(DepositHistory.builder()
+                .depositId(deposit.getId())
                 .amount(request.amount())
                 .balanceBefore(deposit.getBalance() + request.amount())
                 .balanceAfter(deposit.getBalance())
                 .referenceCode(request.referenceCode())
                 .historyType(DepositHistoryType.WITHDRAW)
                 .transactionStatus(TransactionStatus.COMPLETED)
-                .build();
-
-        deposit.addHistory(depositHistory);
-        depositHistoryRepository.save(depositHistory);
+                .build()
+        );
 
         // TODO: 카프카 이벤트 발행 필요한지 검토 ( @TransactionalEventListener(phase = AFTER_COMMIT) )
 
-        return DepositTransactionResponse.from(userCode, depositHistory);
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistory);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public DepositHistoryPageResponse getDepositHistoryByUserCode(String userCode, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
         Deposit deposit = getDepositByUserId(userCode);
         Page<DepositHistory> histories = depositHistoryRepository.findAllByDepositAndCreatedAtBetween(deposit, fromDate, toDate, pageable);
@@ -135,4 +112,3 @@ public class DepositServiceImpl implements DepositService {
         }
     }
 }
-

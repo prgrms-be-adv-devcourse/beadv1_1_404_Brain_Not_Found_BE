@@ -13,9 +13,9 @@ public record DepositResponse (
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static DepositResponse from(String userCode, Deposit deposit) {
+    public static DepositResponse from(Deposit deposit) {
         return new DepositResponse(
-                userCode,
+                deposit.getUserCode(),
                 deposit.getCode(),
                 deposit.getBalance(),
                 deposit.getDepositStatus(),

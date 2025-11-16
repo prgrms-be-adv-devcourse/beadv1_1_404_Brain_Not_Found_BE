@@ -14,9 +14,8 @@ import lombok.*;
 public class DepositHistory extends BaseEntity {
 
     @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "deposit_id", nullable = false)
-    private Deposit deposit;
+    private Long depositId;
 
     @Column( nullable = false )
     private Long amount;
@@ -39,8 +38,8 @@ public class DepositHistory extends BaseEntity {
     private TransactionStatus transactionStatus;
 
     @Builder
-    public DepositHistory(Deposit deposit, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType, TransactionStatus transactionStatus) {
-        this.deposit = deposit;
+    public DepositHistory(Long depositId, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType, TransactionStatus transactionStatus) {
+        this.depositId = depositId;
         this.amount = amount;
         this.balanceBefore = balanceBefore;
         this.balanceAfter = balanceAfter;

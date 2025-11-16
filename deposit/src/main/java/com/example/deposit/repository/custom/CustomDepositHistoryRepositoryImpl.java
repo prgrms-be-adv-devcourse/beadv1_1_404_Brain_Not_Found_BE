@@ -17,7 +17,7 @@ import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
-public class ImplDepositHistoryRepository implements CustomDepositHistoryRepository {
+public class CustomDepositHistoryRepositoryImpl implements CustomDepositHistoryRepository {
 
     private final JPAQueryFactory queryFactory;
 
@@ -26,7 +26,7 @@ public class ImplDepositHistoryRepository implements CustomDepositHistoryReposit
         QDepositHistory qHistory = QDepositHistory.depositHistory;
 
         List<DepositHistory> content = queryFactory.selectFrom(qHistory)
-                .where(qHistory.deposit.eq(deposit), qHistory.createdAt.goe(fromDate), qHistory.createdAt.lt(toDate))
+                .where(qHistory.depositId.eq(deposit.getId()), qHistory.createdAt.goe(fromDate), qHistory.createdAt.lt(toDate))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .orderBy(QueryDslSortUtil.getOrderSpecifiers(pageable, qHistory))
@@ -36,7 +36,7 @@ public class ImplDepositHistoryRepository implements CustomDepositHistoryReposit
                 queryFactory
                         .select(qHistory.count())
                         .from(qHistory)
-                        .where(qHistory.deposit.eq(deposit), qHistory.createdAt.goe(fromDate), qHistory.createdAt.lt(toDate))
+                        .where(qHistory.depositId.eq(deposit.getId()), qHistory.createdAt.goe(fromDate), qHistory.createdAt.lt(toDate))
                         .fetchOne()
         ).orElse(0L);
 

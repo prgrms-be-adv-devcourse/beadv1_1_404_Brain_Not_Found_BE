@@ -13,9 +13,9 @@ public record DepositDeleteResponse(
         String closedReason,
         LocalDateTime updatedAt
 ) {
-    public static DepositDeleteResponse from(String userCode, Deposit deposit, String closedReason) {
+    public static DepositDeleteResponse from(Deposit deposit, String closedReason) {
         return new DepositDeleteResponse(
-                userCode,
+                deposit.getUserCode(),
                 deposit.getCode(),
                 deposit.getBalance(),
                 deposit.getDepositStatus(),

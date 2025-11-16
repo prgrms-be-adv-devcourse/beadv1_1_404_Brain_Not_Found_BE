@@ -17,10 +17,10 @@ public record DepositTransactionResponse(
         String referenceCode,
         LocalDateTime createdAt
 ) {
-    public static DepositTransactionResponse from(String userCode, DepositHistory depositHistory) {
+    public static DepositTransactionResponse from(String depositCode, DepositHistory depositHistory) {
         return new DepositTransactionResponse(
-                userCode,
-                depositHistory.getDeposit().getCode(),
+                depositHistory.getCode(),
+                depositCode,
                 depositHistory.getAmount(),
                 depositHistory.getBalanceBefore(),
                 depositHistory.getBalanceAfter(),

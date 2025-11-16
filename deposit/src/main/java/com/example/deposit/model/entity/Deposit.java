@@ -30,14 +30,6 @@ public class Deposit extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private DepositStatus depositStatus;
 
-    @OneToMany(
-            mappedBy = "deposit",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true,
-            fetch = FetchType.LAZY
-    )
-    private List<DepositHistory> histories = new ArrayList<>();
-
     @Builder
     public Deposit(String userCode, Long balance, DepositStatus depositStatus) {
         this.userCode = userCode;
@@ -53,19 +45,15 @@ public class Deposit extends BaseEntity {
                 .build();
     }
 
-    public void addHistory(DepositHistory history) {
-        histories.add(history);
-        history.setDeposit(this);
-    }
-
-    public void charge(Long amount) {
+    public Deposit charge(Long amount) {
         if (this.depositStatus != DepositStatus.ACTIVE) {
             throw new InvalidDepositStatusTransitionException("비활성 또는 종료된 입금 계좌에는 충전할 수 없습니다.");
         }
         this.balance += amount;
+        return  this;
     }
 
-    public void withdraw(Long amount) {
+    public Deposit withdraw(Long amount) {
         if (this.depositStatus != DepositStatus.ACTIVE) {
             throw new InvalidDepositStatusTransitionException("비활성 계좌는 출금할 수 없습니다.");
         }
@@ -73,9 +61,10 @@ public class Deposit extends BaseEntity {
             throw new InsufficientDepositBalanceException("잔액이 부족합니다.");
         }
         this.balance -= amount;
+        return this;
     }
 
-    public void setClosed() {
+    public Deposit setClosed() {
         if (this.depositStatus == DepositStatus.CLOSED) {
             throw new InvalidDepositStatusTransitionException();
         }
@@ -83,12 +72,15 @@ public class Deposit extends BaseEntity {
             throw new DepositBalanceNotEmptyException();
         }
         this.depositStatus = DepositStatus.CLOSED;
+        return this;
     }
 
-    public void setActive() {
+    public Deposit setActive() {
         if (this.depositStatus == DepositStatus.ACTIVE) {
             throw new DepositAlreadyExistsException();
         }
+        System.out.printf("Closed deposit found for user %s. Reactivating...\n", userCode);
         this.depositStatus = DepositStatus.ACTIVE;
+        return this;
     }
 }
