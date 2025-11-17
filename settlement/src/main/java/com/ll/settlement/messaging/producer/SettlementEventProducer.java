@@ -2,6 +2,7 @@ package com.ll.settlement.messaging.producer;
 
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -10,10 +11,12 @@ import org.springframework.stereotype.Component;
 public class SettlementEventProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final String TOPIC = "settlement-event";
+
+    @Value("${custom.kafka.topic.settlement-event:settlement-event}")
+    private String SETTLEMENT_TOPIC;
 
     public void send(SettlementEvent event) {
-        kafkaTemplate.send(TOPIC, event);
+        kafkaTemplate.send(SETTLEMENT_TOPIC, event);
     }
 
 }

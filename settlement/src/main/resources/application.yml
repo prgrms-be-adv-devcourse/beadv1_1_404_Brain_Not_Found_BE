@@ -52,3 +52,18 @@ custom:
   batch:
     chunk:
       size: 500
+
+  kafka:
+    topic:
+      user-create-event: ${KAFKA_USER_CREATE_TOPIC}
+      user-create-event.dlq: ${KAFKA_USER_CREATE_DLQ_TOPIC}
+      deposit-charge-event: ${KAFKA_DEPOSIT_CHARGE_TOPIC}
+      deposit-charge-event.dlq: ${KAFKA_DEPOSIT_CHARGE_DLQ_TOPIC}
+      order-event: ${KAFKA_ORDER_TOPIC}
+      order-event.dlq: ${KAFKA_ORDER_DLQ_TOPIC}
+      settlement-event: ${KAFKA_SETTLEMENT_TOPIC}
+      settlement-event.dlq: ${KAFKA_SETTLEMENT_DLQ_TOPIC}
+      refund-event: ${KAFKA_REFUND_TOPIC}
+      refund-event.dlq: ${KAFKA_REFUND_DLQ_TOPIC}
+      inventory-event: ${KAFKA_INVENTORY_TOPIC}
+      inventory-event.dlq: ${KAFKA_INVENTORY_DLQ_TOPIC}
