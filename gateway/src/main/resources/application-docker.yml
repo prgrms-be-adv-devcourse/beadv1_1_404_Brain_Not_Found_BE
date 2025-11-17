@@ -1,0 +1,125 @@
+server:
+  port: 8000
+  address: 0.0.0.0
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # Deposit
+            - id: deposit-route-protected
+              uri: lb://DEPOSIT
+              predicates:
+                - Path=/api/deposits, /api/deposits/**
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            # Category (PRODUCTS)         #나머지는 전부 막혀있다.
+            - id: category-route-protected
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/categories, /api/categories/**
+                - Method=PUT, POST, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            - id: category-route-public     #카테고리들 조회는 모두 열려있다.
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/categories, /api/categories/**
+                - Method=GET
+
+            # Product (PRODUCTS)
+            - id: product-route-getAll-protected  # 상품 목록 조회 관리자용
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/products
+                - Method=GET
+              order: 1
+              filters:
+                - name: TokenAuthenticationFilter
+
+            - id: product-route-public
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/products/**
+                - Method=GET
+              order: 2
+
+
+            - id: product-route-protected
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/products, /api/products/**
+                - Method=PATCH, PUT, POST, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            - id: product-es-route-public   #상품 es 목록조회
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/search/**
+                - Method=GET
+
+            - id: product-images-route-protected   #상품 es 목록조회
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/images/**
+                - Method=POST
+              filters:
+                - name: TokenAuthenticationFilter
+
+            # Order
+            - id: order-route-protected
+              uri: lb://ORDER
+              predicates:
+                - Path=/api/orders/**, /api/orders
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            # User
+            - id: user-route-protected
+              uri: lb://USER
+              predicates:
+                - Path=/api/users/**
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+              order: 2
+
+            - id: user-route-public
+              uri: lb://USER
+              predicates:
+                - Path=/api/users
+                - Method=GET
+              order: 1
+#             auth 필요
+
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${DISCOVERY_URL}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+        exclude: beans, env, mappings
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+    info:
+      enabled: true
+
+custom:
+  jwt:
+    secrets:
+      app-key: ${JWT_SECRET}
