@@ -96,7 +96,18 @@ spring:
                 - Path=/api/users
                 - Method=GET
               order: 1
-#             auth 필요
+            # Auth
+            - id: auth-route-public
+              uri: lb://AUTH
+              predicates:
+                - Path=/api/auth
+                - Method=POST
+            # test
+            - id: auth-route-test
+              uri: lb://AUTH
+              predicates:
+                - Path=/api/test/
+                - Method=GET
 
 
 eureka:
