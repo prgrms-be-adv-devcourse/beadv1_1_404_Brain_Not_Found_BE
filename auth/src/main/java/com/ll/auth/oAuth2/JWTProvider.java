@@ -22,12 +22,13 @@ public class JWTProvider {
     @Value("${jwt.secret:your-default-secret-key-must-be-at-least-256-bits-long}")  // application.yml 설정
     private String secretKey;
 
-    @Value("${jwt.expiration:900000}")  // 15분 (밀리초) 1000 * 60 * 15
+    @Value("${jwt.expiration:1800000}")  // 30분 (밀리초)
     public
     Long expirationTime;
 
     @Value("${jwt.refresh-expiration:604800000}")  // 7일 = 7 * 24 * 60 * 60 * 1000
-    public Long refreshExpirationTime;
+    public
+    Long refreshExpirationTime;
 
     private SecretKey key;  // HS512 서명 키
 
@@ -53,6 +54,7 @@ public class JWTProvider {
                 .signWith(key)  // 서명
                 .compact();
         String refreshToken = Jwts.builder()
+                .claims(claims)  // 커스텀 클레임// 사용자 ID
                 .issuedAt(now)
                 .issuer("Gooream")  // 앱 식별자
                 .expiration(refreshExpirationDate)
@@ -84,6 +86,21 @@ public class JWTProvider {
         }
     }
 
+    /**
+     * 토큰에서 Claims 전체 추출 (validateToken 확장 버전)
+     */
+    public Claims extractClaims(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid JWT token: " + e.getMessage());
+        }
+    }
+
     public Authentication getAuthentication(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(key)
@@ -93,10 +110,14 @@ public class JWTProvider {
 
         String userCode = claims.get("userCode",String.class);
         String role = claims.get("role", String.class);
+
+        // 권한 설정 (예: ROLE_USER, ROLE_ADMIN)
         Collection<GrantedAuthority> authorities = Collections.singletonList(
                 new SimpleGrantedAuthority("ROLE_" + role)
         );
 
+        // Principal: userCode 또는 UserDetails 객체
+        // 여기서는 간단히 userCode 사용
         return new UsernamePasswordAuthenticationToken(userCode, token, authorities);
     }
 }

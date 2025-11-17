@@ -1,20 +1,16 @@
 package com.ll.auth.oAuth2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.uuid.Generators;
+import com.ll.auth.client.UserServiceClient;
+import com.ll.auth.model.entity.Auth;
+import com.ll.auth.model.vo.request.UserLoginRequest;
 import com.ll.auth.model.vo.dto.Tokens;
-import com.ll.auth.service.RedisService;
-import com.ll.auth.util.CookieUtil;
-import com.ll.common.model.vo.request.UserLoginRequest;
-import com.ll.common.model.vo.response.UserLoginResponse;
-import com.ll.user.service.UserService;
-import jakarta.servlet.http.Cookie;
+import com.ll.auth.model.vo.response.UserLoginResponse;
+import com.ll.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -30,8 +26,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private final JWTProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final OAuth2UserFactory oAuth2UserFactory;
-    private final UserService userService;
-    private final RedisService redisService;
+    private final UserServiceClient userServiceClient;
+    private final AuthService authService;
 
     @Override
     public void onAuthenticationSuccess(
@@ -41,31 +37,22 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     ) throws IOException {
 
         UserLoginRequest loginRequest = oAuth2UserFactory.getOAuth2UserInfo(authentication);
-        UserLoginResponse user = userService.createOrUpdateUser(loginRequest);
+        UserLoginResponse user = userServiceClient.requestUserLogin(loginRequest).getData();
 
         // JWT 발급
         Tokens tokens = jwtProvider.createToken(user.code(),user.role().name());
         String accessToken = tokens.accessToken().trim();
         String refreshToken = tokens.refreshToken().trim();
 
-        int accessTokenMaxAge = 60 * 15; // 15분
-        int refreshTokenMaxAge = 60 * 60 * 24 * 7; // 7일
-
-        // Cookie 생성
-        ResponseCookie accessTokenCookie = CookieUtil.generateCookie("accessToken",accessToken,accessTokenMaxAge);
-        ResponseCookie refreshTokenCookie = CookieUtil.generateCookie("refreshToken",refreshToken,refreshTokenMaxAge);
-        String deviceCode = getDeviceCode(request);
-        response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
-        Cookie deviceCodeCookie = new Cookie("deviceCode",deviceCode);
-        deviceCodeCookie.setPath("/");
-        response.addCookie(deviceCodeCookie);
-
-        //RefreshToken 저장
-        redisService.saveRefreshToken(user.code(),deviceCode,refreshToken);
-
-        //User 정보 Client에 제공
+        // Refresh Token 저장 (Redis 등)
+        Auth auth = Auth.builder()
+                .userCode(user.code())
+                .refreshToken(refreshToken)
+                .build();
+        authService.save(auth);
         Map<String, Object> body = Map.of(
+                "accessToken", accessToken,
+                "refreshToken", refreshToken,
                 "user", Map.of(
                         "userCode", user.code(),
                         "email", user.email(),
@@ -74,25 +61,13 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                         "socialProvider", user.socialProvider().name()
                 )
         );
+
+        response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType("application/json;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
-        response.setStatus(HttpServletResponse.SC_OK);
+
         String json = objectMapper.writeValueAsString(body);
         response.getWriter().write(json);
         response.getWriter().flush();
-    }
-
-
-    private String getDeviceCode(HttpServletRequest request) {
-
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if ("deviceCode".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return Generators.timeBasedEpochGenerator().generate().toString();
-
     }
 }

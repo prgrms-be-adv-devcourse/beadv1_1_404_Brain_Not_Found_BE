@@ -14,7 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.Optional;
 
@@ -22,11 +21,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.*;
 
-    @ExtendWith(MockitoExtension.class)
-    class AuthServiceTest {
+@ExtendWith(MockitoExtension.class)
+class AuthServiceTest {
 
     @Mock private AuthRepository authRepository;
     @Mock private JWTProvider jWTProvider;
+
     @InjectMocks private AuthService authService;
 
     private static final String USER_CODE = "USER_001";
@@ -74,28 +74,24 @@ import static org.mockito.BDDMockito.*;
 
             given(authRepository.findByUserCode(USER_CODE))
                     .willReturn(Optional.of(existingAuth));
-
-            Tokens newTokens = new Tokens(NEW_ACCESS, NEW_REFRESH);
             given(jWTProvider.createToken(USER_CODE, ROLE))
-                    .willReturn(newTokens);
-
-            TokenValidRequest request = validRequest(); // 기존에 만든 fixture
+                    .willReturn(newTokens());
 
             // when
-            Tokens result = authService.refreshToken(request);
+            Tokens result = authService.refreshToken(validRequest());
 
             // then
             assertThat(result.accessToken()).isEqualTo(NEW_ACCESS);
             assertThat(result.refreshToken()).isEqualTo(NEW_REFRESH);
 
-            then(authRepository).should(times(1)).save(any(Auth.class));
-
             then(authRepository).should().save(argThat(saved ->
                     saved.getUserCode().equals(USER_CODE) &&
                             saved.getRefreshToken().equals(NEW_REFRESH)
             ));
-
-            then(authRepository).shouldHaveNoMoreInteractions();
+            then(authRepository).should().delete(argThat(deleted ->
+                    deleted.getUserCode().equals(USER_CODE) &&
+                            deleted.getRefreshToken().equals(EXIST_REFRESH)
+            ));
         }
 
         @Test

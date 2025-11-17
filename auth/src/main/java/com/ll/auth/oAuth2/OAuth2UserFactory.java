@@ -1,7 +1,7 @@
 package com.ll.auth.oAuth2;
 
-import com.ll.common.model.enums.SocialProvider;
-import com.ll.common.model.vo.request.UserLoginRequest;
+import com.ll.auth.model.enums.SocialProvider;
+import com.ll.auth.model.vo.request.UserLoginRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
