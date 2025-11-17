@@ -10,6 +10,7 @@ public record PaymentRefundRequest(
         Integer refundAmount,
         String reason,
         PaidType paidType,
+        String paymentKey,
         String buyerCode
 ) {
 }

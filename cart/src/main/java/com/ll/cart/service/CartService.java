@@ -1,9 +1,9 @@
 package com.ll.cart.service;
 
 import com.ll.cart.model.vo.request.CartItemAddRequest;
-import com.ll.cart.model.vo.response.cart.CartItemAddResponse;
-import com.ll.cart.model.vo.response.cart.CartItemRemoveResponse;
-import com.ll.cart.model.vo.response.cart.CartItemsResponse;
+import com.ll.cart.model.vo.response.CartItemAddResponse;
+import com.ll.cart.model.vo.response.CartItemRemoveResponse;
+import com.ll.cart.model.vo.response.CartItemsResponse;
 
 public interface CartService {
     CartItemAddResponse addCartItem(String userCode, CartItemAddRequest request);

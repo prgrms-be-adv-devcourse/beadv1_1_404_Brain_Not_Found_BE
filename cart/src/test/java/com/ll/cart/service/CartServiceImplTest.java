@@ -1,13 +1,13 @@
 package com.ll.cart.service;
 
 import com.ll.cart.client.UserServiceClient;
+import com.ll.cart.model.vo.request.CartItemAddRequest;
+import com.ll.cart.model.vo.response.CartItemAddResponse;
+import com.ll.cart.model.vo.response.CartItemRemoveResponse;
+import com.ll.cart.model.vo.response.UserResponse;
 import com.ll.cart.model.entity.Cart;
 import com.ll.cart.model.entity.CartItem;
-import com.ll.cart.model.enums.*;
-import com.ll.cart.model.vo.request.CartItemAddRequest;
-import com.ll.cart.model.vo.response.cart.CartItemAddResponse;
-import com.ll.cart.model.vo.response.cart.CartItemRemoveResponse;
-import com.ll.cart.model.vo.response.user.UserResponse;
+import com.ll.cart.model.enums.CartStatus;
 import com.ll.cart.repository.CartItemRepository;
 import com.ll.cart.repository.CartRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +20,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,33 +47,10 @@ class CartServiceImplTest {
     private CartItem testCartItem;
 
     @BeforeEach
-    void setUp() throws Exception {
-        testUser = new UserResponse(
-                1L,
-                "USER-001",  // code 필드 추가
-                "test_social_id_1",
-                SocialProvider.KAKAO,
-                "user1@test.com",
-                "홍길동",
-                Role.USER,
-                null,
-                5L,
-                Grade.BRONZE,
-                AccountStatus.ACTIVE,
-                null,
-                null,
-                LocalDateTime.now(),  // createAt
-                LocalDateTime.now()   // updatedAt (address 필드 제거)
-        );
+    void setUp() {
+        testUser = new UserResponse(1L, "홍길동", "서울시 강남구");
         testCart = new Cart(1L, CartStatus.ACTIVE);
-        setCartId(testCart, 1L);  // Cart id 설정 <- 원래는 db의 id를 쓰는데 테스트에서 id를 못가져옴
         testCartItem = CartItem.create(testCart, 100L, 2, 10000); // quantity=2, price=10000 (단가)
-    }
-
-    private void setCartId(Cart cart, Long id) throws Exception {
-        Field idField = cart.getClass().getSuperclass().getDeclaredField("id");
-        idField.setAccessible(true);
-        idField.set(cart, id);
     }
 
     @DisplayName("장바구니 아이템 추가 및 수량 업데이트 - 성공")
@@ -179,7 +155,6 @@ class CartServiceImplTest {
         
         CartItem cartItem1 = CartItem.create(testCart, 100L, 2, 10000); // quantity=2, price=10000 (단가) → totalPrice=20000
         CartItem cartItem2 = CartItem.create(testCart, 200L, 1, 15000); // quantity=1, price=15000 (단가) → totalPrice=15000
-        // cartItem1과 cartItem2가 참조하는 Cart의 id가 설정되어 있음 (testCart)
         testCart.increaseTotalPrice(20000);
         testCart.increaseTotalPrice(15000);
 

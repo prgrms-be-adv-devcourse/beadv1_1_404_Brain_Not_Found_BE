@@ -1,18 +1,17 @@
 package com.ll.cart.service;
 
 import com.ll.cart.client.UserServiceClient;
-import com.ll.cart.exception.CartErrorCode;
 import com.ll.cart.model.entity.Cart;
 import com.ll.cart.model.entity.CartItem;
 import com.ll.cart.model.enums.CartStatus;
 import com.ll.cart.model.vo.request.CartItemAddRequest;
-import com.ll.cart.model.vo.response.cart.CartItemAddResponse;
-import com.ll.cart.model.vo.response.cart.CartItemRemoveResponse;
-import com.ll.cart.model.vo.response.cart.CartItemsResponse;
-import com.ll.cart.model.vo.response.user.UserResponse;
+import com.ll.cart.model.vo.response.CartItemAddResponse;
+import com.ll.cart.model.vo.response.CartItemInfo;
+import com.ll.cart.model.vo.response.CartItemRemoveResponse;
+import com.ll.cart.model.vo.response.CartItemsResponse;
+import com.ll.cart.model.vo.response.UserResponse;
 import com.ll.cart.repository.CartItemRepository;
 import com.ll.cart.repository.CartRepository;
-import com.ll.core.model.exception.BaseException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +34,8 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartItemAddResponse addCartItem(String userCode, CartItemAddRequest request) {
+//        validateCartItemRequest(request);
+
         UserResponse user = userServiceClient.getUserByCode(userCode);
 
         Cart cart = getOrCreateCart(user.id());
@@ -58,7 +60,12 @@ public class CartServiceImpl implements CartService {
             cart.increaseTotalPrice(cartItem.getTotalPrice());
         }
 
-        return CartItemAddResponse.from(cartItem);
+        return new CartItemAddResponse(
+                cartItem.getCode(),
+                cartItem.getProductId(),
+                cartItem.getQuantity(),
+                cartItem.getTotalPrice()
+        );
     }
 
     @Override
@@ -66,48 +73,61 @@ public class CartServiceImpl implements CartService {
     public CartItemRemoveResponse removeCartItem(String userCode, String cartItemCode) {
         UserResponse user = userServiceClient.getUserByCode(userCode);
 
-        Cart cart = findCartByUserIdAndStatus(user.id(), CartStatus.ACTIVE);
+        Cart cart = cartRepository.findByUserIdAndStatus(user.id(), CartStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없거나 활성 상태가 아닙니다."));
 
-        CartItem cartItem = findCartItemByCodeAndStatus(cartItemCode, CartStatus.ACTIVE);
+        CartItem cartItem = cartItemRepository.findByCodeAndCartStatus(cartItemCode, CartStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니 아이템을 찾을 수 없거나 활성 상태의 장바구니가 아닙니다: " + cartItemCode));
 
         if (!cartItem.getCart().getId().equals(cart.getId())) {
-            throw new BaseException(CartErrorCode.CART_ITEM_NOT_BELONG_TO_CART);
+            throw new IllegalArgumentException("해당 장바구니에 속하지 않은 아이템입니다.");
         }
 
         cart.decreaseTotalPrice(cartItem.getTotalPrice());
-
+        
+        // 삭제 전 정보 저장
+        Long productId = cartItem.getProductId();
+        Integer quantity = cartItem.getQuantity();
+        Integer totalPrice = cartItem.getTotalPrice();
+        
         cartItemRepository.delete(cartItem);
 
-        return CartItemRemoveResponse.from(cartItem);
+        return new CartItemRemoveResponse(
+                cartItemCode,
+                productId,
+                quantity,
+                totalPrice
+        );
     }
 
     @Override
     public CartItemsResponse getCartItems(String userCode) {
         UserResponse user = userServiceClient.getUserByCode(userCode);
 
-        Cart cart = findCartByUserIdAndStatus(user.id(), CartStatus.ACTIVE);
+        Cart cart = cartRepository.findByUserIdAndStatus(user.id(), CartStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없거나 활성 상태가 아닙니다."));
 
         List<CartItem> items = cartItemRepository.findByCart(cart);
 
-        return CartItemsResponse.from(cart, items);
+        List<CartItemInfo> itemInfos = items.stream()
+                .map(ci -> new CartItemInfo(
+                        ci.getCode(),
+                        ci.getProductId(),
+                        ci.getQuantity(),
+                        ci.getTotalPrice()
+                ))
+                .collect(Collectors.toList());
+
+        return new CartItemsResponse(
+                cart.getCode(),
+                cart.getTotalPrice(),
+                itemInfos
+        );
     }
 
     private Cart getOrCreateCart(Long userId) {
         return cartRepository.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseGet(() -> cartRepository.save(new Cart(userId, CartStatus.ACTIVE)));
-    }
-
-    private Cart findCartByUserIdAndStatus(Long userId, CartStatus status) {
-        return cartRepository.findByUserIdAndStatus(userId, status)
-                .orElseThrow(() -> new BaseException(CartErrorCode.CART_NOT_FOUND));
-    }
-
-    private CartItem findCartItemByCodeAndStatus(String cartItemCode, CartStatus status) {
-        return cartItemRepository.findByCodeAndCartStatus(cartItemCode, status)
-                .orElseThrow(() -> {
-                    log.warn("cartItemCode: {}", cartItemCode);
-                    return new BaseException(CartErrorCode.CART_ITEM_NOT_FOUND);
-                });
     }
 
     private void adjustCartTotalPrice(Cart cart, int difference) {

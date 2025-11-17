@@ -51,9 +51,9 @@ public class DataInitializer implements CommandLineRunner {
                     
                     // 첫 번째 사용자: 10만원, 두 번째: 5천원, 세 번째: 0원
                     if (i == 0) {
-                        deposit.charge(100000L, "InitialCharge-100000");
+                        deposit.charge(100000L);
                     } else if (i == 1) {
-                        deposit.charge(5000L, "InitialCharge-5000");
+                        deposit.charge(5000L);
                     }
                     
                     depositRepository.save(deposit);
@@ -87,7 +87,7 @@ public class DataInitializer implements CommandLineRunner {
         String userCode1 = "019a90ab-fcf3-7413-af08-7121cc99378b"; // 첫 번째 사용자의 실제 code
         if (depositRepository.findByUserCode(userCode1).isEmpty()) {
             Deposit deposit1 = Deposit.createInitialDeposit(userCode1);
-            deposit1.charge(100000L, "InitialCharge-100000");
+            deposit1.charge(100000L);
             depositRepository.save(deposit1);
             log.info("예치금 계좌 생성 완료: userCode={}, balance={}", userCode1, deposit1.getBalance());
         }
