@@ -1,5 +1,6 @@
 package com.ll.order.domain.messaging.producer;
 
+import com.fasterxml.uuid.Generators;
 import com.ll.core.model.vo.kafka.InventoryEvent;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
@@ -21,8 +22,13 @@ public class OrderEventProducer {
         kafkaTemplate.send("refund-event", event);
     }
 
-    public void sendInventory(InventoryEvent event) {
-        kafkaTemplate.send("inventory-event", event);
+    public void sendInventoryDecrease(String productCode, int quantity) {
+        String referenceCode = Generators.timeBasedEpochGenerator().generate().toString();
+        kafkaTemplate.send("inventory-event", InventoryEvent.stockDecreaseEvent(productCode, quantity, referenceCode));
     }
 
+    public void sendInventoryRollback(String productCode, int quantity) {
+        String referenceCode = Generators.timeBasedEpochGenerator().generate().toString();
+        kafkaTemplate.send("inventory-event", InventoryEvent.stockRollbackEvent(productCode, quantity, referenceCode));
+    }
 }
