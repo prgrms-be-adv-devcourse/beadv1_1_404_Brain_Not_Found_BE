@@ -1,7 +1,8 @@
 package com.ll.auth.exception;
 
-import com.example.core.exception.BaseException;
-import com.example.core.exception.ErrorCode;
+
+import com.ll.core.model.exception.BaseException;
+import com.ll.core.model.exception.ErrorCode;
 
 public class TokenNotFoundException extends BaseException {
 

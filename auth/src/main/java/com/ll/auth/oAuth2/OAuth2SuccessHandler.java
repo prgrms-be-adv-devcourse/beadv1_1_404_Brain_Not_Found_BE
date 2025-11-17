@@ -40,7 +40,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         UserLoginResponse user = userServiceClient.requestUserLogin(loginRequest).getData();
 
         // JWT 발급
-        Tokens tokens = jwtProvider.createToken(user.code());
+        Tokens tokens = jwtProvider.createToken(user.code(),user.role().name());
         String accessToken = tokens.accessToken();
         String refreshToken = tokens.refreshToken();
 

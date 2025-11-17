@@ -1,7 +1,7 @@
 package com.ll.auth.model.entity;
 
 
-import com.example.core.model.persistence.BaseEntity;
+import com.ll.core.model.persistence.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

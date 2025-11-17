@@ -1,6 +1,6 @@
 package com.ll.auth.client;
 
-import com.example.core.model.response.BaseResponse;
+import com.ll.core.model.response.BaseResponse;
 import com.ll.auth.model.vo.request.UserLoginRequest;
 import com.ll.auth.model.vo.response.UserLoginResponse;
 import lombok.RequiredArgsConstructor;

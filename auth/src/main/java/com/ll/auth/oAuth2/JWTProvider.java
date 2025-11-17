@@ -38,9 +38,10 @@ public class JWTProvider {
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public Tokens createToken(String userCode) {
+    public Tokens createToken(String userCode , String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userCode", userCode);
+        claims.put("role",role);
 
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationTime);
@@ -107,8 +108,7 @@ public class JWTProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
-        String userCode = claims.getSubject();
-
+        String userCode = claims.get("userCode",String.class);
         String role = claims.get("role", String.class);
 
         // 권한 설정 (예: ROLE_USER, ROLE_ADMIN)

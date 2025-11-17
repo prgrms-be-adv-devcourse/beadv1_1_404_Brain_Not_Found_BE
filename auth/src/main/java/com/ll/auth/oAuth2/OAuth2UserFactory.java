@@ -19,8 +19,6 @@ import java.util.Map;
 public class OAuth2UserFactory {
 
     public UserLoginRequest getOAuth2UserInfo(Authentication authentication) {
-        log.info(authentication.toString());
-        log.info("Factory");
         OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
         String registrationId = oauthToken.getAuthorizedClientRegistrationId();
 
@@ -29,7 +27,6 @@ public class OAuth2UserFactory {
         } else if (registrationId.equals("naver")) {
             return extractNaverUserInfo((DefaultOAuth2User) authentication.getPrincipal());
         }
-        log.error("Unexpected principal type: {}", authentication.getPrincipal().getClass().getName());
         throw new OAuth2AuthenticationException("Unsupported OAuth2 provider");
     }
 
