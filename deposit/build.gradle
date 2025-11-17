@@ -2,13 +2,13 @@ plugins {
     id "io.freefair.lombok" version "9.1.0"
 }
 
-group = 'com.example'
+group = 'com.ll'
 //version = '0.0.1-SNAPSHOT'
 description = 'deposit'
 
 
 springBoot {
-    mainClass = 'com.example.deposit.DepositApplication'
+    mainClass = 'com.ll.deposit.DepositApplication'
 }
 
 dependencies {
@@ -21,6 +21,9 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
 
     implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
+
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+
     annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'

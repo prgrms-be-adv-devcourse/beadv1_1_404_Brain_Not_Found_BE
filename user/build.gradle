@@ -1,12 +1,12 @@
 plugins {
 }
 
-group = 'com.example'
+group = 'com.ll'
 //version = '0.0.1-SNAPSHOT'
 description = 'user'
 
 springBoot {
-    mainClass = 'com.example.user.UserApplication'
+    mainClass = 'com.ll.user.UserApplication'
 }
 dependencies {
 
@@ -21,6 +21,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    
 
 }
 
