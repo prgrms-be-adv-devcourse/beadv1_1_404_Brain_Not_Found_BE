@@ -57,7 +57,6 @@ public class UserController {
             @RequestHeader(value = "X-User-Code") String userCode
     ){
             return BaseResponse.ok(userService.updateUser(request, userCode));
-
     }
 
     // 회원 목록 조회

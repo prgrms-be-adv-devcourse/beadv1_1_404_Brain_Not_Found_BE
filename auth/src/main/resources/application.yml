@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8084
 
 
 
@@ -60,13 +60,7 @@ spring:
 # External Service URLs (로컬 개발용)
 external:
   user-service:
-    url: ${USER_SERVICE_URL:http://localhost:8081}
-  product-service:
-    url: ${PRODUCT_SERVICE_URL:http://localhost:8082}
-  cart-service:
-    url: ${CART_SERVICE_URL:http://localhost:8083}
-  payment-service:
-    url: ${PAYMENT_SERVICE_URL:http://localhost:8084}
+    url: ${USER_SERVICE_URL:http://localhost:8083}
 
 # JWT 설정
 jwt:

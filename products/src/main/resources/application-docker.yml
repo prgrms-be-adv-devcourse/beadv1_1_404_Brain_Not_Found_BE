@@ -43,6 +43,7 @@ management:
 api:
   user:
     base-url: http://user-module:8080
+
 eureka:
   client:
     register-with-eureka: true

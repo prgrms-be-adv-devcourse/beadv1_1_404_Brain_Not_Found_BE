@@ -1,4 +1,4 @@
-package com.ll.payment.model.dto;
+package com.ll.payment.model.vo.request;
 
 public record DepositWithdrawRequest(
         Integer amount,

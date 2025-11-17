@@ -1,5 +1,7 @@
 package com.ll.products.domain.search.controller;
 import com.ll.core.model.response.BaseResponse;
+
+import com.ll.core.model.response.BaseResponse;
 import com.ll.products.domain.search.dto.ProductSearchResponse;
 import com.ll.products.domain.search.service.ProductSearchService;
 import lombok.RequiredArgsConstructor;
