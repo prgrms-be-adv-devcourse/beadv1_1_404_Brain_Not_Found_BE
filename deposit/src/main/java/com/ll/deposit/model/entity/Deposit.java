@@ -1,9 +1,11 @@
 package com.ll.deposit.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
-import com.ll.deposit.model.enums.DepositHistoryType;
 import com.ll.deposit.model.enums.DepositStatus;
-import com.ll.deposit.model.exception.*;
+import com.ll.deposit.model.exception.DepositAlreadyExistsException;
+import com.ll.deposit.model.exception.DepositBalanceNotEmptyException;
+import com.ll.deposit.model.exception.InsufficientDepositBalanceException;
+import com.ll.deposit.model.exception.InvalidDepositStatusTransitionException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -41,35 +43,23 @@ public class Deposit extends BaseEntity {
                 .build();
     }
 
-    public DepositHistory charge(Long amount, String referenceCode) {
-        return increaseBalance(amount, referenceCode, DepositHistoryType.CHARGE);
-    }
-    
-    public DepositHistory refund(Long amount, String referenceCode) {
-        return increaseBalance(amount, referenceCode, DepositHistoryType.REFUND);
-    }
-
-    public DepositHistory withdraw(Long amount, String referenceCode) {
-        return decreaseBalance(amount, referenceCode, DepositHistoryType.WITHDRAW);
-    }
-    
-    public DepositHistory payment(Long amount, String referenceCode) {
-        return decreaseBalance(amount, referenceCode, DepositHistoryType.PAYMENT);
-    }
-
-    private DepositHistory increaseBalance(Long amount, String referenceCode, DepositHistoryType type) {
-        Long before = this.balance;
-        validateActive();
+    public Deposit charge(Long amount) {
+        if (this.depositStatus != DepositStatus.ACTIVE) {
+            throw new InvalidDepositStatusTransitionException("비활성 또는 종료된 입금 계좌에는 충전할 수 없습니다.");
+        }
         this.balance += amount;
-        return DepositHistory.create(this.getId(), amount, before, this.balance, referenceCode, type);
+        return  this;
     }
 
-    private DepositHistory decreaseBalance(Long amount, String referenceCode, DepositHistoryType type) {
-        Long before = this.balance;
-        validateActive();
-        validateSufficientBalance(amount);
+    public Deposit withdraw(Long amount) {
+        if (this.depositStatus != DepositStatus.ACTIVE) {
+            throw new InvalidDepositStatusTransitionException("비활성 계좌는 출금할 수 없습니다.");
+        }
+        if (this.balance < amount) {
+            throw new InsufficientDepositBalanceException("잔액이 부족합니다.");
+        }
         this.balance -= amount;
-        return DepositHistory.create(this.getId(), amount, before, this.balance, referenceCode, type);
+        return this;
     }
 
     public Deposit setClosed() {
@@ -87,19 +77,8 @@ public class Deposit extends BaseEntity {
         if (this.depositStatus == DepositStatus.ACTIVE) {
             throw new DepositAlreadyExistsException();
         }
+        System.out.printf("Closed deposit found for user %s. Reactivating...\n", userCode);
         this.depositStatus = DepositStatus.ACTIVE;
         return this;
-    }
-
-    private void validateActive() {
-        if (this.depositStatus != DepositStatus.ACTIVE) {
-            throw new InvalidDepositStatusTransitionException();
-        }
-    }
-
-    private void validateSufficientBalance(Long amount) {
-        if (amount == null || this.balance <= amount) {
-            throw new InsufficientDepositBalanceException();
-        }
     }
 }

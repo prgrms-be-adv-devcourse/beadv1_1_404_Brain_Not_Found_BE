@@ -1,6 +1,6 @@
 package com.ll.order.domain.controller;
 
-import com.example.core.model.response.BaseResponse;
+import com.ll.core.model.response.BaseResponse;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;

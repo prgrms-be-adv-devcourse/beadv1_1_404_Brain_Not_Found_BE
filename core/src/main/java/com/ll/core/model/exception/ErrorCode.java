@@ -4,7 +4,7 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public enum ErrorCode implements BaseErrorCode {
+public enum ErrorCode {
 
     // 기본 ERROR CODES
     // 400 — 잘못된 요청
@@ -38,7 +38,11 @@ public enum ErrorCode implements BaseErrorCode {
     GATEWAY_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "게이트웨이 응답 시간이 초과되었습니다."),
 
     // CUSTOM ERROR CODES
-    INSUFFICIENT_INVENTORY(HttpStatus.UNPROCESSABLE_ENTITY, "재고가 부족합니다.");
+    DEPOSIT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 존재하는 입금 계좌입니다."),
+    DEPOSIT_ALREADY_CLOSED(HttpStatus.CONFLICT, "이미 비활성 상태인 입금 계좌입니다."),
+    BALANCE_NOT_EMPTY(HttpStatus.UNPROCESSABLE_ENTITY, "잔액이 남아있는 입금 계좌는 삭제할 수 없습니다."),
+    SETTLEMENT_INVALID_STATE_TRANSITION(HttpStatus.CONFLICT, "정산의 상태 전이가 유효하지 않습니다."),
+    SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 정산을 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;

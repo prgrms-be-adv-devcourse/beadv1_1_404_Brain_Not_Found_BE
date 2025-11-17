@@ -20,7 +20,7 @@ public class SettlementReader  {
 
     @StepScope
     @Bean("pagingSettlementReader")
-    public JpaPagingItemReader<Settlement> pagingSettlementReader(
+    public JpaPagingItemReader<Settlement> PagingSettlementReader(
             @Value("#{jobParameters['dateStr']}") String dateStr,
             @Value("${custom.batch.chunk.size}") Integer batchSize,
             EntityManagerFactory entityManagerFactory

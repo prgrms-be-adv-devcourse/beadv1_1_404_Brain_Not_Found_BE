@@ -28,22 +28,18 @@ public record OrderEvent(
 
     private static final BigDecimal DEFAULT_SETTLEMENT_RATE = new BigDecimal("0.3");
 
-    public static OrderEvent of(String buyerCode, String sellerCode, String orderItemCode, String referenceCode, String settlementRate, Long amount) {
+    public static OrderEvent of(OrderEventType orderEventType,String buyerCode, String sellerCode, String orderItemCode, String referenceCode, String settlementRate, Long amount) {
         if (settlementRate == null || settlementRate.isBlank()) {
             throw new InvalidSettlementEventException("settlementRate 는 null 또는 공백일 수 없습니다.");
         }
         try {
-            return new OrderEvent(OrderEventType.ORDER_COMPLETED, buyerCode, sellerCode, orderItemCode, referenceCode, new BigDecimal(settlementRate), amount);
+            return new OrderEvent(orderEventType, buyerCode, sellerCode, orderItemCode, referenceCode, new BigDecimal(settlementRate), amount);
         } catch (NumberFormatException e) {
             throw new InvalidSettlementEventException("settlementRate 값이 올바른 숫자 형식이 아닙니다.");
         }
     }
 
-    public static OrderEvent of(String buyerCode, String sellerCode, String orderItemCode, String referenceCode, Long amount) {
-        return new OrderEvent(OrderEventType.ORDER_COMPLETED, buyerCode, sellerCode, orderItemCode, referenceCode, DEFAULT_SETTLEMENT_RATE, amount);
-    }
-
-    public static OrderEvent fromSettlementComplete(OrderEvent orderEvent) {
-        return new OrderEvent(OrderEventType.SETTLEMENT_COMPLETED, orderEvent.buyerCode(), orderEvent.sellerCode(), orderEvent.orderItemCode(), orderEvent.referenceCode(), orderEvent.settlementRate(), orderEvent.amount());
+    public static OrderEvent of(OrderEventType orderEventType,String buyerCode, String sellerCode, String orderItemCode, String referenceCode, Long amount) {
+        return new OrderEvent(orderEventType, buyerCode, sellerCode, orderItemCode, referenceCode, DEFAULT_SETTLEMENT_RATE, amount);
     }
 }

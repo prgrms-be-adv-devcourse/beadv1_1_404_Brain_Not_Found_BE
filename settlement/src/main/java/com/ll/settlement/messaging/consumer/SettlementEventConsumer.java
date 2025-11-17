@@ -1,10 +1,7 @@
 package com.ll.settlement.messaging.consumer;
 
-import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
-import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import com.ll.core.model.vo.kafka.OrderEvent;
-import com.ll.core.model.vo.kafka.enums.OrderEventType;
 import com.ll.settlement.service.SettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,33 +15,20 @@ public class SettlementEventConsumer {
 
     private final SettlementService settlementService;
 
-    @KafkaListener(topics = "settlement-event.dlq", groupId = "settlement-service")
-    public void handleSettlementDLQ(KafkaEventEnvelope<SettlementEvent> event) {
-        settlementService.failByDlqEvent(event.payload());
-    }
-
     @KafkaListener(topics = "order-event", groupId = "settlement-service")
-    public void handleOrderEvent(KafkaEventEnvelope<OrderEvent> event) {
-        if ( event.payload().orderEventType() != OrderEventType.ORDER_COMPLETED ) {
-            return;
-        }
-        settlementService.createSettlement(event.payload());
-    }
-
-    @KafkaListener(topics = "order-event.dlq", groupId = "settlement-service")
-    public void handleOrderDLQ(KafkaEventEnvelope<OrderEvent> event) {
-        if ( event.payload().orderEventType() != OrderEventType.ORDER_COMPLETED ) {
-            return;
+    public void handleOrderCompleteEvent(OrderEvent event) {
+        try {
+            log.info("Received order complete event from settlement service : {}", event.toString());
+            settlementService.createSettlement(event);
+        } catch (Exception e) {
+            log.error("Failed to process OrderCompleteEvent for OrderItemCode {}: {}", event.orderItemCode(), e.getMessage());
+            // TODO: 보상 처리 로직 추가 ( Dead Letter Queue 는 KafkaConfig 에서 설정 완료 )
         }
     }
 
-    @KafkaListener(topics = "refund-event", groupId = "settlement-service")
-    public void handleRefundEvent(KafkaEventEnvelope<RefundEvent> event) {
-        settlementService.refundSettlement(event.payload());
+    @KafkaListener(topics = "settlement-event.dlq", groupId = "settlement-service.dlq")
+    public void handleDLQ(SettlementEvent event) {
+        log.error("Received message in DLQ for OrderItemCode {}: {}", event.orderItemCode(), event);
+        settlementService.failByDlqEvent(event);
     }
-
-    @KafkaListener(topics = "refund-event.dlq", groupId = "settlement-service")
-    public void handleRefundDLQ(KafkaEventEnvelope<RefundEvent> event) {
-    }
-
 }

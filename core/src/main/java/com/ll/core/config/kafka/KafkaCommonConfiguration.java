@@ -17,9 +17,9 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
-import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -64,7 +64,7 @@ public class KafkaCommonConfiguration {
     public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> config = new HashMap<>(properties.buildConsumerProperties());
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class); // Key 에 대한 Deserializer 설정
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, EnvelopeDeserializer.class); // Value 에 대한 Deserializer 설정+
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class); // Value 에 대한 Deserializer 설정
         config.put(JsonDeserializer.TRUSTED_PACKAGES, "*"); // 모든 패키지 신뢰 설정
         return new DefaultKafkaConsumerFactory<>(config);
     }
@@ -77,8 +77,8 @@ public class KafkaCommonConfiguration {
         return new DeadLetterPublishingRecoverer(
                 kafkaTemplate,
                 (record, ex) -> {
-                    // Todo : DLQ 토픽 발생시 Slack Kafka DLQ Alert 구현 고려
-                    log.info("DLQ Error 원인 : {}", ex.getCause().getMessage());
+                    log.info("Sending record to DLQ. topic: {}, partition: {}, offset: {}, exception: {}, message: {}",
+                            record.topic(), record.partition(), record.offset(), ex.getClass().getName(), ex.getMessage(), ex);
                     return new TopicPartition(record.topic() + ".dlq", record.partition());
                 }
         );
@@ -86,24 +86,11 @@ public class KafkaCommonConfiguration {
 
     @Bean
     public DefaultErrorHandler errorHandler(DeadLetterPublishingRecoverer recoverer) {
-        ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(5);
-
-        // 1초, 2초, 4초, 8초, 16초, 최대 30초
-        backOff.setInitialInterval(1000L);
-        backOff.setMultiplier(2.0);
-        backOff.setMaxInterval(30000L);
-
-        DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, backOff);
-
-        handler.addNotRetryableExceptions(KafkaNotRetryableExceptionConfiguration.NOT_RETRYABLE_EXCEPTIONS);
-
+        DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(2000L, 3L));
         handler.setRetryListeners((record, ex, deliveryAttempt) ->
-                // Todo : DeliveryAttempt 값이 일정 수준 이상일 때 Slack Kafka Retry Alert 구현 고려
                 log.warn("Failed record in retry listener. topic: {}, partition: {}, offset: {}, exception: {}, message: {}, deliveryAttempt: {}",
                 record.topic(), record.partition(), record.offset(), ex.getClass().getName(), ex.getMessage(), deliveryAttempt));
-
         handler.setCommitRecovered(true);
-
         return handler;
     }
 

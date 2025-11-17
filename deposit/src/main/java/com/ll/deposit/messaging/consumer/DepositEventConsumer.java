@@ -1,9 +1,6 @@
 package com.ll.deposit.messaging.consumer;
 
-import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
 import com.ll.core.model.vo.kafka.SettlementEvent;
-import com.ll.core.model.vo.kafka.UserCreateEvent;
-import com.ll.core.model.vo.kafka.enums.UserCreateEventType;
 import com.ll.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.deposit.service.DepositService;
 import jakarta.validation.Valid;
@@ -21,24 +18,29 @@ public class DepositEventConsumer {
 
     private final DepositService depositService;
 
-    @KafkaListener(topics = "user-create-event", groupId = "deposit-service")
-    public void handleUserCreateEvent(KafkaEventEnvelope<UserCreateEvent> event) {
-        if ( event.payload().eventType() != UserCreateEventType.DEPOSIT_CREATE ) {
-            return;
-        }
-        depositService.createDeposit(event.payload().userCode());
-    }
-
-    @KafkaListener(topics = "user-create-event.dlq", groupId = "deposit-service")
-    public void handleUserCreateDLQ(KafkaEventEnvelope<UserCreateEvent> event) {
-        if ( event.payload().eventType() != UserCreateEventType.DEPOSIT_CREATE ) {
-            return;
-        }
-    }
+//    @KafkaListener(topics = "user-events", groupId = "deposit-service")
+//    public void handleUserCreateEvent(UserCreateEvent event) {
+//        try {
+//            depositService.createDeposit(event.userCode());
+//        } catch (Exception e) {
+//            log.error("Failed to process UserCreateEvent for userId {}: {}", event.userId(), e.getMessage());
+//            // TODO: 보상 처리 로직 추가 ( Dead Letter Queue 는 KafkaConfig 에서 설정 완료 )
+//        }
+//    }
+//
+//    @KafkaListener(topics = "payment-events", groupId = "deposit-service")
+//    public void handlePaymentEvent(DepositChargeEvent event) {
+//        try {
+//            depositService.chargeDeposit(event.userCode(), DepositTransactionRequest.of(event.amount(), event.referenceCode()));
+//        } catch (Exception e) {
+//            log.error("Failed to process DepositChargeEvent for userId {}: {}", event.userId(), e.getMessage());
+//            // TODO: 보상 처리 로직 추가 ( Dead Letter Queue 는 KafkaConfig 에서 설정 완료 )
+//        }
+//    }
 
     @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
-    public void handleSettlementEvent(@Valid KafkaEventEnvelope<SettlementEvent> event) {
-        depositService.chargeDeposit(event.payload().sellerCode(), DepositTransactionRequest.of(event.payload().amount(), settlementCompleteReferenceFormatter.apply(event.payload())));
+    public void handleSettlementCompleteEvent(@Valid SettlementEvent event) {
+        depositService.chargeDeposit(event.sellerCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));
     }
 
     private final Function<SettlementEvent, String> settlementCompleteReferenceFormatter =

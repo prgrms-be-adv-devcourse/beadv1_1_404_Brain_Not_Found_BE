@@ -48,18 +48,6 @@ public class DepositHistory extends BaseEntity {
         this.transactionStatus = transactionStatus;
     }
 
-    public static DepositHistory create(Long depositId, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType) {
-        return DepositHistory.builder()
-                .depositId(depositId)
-                .amount(amount)
-                .balanceBefore(balanceBefore)
-                .balanceAfter(balanceAfter)
-                .referenceCode(referenceCode)
-                .historyType(historyType)
-                .transactionStatus(TransactionStatus.PENDING)
-                .build();
-    }
-
     public void setTransactionCompleted() {
         if ( transactionStatus != TransactionStatus.PENDING ) {
             throw new InvalidDepositHistoryStatusTransitionException("거래 상태가 PENDING 이어야만 COMPLETED 로 변경할 수 있습니다.");

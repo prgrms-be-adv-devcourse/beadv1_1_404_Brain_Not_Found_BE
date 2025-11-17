@@ -2,9 +2,10 @@ package com.ll.deposit.service;
 
 import com.ll.deposit.model.entity.Deposit;
 import com.ll.deposit.model.entity.DepositHistory;
+import com.ll.deposit.model.enums.DepositHistoryType;
+import com.ll.deposit.model.enums.TransactionStatus;
 import com.ll.deposit.model.exception.DepositNotFoundException;
 import com.ll.deposit.model.exception.DuplicateDepositTransactionException;
-import com.ll.deposit.model.exception.RefundTargetNotFoundException;
 import com.ll.deposit.model.vo.request.DepositDeleteRequest;
 import com.ll.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.deposit.model.vo.response.*;
@@ -23,7 +24,6 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class DepositServiceImpl implements DepositService {
-    public static final String REFUND = "Refund-";
     private final DepositRepository depositRepository;
     private final DepositHistoryRepository depositHistoryRepository;
 
@@ -36,79 +36,79 @@ public class DepositServiceImpl implements DepositService {
 
     @Override
     public DepositResponse getDepositByUserCode(String userCode) {
-        return DepositResponse.from(findDepositByUserCode(userCode));
+        Deposit deposit = getDepositByUserId(userCode);
+        return DepositResponse.from(deposit);
     }
 
     @Override
     public DepositDeleteResponse deleteDepositByUserCode(String userCode, DepositDeleteRequest request) {
-        Deposit deposit = findDepositByUserCode(userCode);
-        Deposit saved = depositRepository.save(deposit.setClosed());
-        return DepositDeleteResponse.from(saved, request.closedReason());
+        return DepositDeleteResponse.from(depositRepository.save(getDepositByUserId(userCode).setClosed())
+                , request.closedReason());
     }
 
-    // TODO: 트랜잭션 처리 로직 개선 필요
+    // TODO: Redis 분산 락 적용 필요
     @Override
     @Transactional
     public DepositTransactionResponse chargeDeposit(String userCode, DepositTransactionRequest request) {
         isDuplicateTransaction(request.referenceCode());
-        Deposit deposit = findDepositByUserCode(userCode);
-        DepositHistory history = deposit.charge(request.amount(), request.referenceCode());
-        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
+
+        Deposit deposit = getDepositByUserId(userCode).charge(request.amount());
+
+        DepositHistory depositHistory = depositHistoryRepository.save(DepositHistory.builder()
+                .depositId(deposit.getId())
+                .amount(request.amount())
+                .balanceBefore(deposit.getBalance() - request.amount())
+                .balanceAfter(deposit.getBalance())
+                .referenceCode(request.referenceCode())
+                .historyType(DepositHistoryType.CHARGE)
+                .transactionStatus(TransactionStatus.COMPLETED)
+                .build()
+        );
+
+        // TODO: 카프카 이벤트 발행 필요한지 검토 ( @TransactionalEventListener(phase = AFTER_COMMIT) )
+
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistory);
     }
 
+    // TODO: Redis 분산 락 적용 필요
     @Override
     @Transactional
     public DepositTransactionResponse withdrawDeposit(String userCode, DepositTransactionRequest request) {
         isDuplicateTransaction(request.referenceCode());
-        Deposit deposit = findDepositByUserCode(userCode);
-        DepositHistory history = deposit.withdraw(request.amount(), request.referenceCode());
-        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
-    }
 
-    @Override
-    @Transactional
-    public DepositTransactionResponse paymentDeposit(String userCode, DepositTransactionRequest request) {
-        isDuplicateTransaction(request.referenceCode());
-        Deposit deposit = findDepositByUserCode(userCode);
-        DepositHistory history = deposit.payment(request.amount(), request.referenceCode());
-        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
-    }
+        Deposit deposit = getDepositByUserId(userCode).withdraw(request.amount());
 
-    @Override
-    @Transactional
-    public DepositTransactionResponse refundDeposit(String userCode, DepositTransactionRequest request) {
-        isDuplicateTransactionForRefund(request.referenceCode());
-        Deposit deposit = findDepositByUserCode(userCode);
-        DepositHistory history = deposit.refund(request.amount(), request.referenceCode());
-        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
+        DepositHistory depositHistory = depositHistoryRepository.save(DepositHistory.builder()
+                .depositId(deposit.getId())
+                .amount(request.amount())
+                .balanceBefore(deposit.getBalance() + request.amount())
+                .balanceAfter(deposit.getBalance())
+                .referenceCode(request.referenceCode())
+                .historyType(DepositHistoryType.WITHDRAW)
+                .transactionStatus(TransactionStatus.COMPLETED)
+                .build()
+        );
+
+        // TODO: 카프카 이벤트 발행 필요한지 검토 ( @TransactionalEventListener(phase = AFTER_COMMIT) )
+
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistory);
     }
 
     @Override
     public DepositHistoryPageResponse getDepositHistoryByUserCode(String userCode, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
-        Deposit deposit = findDepositByUserCode(userCode);
+        Deposit deposit = getDepositByUserId(userCode);
         Page<DepositHistory> histories = depositHistoryRepository.findAllByDepositAndCreatedAtBetween(deposit, fromDate, toDate, pageable);
         return DepositHistoryPageResponse.from(userCode, histories.map(DepositHistoryResponse::from));
     }
 
-    private Deposit findDepositByUserCode(String userCode) {
+    private Deposit getDepositByUserId(String userCode) {
         return depositRepository.findByUserCode(userCode)
-                .orElseThrow(DepositNotFoundException::new);
+                .orElseThrow(() -> new DepositNotFoundException("해당 회원의 예치금 계좌가 존재하지 않습니다."));
     }
 
     private void isDuplicateTransaction(String referenceCode) {
         if (depositHistoryRepository.existsByReferenceCode(referenceCode)) {
-            throw new DuplicateDepositTransactionException();
+            throw new DuplicateDepositTransactionException("이미 처리된 거래요청입니다.");
         }
-    }
-
-    private void isDuplicateTransactionForRefund(String referenceCode) {
-        isDuplicateTransaction(refundCode(referenceCode));
-        if (!depositHistoryRepository.existsByReferenceCode(referenceCode)) {
-            throw new RefundTargetNotFoundException();
-        }
-    }
-
-    public static String refundCode(String ref) {
-        return REFUND + ref;
     }
 }

@@ -14,7 +14,5 @@ public interface DepositService {
     DepositDeleteResponse deleteDepositByUserCode(String userCode, DepositDeleteRequest request);
     DepositTransactionResponse chargeDeposit(String userCode, DepositTransactionRequest request);
     DepositTransactionResponse withdrawDeposit(String userCode, DepositTransactionRequest request);
-    DepositTransactionResponse paymentDeposit(String userCode, DepositTransactionRequest request);
-    DepositTransactionResponse refundDeposit(String userCode, DepositTransactionRequest request);
     DepositHistoryPageResponse getDepositHistoryByUserCode(String userCode, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable);
 }
