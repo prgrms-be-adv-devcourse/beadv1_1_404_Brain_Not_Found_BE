@@ -47,6 +47,14 @@ public class DepositEventConsumer {
         depositService.paymentDeposit(event);
     }
 
+    @KafkaListener(topics = "order-event.dlq", groupId = "settlement-service")
+    public void handleOrderDLQ(OrderEvent event) {
+        if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
+            return;
+        }
+        log.error("[Order][Settlement Module] Received message in DLQ for OrderItemCode {}", event);
+    }
+
     @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
     public void handleSettlementEvent(@Valid SettlementEvent event) {
         depositService.chargeDeposit(event.sellerCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));

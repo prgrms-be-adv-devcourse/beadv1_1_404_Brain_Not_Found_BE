@@ -31,18 +31,23 @@ public class SettlementEventConsumer {
         settlementService.createSettlement(event);
     }
 
-    @KafkaListener(topics = "order-event.dlq", groupId = "settlement-service")
+    @KafkaListener(topics = "order-event.dlq", groupId = "order-service")
     public void handleOrderDLQ(OrderEvent event) {
-        if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
+        if ( !event.orderEventType().toString().equals("ORDER_COMPLETED") ) {
             return;
         }
-        log.error("[Order][Settlement Module] Received message in DLQ for OrderItemCode {}", event);
+        log.error("[Order][Order Module] Received message in DLQ for OrderItemCode {}", event);
     }
 
     @KafkaListener(topics = "refund-event", groupId = "settlement-service")
     public void handleRefundEvent(RefundEvent event) {
         log.info("[Refund][Settlement Module] Received refund complete event from settlement service : {}", event);
         settlementService.setSettlementStatusToRefunded(event);
+    }
+
+    @KafkaListener(topics = "refund-event.dlq", groupId = "order-service")
+    public void handleRefundDLQ(RefundEvent event) {
+        log.error("[Refund][Order Module] Received message in DLQ for OrderItemCode {}", event);
     }
 
 }

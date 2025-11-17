@@ -12,17 +12,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class OrderEventConsumer {
 
-    @KafkaListener(topics = "order-event.dlq", groupId = "order-service")
-    public void handleOrderDLQ(OrderEvent event) {
-        if ( !event.orderEventType().toString().equals("ORDER_COMPLETED") ) {
-            return;
-        }
-        log.error("[Order][Order Module] Received message in DLQ for OrderItemCode {}", event);
-    }
 
-    @KafkaListener(topics = "refund-event.dlq", groupId = "order-service")
-    public void handleRefundDLQ(RefundEvent event) {
-        log.error("[Refund][Order Module] Received message in DLQ for OrderItemCode {}", event);
-    }
+
+
 
 }

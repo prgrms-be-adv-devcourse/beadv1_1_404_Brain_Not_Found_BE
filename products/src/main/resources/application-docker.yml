@@ -11,6 +11,14 @@ spring:
   elasticsearch:
     uris: http://elasticsearch-1:9200
 
+  kafka:
+    bootstrap-servers:
+      - ${KAFKA_1_CONTAINER_NAME}:9090
+    consumer:
+      group-id: order-service
+      properties:
+        allow.auto.create.topics: false
+
 api:
   user:
     base-url: http://user-module:8080
