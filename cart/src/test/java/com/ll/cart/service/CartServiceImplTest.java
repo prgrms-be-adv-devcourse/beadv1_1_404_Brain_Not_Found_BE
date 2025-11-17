@@ -50,7 +50,7 @@ class CartServiceImplTest {
     void setUp() {
         testUser = new UserResponse(1L, "홍길동", "서울시 강남구");
         testCart = new Cart(1L, CartStatus.ACTIVE);
-        testCartItem = CartItem.create(testCart, 100L, 2, 20000);
+        testCartItem = CartItem.create(testCart, 100L, 2, 10000); // quantity=2, price=10000 (단가)
     }
 
     @DisplayName("장바구니 아이템 추가 및 수량 업데이트 - 성공")
@@ -59,8 +59,8 @@ class CartServiceImplTest {
         // given
         String userCode = "USER-001";
         String cartCode = "CART-001";
-        CartItemAddRequest firstRequest = new CartItemAddRequest(100L, 2, 20000);
-        CartItemAddRequest secondRequest = new CartItemAddRequest(100L, 5, 50000);
+        CartItemAddRequest firstRequest = new CartItemAddRequest(100L, 2, 10000); // quantity=2, price=10000 (단가)
+        CartItemAddRequest secondRequest = new CartItemAddRequest(100L, 5, 10000); // quantity=5, price=10000 (단가)
 
         when(userServiceClient.getUserByCode(userCode)).thenReturn(testUser);
         when(cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE))
@@ -91,7 +91,7 @@ class CartServiceImplTest {
         assertThat(testCart.getTotalPrice()).isEqualTo(20000);
 
         // 두 번째 추가: 기존 아이템 조회 (저장된 아이템 반환)
-        CartItem existingCartItem = CartItem.create(testCart, 100L, 2, 20000);
+        CartItem existingCartItem = CartItem.create(testCart, 100L, 2, 10000); // quantity=2, price=10000 (단가)
         when(cartItemRepository.findByCartAndProductId(testCart, 100L))
                 .thenReturn(Optional.of(existingCartItem));
 
@@ -118,7 +118,7 @@ class CartServiceImplTest {
         // given
         String userCode = "USER-001";
         String cartCode = "CART-001";
-        CartItemAddRequest request = new CartItemAddRequest(100L, 1, 10000);
+        CartItemAddRequest request = new CartItemAddRequest(100L, 1, 10000); // quantity=1, price=10000 (단가)
 
         when(userServiceClient.getUserByCode(userCode)).thenReturn(testUser);
         when(cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE))
@@ -161,8 +161,8 @@ class CartServiceImplTest {
         codeField.setAccessible(true);
         codeField.set(testCart, cartCode);
         
-        CartItem cartItem1 = CartItem.create(testCart, 100L, 2, 20000);
-        CartItem cartItem2 = CartItem.create(testCart, 200L, 1, 15000);
+        CartItem cartItem1 = CartItem.create(testCart, 100L, 2, 10000); // quantity=2, price=10000 (단가) → totalPrice=20000
+        CartItem cartItem2 = CartItem.create(testCart, 200L, 1, 15000); // quantity=1, price=15000 (단가) → totalPrice=15000
         testCart.increaseTotalPrice(20000);
         testCart.increaseTotalPrice(15000);
 
@@ -185,9 +185,7 @@ class CartServiceImplTest {
         assertThat(firstResponse.totalPrice()).isEqualTo(20000);
         assertThat(testCart.getTotalPrice()).isEqualTo(15000);
 
-        ArgumentCaptor<CartItem> cartItemCaptor = ArgumentCaptor.forClass(CartItem.class);
-        verify(cartItemRepository).delete(cartItemCaptor.capture());
-        assertThat(cartItemCaptor.getValue()).isEqualTo(cartItem1);
+        verify(cartItemRepository).delete(cartItem1);
 
         // 두 번째 삭제: cartItem2 삭제
         String secondCartItemCode = "CART-ITEM-002";
@@ -204,8 +202,8 @@ class CartServiceImplTest {
         assertThat(secondResponse.totalPrice()).isEqualTo(15000);
         assertThat(testCart.getTotalPrice()).isEqualTo(0);
 
-        verify(cartItemRepository, times(2)).delete(cartItemCaptor.capture());
-        assertThat(cartItemCaptor.getAllValues()).containsExactly(cartItem1, cartItem2);
+        verify(cartItemRepository, times(2)).delete(any(CartItem.class));
+        verify(cartItemRepository).delete(cartItem2);
 
         verify(cartItemRepository).findByCodeAndCartStatus(firstCartItemCode, CartStatus.ACTIVE);
         verify(cartItemRepository).findByCodeAndCartStatus(secondCartItemCode, CartStatus.ACTIVE);

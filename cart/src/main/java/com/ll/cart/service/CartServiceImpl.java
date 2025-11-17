@@ -32,7 +32,7 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public CartItemAddResponse addCartItem(String userCode, String cartCode, CartItemAddRequest request) {
-        validateCartItemRequest(request);
+//        validateCartItemRequest(request);
 
         UserResponse user = userServiceClient.getUserByCode(userCode);
 
@@ -43,24 +43,24 @@ public class CartServiceImpl implements CartService {
             throw new IllegalArgumentException("다른 사용자의 장바구니에는 아이템을 추가할 수 없습니다.");
         }
 
-        Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndProductId(cart, request.getProductId());
+        Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndProductId(cart, request.productId());
 
         CartItem cartItem;
         if (existingCartItem.isPresent()) { // 기존 아이템이 있으면 수량 업데이트
             cartItem = existingCartItem.get();
             int previousTotal = cartItem.getTotalPrice();
-            cartItem.changeQuantity(request.getQuantity(), request.getTotalPrice());
-            int difference = request.getTotalPrice() - previousTotal;
+            cartItem.changeQuantity(request.quantity(), request.price());
+            int difference = cartItem.getTotalPrice() - previousTotal;
             adjustCartTotalPrice(cart, difference);
         } else { // 기존 아이템이 없으면 새로운 아이템 생성
             cartItem = CartItem.create(
                     cart,
-                    request.getProductId(),
-                    request.getQuantity(),
-                    request.getTotalPrice()
+                    request.productId(),
+                    request.quantity(),
+                    request.price()
             );
             cartItemRepository.save(cartItem); // 새로운 아이템 저장
-            cart.increaseTotalPrice(request.getTotalPrice());
+            cart.increaseTotalPrice(cartItem.getTotalPrice());
         }
 
         return new CartItemAddResponse(
@@ -149,16 +149,16 @@ public class CartServiceImpl implements CartService {
         }
     }
 
-    private void validateCartItemRequest(CartItemAddRequest request) {
-        if (request.getQuantity() == null || request.getQuantity() <= 0) {
-            throw new IllegalArgumentException("수량은 1 이상이어야 합니다.");
-        }
-        if (request.getTotalPrice() == null || request.getTotalPrice() < 0) {
-            throw new IllegalArgumentException("총 가격은 0 이상이어야 합니다.");
-        }
-        if (request.getProductId() == null) {
-            throw new IllegalArgumentException("상품 ID는 필수입니다.");
-        }
-    }
+//    private void validateCartItemRequest(CartItemAddRequest request) {
+//        if (request.getQuantity() == null || request.getQuantity() <= 0) {
+//            throw new IllegalArgumentException("수량은 1 이상이어야 합니다.");
+//        }
+//        if (request.getTotalPrice() == null || request.getTotalPrice() < 0) {
+//            throw new IllegalArgumentException("총 가격은 0 이상이어야 합니다.");
+//        }
+//        if (request.getProductId() == null) {
+//            throw new IllegalArgumentException("상품 ID는 필수입니다.");
+//        }
+//    }
 
 }

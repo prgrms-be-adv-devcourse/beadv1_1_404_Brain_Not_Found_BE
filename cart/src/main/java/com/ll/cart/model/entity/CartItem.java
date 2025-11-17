@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "cart_items")
-@AttributeOverride(name = "code", column = @Column(name = "cart_item_code", nullable = false, unique = true, updatable = false))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CartItem extends BaseEntity {
@@ -20,30 +19,40 @@ public class CartItem extends BaseEntity {
 
     private Integer quantity;
 
+    private Integer price;
+
     private Integer totalPrice;
 
     private CartItem(Long productId,
                      Integer quantity,
-                     Integer totalPrice) {
+                     Integer price) {
         this.productId = productId;
         this.quantity = quantity;
-        this.totalPrice = totalPrice;
+        this.price = price;
+        calculateTotalPrice();
     }
 
     void assignCart(Cart cart) {
         this.cart = cart;
     }
 
-    public void changeQuantity(int quantity, int totalPrice) {
+    private void calculateTotalPrice() {
+        if (this.price != null && this.quantity != null) {
+            this.totalPrice = this.price * this.quantity;
+        }
+    }
+
+    public void changeQuantity(int quantity, int price) {
         this.quantity = quantity;
-        this.totalPrice = totalPrice;
+        this.price = price;
+        calculateTotalPrice();
     }
 
     public static CartItem create(Cart cart,
                                   Long productId,
                                   Integer quantity,
-                                  Integer totalPrice) {
-        CartItem cartItem = new CartItem(productId, quantity, totalPrice);
+                                  Integer price) {
+        CartItem cartItem = new CartItem(productId, quantity, price);
         cartItem.assignCart(cart);
         return cartItem;
     }

@@ -6,6 +6,7 @@ import com.ll.cart.model.vo.response.CartItemAddResponse;
 import com.ll.cart.model.vo.response.CartItemRemoveResponse;
 import com.ll.cart.model.vo.response.CartItemsResponse;
 import com.ll.cart.service.CartService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,8 +21,8 @@ public class CartController {
     @PostMapping("/cartItems/{cartCode}")
     public ResponseEntity<BaseResponse<CartItemAddResponse>> addCartItem(
             @PathVariable String cartCode,
-            @RequestHeader("userCode") String userCode,
-            @RequestBody CartItemAddRequest request
+            @RequestHeader("X-User-Code") String userCode,
+            @Valid @RequestBody CartItemAddRequest request
     ) {
         CartItemAddResponse response = cartService.addCartItem(userCode, cartCode, request);
 
@@ -32,7 +33,7 @@ public class CartController {
     public ResponseEntity<BaseResponse<CartItemRemoveResponse>> removeCartItem(
             @PathVariable String cartCode,
             @PathVariable String cartItemCode,
-            @RequestHeader("userCode") String userCode
+            @RequestHeader("X-User-Code") String userCode
     ) {
         CartItemRemoveResponse response = cartService.removeCartItem(userCode, cartCode, cartItemCode);
 
@@ -42,7 +43,7 @@ public class CartController {
     @GetMapping("/cartItems/{cartCode}")
     public ResponseEntity<BaseResponse<CartItemsResponse>> getCartItems(
             @PathVariable String cartCode,
-            @RequestHeader("userCode") String userCode
+            @RequestHeader("X-User-Code") String userCode
     ) {
         CartItemsResponse response = cartService.getCartItems(cartCode, userCode);
         return BaseResponse.ok(response);

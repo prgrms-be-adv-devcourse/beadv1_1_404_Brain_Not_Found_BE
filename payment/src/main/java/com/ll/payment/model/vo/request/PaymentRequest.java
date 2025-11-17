@@ -1,4 +1,4 @@
-package com.ll.payment.model.vo;
+package com.ll.payment.model.vo.request;
 
 import com.ll.payment.model.enums.PaidType;
 
