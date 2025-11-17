@@ -26,3 +26,21 @@ management:
       show-details: always                           # 헬스체크 상세 정보
     info:
       enabled: true
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${DISCOVERY_URL}
+
+# External Service URLs
+external:
+  user-service:
+    url: http://user:8080
+  product-service:
+    url: http://product:8080
+  cart-service:
+    url: http://cart:8080
+  payment-service:
+    url: http://order:8080
