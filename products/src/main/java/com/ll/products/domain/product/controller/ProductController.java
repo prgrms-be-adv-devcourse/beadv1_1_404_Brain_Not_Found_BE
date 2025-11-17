@@ -1,6 +1,6 @@
 package com.ll.products.domain.product.controller;
 
-import com.example.core.model.response.BaseResponse;
+import com.ll.core.model.response.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

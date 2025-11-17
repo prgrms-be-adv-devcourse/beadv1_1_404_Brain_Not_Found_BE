@@ -1,6 +1,6 @@
 package com.ll.payment.controller;
 
-import com.example.core.model.response.BaseResponse;
+import com.ll.core.model.response.BaseResponse;
 import com.ll.payment.model.dto.PaymentProcessResult;
 import com.ll.payment.model.entity.Payment;
 import com.ll.payment.model.vo.PaymentRefundRequest;

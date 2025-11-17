@@ -1,6 +1,6 @@
 package com.ll.order.domain.model.entity;
 
-import com.example.core.model.persistence.BaseEntity;
+import com.ll.core.model.persistence.BaseEntity;
 import com.github.f4b6a3.uuid.UuidCreator;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.OrderType;

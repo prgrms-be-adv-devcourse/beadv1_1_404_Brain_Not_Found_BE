@@ -1,6 +1,6 @@
 package com.ll.user.model.entity;
 
-import com.example.core.model.persistence.BaseEntity;
+import com.ll.core.model.persistence.BaseEntity;
 import com.ll.user.model.enums.AccountStatus;
 import com.ll.user.model.enums.Grade;
 import com.ll.user.model.enums.Role;

@@ -22,16 +22,16 @@ DEFAULT_REPLICATION=1
 
 # 기본 생성 Topic
 declare -A DEFAULT_TOPICS=(
+  ["user-create-event"]=1
+  ["user-create-event.dlq"]=1
+  ["deposit-charge-event"]=1
+  ["deposit-charge-event.dlq"]=1
   ["order-event"]=1
-  ["payment-event"]=1
-  ["product-event"]=1
-  ["settlement-event"]=1
-  ["deposit-event"]=1
   ["order-event.dlq"]=1
-  ["payment-event.dlq"]=1
-  ["product-event.dlq"]=1
+  ["settlement-event"]=1
   ["settlement-event.dlq"]=1
-  ["deposit-event.dlq"]=1
+  ["refund-event"]=1
+  ["refund-event.dlq"]=1
 )
 
 # 시간 포맷

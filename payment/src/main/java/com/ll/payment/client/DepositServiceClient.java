@@ -1,6 +1,6 @@
 package com.ll.payment.client;
 
-import com.example.core.model.response.BaseResponse;
+import com.ll.core.model.response.BaseResponse;
 import com.ll.payment.model.dto.DepositInfoResponse;
 import com.ll.payment.model.dto.DepositWithdrawRequest;
 import lombok.RequiredArgsConstructor;

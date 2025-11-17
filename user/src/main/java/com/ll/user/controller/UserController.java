@@ -1,13 +1,12 @@
 package com.ll.user.controller;
 
-
-import com.example.core.exception.ErrorCode;
+import com.ll.core.model.exception.ErrorCode;
 import com.ll.user.model.vo.request.UserPatchRequest;
 import com.ll.user.model.vo.request.UserLoginRequest;
 import com.ll.user.model.vo.response.UserLoginResponse;
 import com.ll.user.model.vo.response.UserResponse;
 import com.ll.user.service.UserService;
-import com.example.core.model.response.BaseResponse;
+import com.ll.core.model.response.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

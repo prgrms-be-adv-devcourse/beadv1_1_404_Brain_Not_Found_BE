@@ -1,6 +1,6 @@
 package com.ll.order.domain.model.entity;
 
-import com.example.core.model.persistence.BaseEntity;
+import com.ll.core.model.persistence.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
