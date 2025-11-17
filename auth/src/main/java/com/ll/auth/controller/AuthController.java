@@ -1,4 +1,5 @@
 package com.ll.auth.controller;
+import com.ll.auth.model.vo.dto.RefreshTokenBody;
 import com.ll.core.model.response.BaseResponse;
 import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.request.TokenValidRequest;
@@ -16,11 +17,11 @@ public class AuthController {
 
     @PostMapping
     public ResponseEntity<BaseResponse<Tokens>> refreshToken(
-            @RequestBody String refreshToken,
+            @RequestBody RefreshTokenBody request,
             @RequestHeader(value="X-User-Code") String userCode,
             @RequestHeader(value="X-Role") String role
     ){
-        TokenValidRequest request = new TokenValidRequest(userCode,role, refreshToken);
-        return BaseResponse.ok(authService.refreshToken(request));
+        TokenValidRequest validRequest = new TokenValidRequest(userCode,role, request.refreshToken());
+        return BaseResponse.ok(authService.refreshToken(validRequest));
     }
 }
