@@ -36,16 +36,11 @@ public class ProductEventListener {
     )
     public void syncToElasticsearchRetry(Product product, ProductEvent.EventType eventType) {
         try {
-            if (eventType == ProductEvent.EventType.DELETED) {
-                productSearchRepository.deleteById(product.getId());
-                log.info("Elasticsearch 삭제 완료 - productId: {}", product.getId());
-            } else {
-                ProductDocument document = ProductDocument.from(product);
-                productSearchRepository.save(document);
-                log.info("Elasticsearch 동기화 완료 - eventType: {}, productId: {}", eventType, product.getId());
-            }
+            ProductDocument document = ProductDocument.from(product);
+            productSearchRepository.save(document);
+            log.info("Elasticsearch 동기화 완료");
         } catch (Exception e) {
-            log.warn("Elasticsearch 동기화 시도 실패 - eventType: {}, error: {}", eventType, e.getMessage());
+            log.warn("Elasticsearch 동기화 시도 실패 : {}", e.getMessage());
             throw e;
         }
     }
