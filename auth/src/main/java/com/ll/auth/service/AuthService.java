@@ -1,6 +1,9 @@
 package com.ll.auth.service;
 
+import com.ll.auth.exception.TokenNotFoundException;
 import com.ll.auth.model.entity.Auth;
+import com.ll.auth.model.vo.dto.Tokens;
+import com.ll.auth.model.vo.request.TokenValidRequest;
 import com.ll.auth.oAuth2.JWTProvider;
 import com.ll.auth.repository.AuthRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,24 +22,21 @@ public class AuthService {
         authRepository.save(auth);
     }
 
-//    public Tokens refreshToken(TokenValidRequest request){
-//
-//        log.info(request.userCode());
-//        log.info(request.refreshToken());
-//        log.info("refershToken Function");
-//        String existRefreshToken = authRepository.findByUserCode(request.userCode()).orElseThrow(TokenNotFoundException::new).getRefreshToken();
-//
-//        log.info("existRefreshToken Function");
-//        log.info(existRefreshToken);
-//        if(existRefreshToken.equals(request.refreshToken())){
-//            throw new TokenNotFoundException();
-//        }
-//        else{
-//            Tokens tokens = jWTProvider.createToken(request.userCode());
-//            Auth auth = Auth.builder().refreshToken(tokens.refreshToken())
-//                    .userCode(request.userCode()).build();
-//            save(auth);
-//            return tokens;
-//        }
-//    }
+    public Tokens refreshToken(TokenValidRequest request){
+
+        Auth existAuth = authRepository.findByUserCode(request.userCode()).orElseThrow(TokenNotFoundException::new);
+        String existRefreshToken = existAuth.getRefreshToken();
+
+        if(!existRefreshToken.equals(request.refreshToken())){
+            throw new TokenNotFoundException();
+        }
+        else{
+            Tokens tokens = jWTProvider.createToken(request.userCode(),request.role());
+            Auth auth = Auth.builder().refreshToken(tokens.refreshToken())
+                    .userCode(request.userCode()).build();
+            save(auth);
+            authRepository.delete(existAuth);
+            return tokens;
+        }
+    }
 }
