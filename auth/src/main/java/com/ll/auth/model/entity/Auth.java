@@ -15,9 +15,13 @@ import lombok.NoArgsConstructor;
 @Getter
 public class Auth extends BaseEntity {
 
-    @Column(nullable = false)
+    @Column(nullable = false,unique = true)
     private String userCode;
 
     @Column(nullable = false)
     private String refreshToken;
+
+    public void updateRefreshToke(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
 }

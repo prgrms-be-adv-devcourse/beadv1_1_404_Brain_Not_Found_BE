@@ -28,7 +28,8 @@ public class SecurityConfig {
 
     private final OAuth2Service oAuth2Service;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
-    private final UserServiceClient userServiceClient;
+
+
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -74,11 +75,6 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
-    }
-
-    @Bean
-    public OAuth2UserService<OAuth2UserRequest, OAuth2User> oAuth2Service() {
-        return new OAuth2Service(userServiceClient);
     }
 
 }

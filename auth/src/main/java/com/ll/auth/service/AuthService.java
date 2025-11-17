@@ -27,18 +27,13 @@ public class AuthService {
         Auth existAuth = authRepository.findByUserCode(request.userCode()).orElseThrow(TokenNotFoundException::new);
         String existRefreshToken = existAuth.getRefreshToken();
 
-        log.info(existRefreshToken);
-        log.info(request.refreshToken());
-        log.info(String.valueOf(!existRefreshToken.equals(request.refreshToken().trim())));
         if(!existRefreshToken.trim().equals(request.refreshToken().trim())){
             throw new TokenNotFoundException();
         }
         else{
             Tokens tokens = jWTProvider.createToken(request.userCode(),request.role());
-            Auth auth = Auth.builder().refreshToken(tokens.refreshToken().trim())
-                    .userCode(request.userCode()).build();
-            authRepository.delete(existAuth);
-            save(auth);
+            existAuth.updateRefreshToke(tokens.refreshToken());
+            authRepository.save(existAuth);
             return tokens;
         }
     }

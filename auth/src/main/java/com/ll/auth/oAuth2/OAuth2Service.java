@@ -17,12 +17,9 @@ import java.util.Map;
 @Slf4j
 public class OAuth2Service implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
 
-    private final UserServiceClient userServiceClient; // MSA UserService Feign Client
-
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2UserService<OAuth2UserRequest, OAuth2User> delegate = new DefaultOAuth2UserService();
-
         return  delegate.loadUser(userRequest);
     }
 }
