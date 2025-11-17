@@ -21,7 +21,7 @@ public class Auth extends BaseEntity {
     @Column(nullable = false)
     private String refreshToken;
 
-    public void updateRefreshToke(String refreshToken) {
+    public void updateRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
     }
 }

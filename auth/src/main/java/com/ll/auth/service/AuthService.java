@@ -32,7 +32,7 @@ public class AuthService {
         }
         else{
             Tokens tokens = jWTProvider.createToken(request.userCode(),request.role());
-            existAuth.updateRefreshToke(tokens.refreshToken());
+            existAuth.updateRefreshToken(tokens.refreshToken());
             authRepository.save(existAuth);
             return tokens;
         }
