@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASE_URL="http://localhost:8080/api"
+BASE_URL="http://localhost:8085/api"
 CATEGORY_URL="$BASE_URL/categories"
 PRODUCT_URL="$BASE_URL/products"
 
