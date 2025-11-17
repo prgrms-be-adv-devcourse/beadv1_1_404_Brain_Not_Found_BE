@@ -29,14 +29,13 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
             Long sellerId,
             Long categoryId,
             ProductStatus status,
-            Boolean isDeleted,
             String name,
             Pageable pageable
     ) {
         List<Product> content = queryFactory
                 .selectFrom(product)
                 .where(
-                        isDeletedEq(isDeleted),
+                        isDeletedFalse(),
                         sellerIdEq(sellerId),
                         categoryIdEq(categoryId),
                         statusEq(status),
@@ -51,7 +50,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .select(product.count())
                 .from(product)
                 .where(
-                        isDeletedEq(isDeleted),
+                        isDeletedFalse(),
                         sellerIdEq(sellerId),
                         categoryIdEq(categoryId),
                         statusEq(status),
@@ -61,8 +60,9 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
-    private BooleanExpression isDeletedEq(Boolean isDeleted) {
-        return isDeleted != null ? product.isDeleted.eq(isDeleted) : null;
+    private BooleanExpression isDeletedFalse() {
+        // 삭제된 상품은 어떤 경우에도 조회되지 않아야 함 (관리자 포함)
+        return product.isDeleted.eq(false);
     }
 
     private BooleanExpression sellerIdEq(Long sellerId) {

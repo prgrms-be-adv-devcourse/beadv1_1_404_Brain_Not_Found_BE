@@ -37,10 +37,10 @@ eureka:
 # External Service URLs
 external:
   user-service:
-    url: http://user:8080
+    url: http://user-module:8080
   product-service:
-    url: http://product:8080
+    url: http://product-module:8080
   cart-service:
-    url: http://cart:8080
+    url: http://cart-module:8080
   payment-service:
-    url: http://order:8080
+    url: http://order-module:8080

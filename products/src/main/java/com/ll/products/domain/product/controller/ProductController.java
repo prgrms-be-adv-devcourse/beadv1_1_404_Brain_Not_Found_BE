@@ -51,12 +51,11 @@ public class ProductController {
             @RequestParam(required = false) Long sellerId,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) ProductStatus status,
-            @RequestParam(required = false) Boolean isDeleted,
             @RequestParam(required = false) String name,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Page<ProductListResponse> response = productService.getProducts(
-                sellerId, categoryId, status, isDeleted, name, pageable
+                sellerId, categoryId, status, name, pageable
         );
         return BaseResponse.ok(response);
     }
