@@ -13,6 +13,7 @@ import com.ll.cart.model.vo.response.UserResponse;
 import com.ll.cart.repository.CartItemRepository;
 import com.ll.cart.repository.CartRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CartServiceImpl implements CartService {
 
     private final UserServiceClient userServiceClient;
@@ -135,17 +137,5 @@ public class CartServiceImpl implements CartService {
             cart.decreaseTotalPrice(Math.abs(difference));
         }
     }
-
-//    private void validateCartItemRequest(CartItemAddRequest request) {
-//        if (request.getQuantity() == null || request.getQuantity() <= 0) {
-//            throw new IllegalArgumentException("수량은 1 이상이어야 합니다.");
-//        }
-//        if (request.getTotalPrice() == null || request.getTotalPrice() < 0) {
-//            throw new IllegalArgumentException("총 가격은 0 이상이어야 합니다.");
-//        }
-//        if (request.getProductId() == null) {
-//            throw new IllegalArgumentException("상품 ID는 필수입니다.");
-//        }
-//    }
 
 }

@@ -31,4 +31,4 @@ spring:
 # External Service URLs
 external:
   user-service:
-    url: http://localhost:8081
+    url: http://localhost:8080
