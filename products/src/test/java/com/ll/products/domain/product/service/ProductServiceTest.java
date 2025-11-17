@@ -116,7 +116,6 @@ class ProductServiceTest {
         assertThat(capturedProduct.getName()).isEqualTo("맥북 프로");
         assertThat(capturedProduct.getCategory()).isEqualTo(testCategory);
         assertThat(capturedProduct.getImages()).hasSize(2);
-        assertThat(capturedProduct.getSellerName()).isNull(); // User 서비스 연동 전
     }
 
     @DisplayName("상품 상세조회")
@@ -143,12 +142,12 @@ class ProductServiceTest {
         Page<Product> productPage = new PageImpl<>(products);
         Pageable pageable = PageRequest.of(0, 10);
 
-        when(productRepository.searchProducts(1L, null, ProductStatus.WAITING, false, null, pageable))
+        when(productRepository.searchProducts(1L, null, ProductStatus.WAITING, null, pageable))
                 .thenReturn(productPage);
 
         // when
         Page<ProductListResponse> result = productService.getProducts(
-                1L, null, ProductStatus.WAITING, false, null, pageable
+                1L, null, ProductStatus.WAITING, null, pageable
         );
 
         // then
