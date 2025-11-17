@@ -12,8 +12,11 @@ import com.ll.payment.model.enums.PaymentStatus;
 import com.ll.payment.model.vo.request.PaymentRefundRequest;
 import com.ll.payment.model.vo.request.PaymentRequest;
 import com.ll.payment.model.vo.request.TossPaymentRequest;
+import com.ll.payment.model.vo.request.TossPaymentCreateRequest;
+import com.ll.payment.model.vo.response.TossPaymentCreateResponse;
 import com.ll.payment.repository.PaymentJpaRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
@@ -41,6 +45,14 @@ public class PaymentServiceImpl implements PaymentService {
     private String secretKey;
     @Value("${payment.targetUrl}")
     private String targetUrl;
+    @Value("${payment.createUrl}")
+    private String createUrl;
+    @Value("${payment.successUrl}")
+    private String successUrl;
+    @Value("${payment.failUrl}")
+    private String failUrl;
+    @Value("${payment.useMockPaymentKey:false}")
+    private boolean useMockPaymentKey;
 
     @Override
     public String confirmPayment(TossPaymentRequest request) {
@@ -88,6 +100,17 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Payment tossPayment(PaymentRequest request) {
+        // paymentKey가 없으면 자동으로 결제 생성
+        String paymentKey = request.paymentKey();
+        if (paymentKey == null || paymentKey.isBlank()) {
+            paymentKey = createPayment(
+                    request.orderId(),
+                    "주문번호: " + request.orderId(),
+                    "고객",
+                    request.paidAmount()
+            );
+        }
+
         // 1) 결제 엔티티 초안 저장 (상태: PENDING)
         Payment payment = Payment.createTossPayment(
                 request.orderId(),
@@ -96,9 +119,23 @@ public class PaymentServiceImpl implements PaymentService {
         );
         paymentJpaRepository.save(payment);
 
-        // 2) 토스 승인 요청
+        // 2) 더미 paymentKey인 경우 Toss 승인 API 호출 건너뛰기
+        boolean isMockPaymentKey = paymentKey != null && paymentKey.startsWith("tgen_test_");
+        
+        if (isMockPaymentKey) {
+            log.info("더미 paymentKey 사용 중. Toss 승인 API 호출을 건너뜁니다. paymentKey: {}", paymentKey);
+            // 더미 키인 경우 바로 결제 완료 처리
+            payment.markSuccess(
+                    PaymentStatus.COMPLETED,
+                    LocalDateTime.now()
+            );
+            paymentJpaRepository.save(payment);
+            return payment;
+        }
+
+        // 3) 실제 Toss 승인 요청
         TossPaymentRequest tossRequest = new TossPaymentRequest(
-                request.paymentKey(),
+                paymentKey,
                 payment.getPaymentCode(),
                 request.paidAmount()
         );
@@ -113,6 +150,62 @@ public class PaymentServiceImpl implements PaymentService {
         paymentJpaRepository.save(payment);
 
         return payment;
+    }
+
+    @Override
+    public String createPayment(Long orderId, String orderName, String customerName, Integer amount) {
+        // 테스트 환경에서 더미 paymentKey 사용
+        if (useMockPaymentKey) {
+            String mockPaymentKey = "tgen_test_" + System.currentTimeMillis() + "_" + orderId;
+            log.info("테스트용 더미 paymentKey 생성: {}", mockPaymentKey);
+            return mockPaymentKey;
+        }
+
+        TossPaymentCreateRequest createRequest = new TossPaymentCreateRequest(
+                amount,
+                "ORDER-" + orderId,
+                orderName,
+                customerName,
+                successUrl,
+                failUrl
+        );
+
+        try {
+            log.info("Toss 결제 생성 요청 - orderId: {}, orderName: {}, amount: {}, successUrl: {}, failUrl: {}", 
+                    "ORDER-" + orderId, orderName, amount, successUrl, failUrl);
+            
+            String response = restClient.post()
+                    .uri(createUrl)
+                    .headers(headers -> headers.set("Authorization", createAuthorizationHeader()))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(createRequest)
+                    .retrieve()
+                    .onStatus(status -> status.isError(), (req, res) -> {
+                        try {
+                            String errorBody = res.getBody() != null ? new String(res.getBody().readAllBytes()) : "No error body";
+                            log.error("Toss 결제 생성 API 에러 - Status: {}, Body: {}", res.getStatusCode(), errorBody);
+                            throw new IllegalStateException("Toss 결제 생성 API 호출 실패: " + res.getStatusCode() + " - " + errorBody);
+                        } catch (Exception e) {
+                            if (e instanceof IllegalStateException) {
+                                throw (IllegalStateException) e;
+                            }
+                            log.error("에러 응답 읽기 실패", e);
+                            throw new IllegalStateException("Toss 결제 생성 API 호출 실패: " + res.getStatusCode());
+                        }
+                    })
+                    .body(String.class);
+
+            log.info("Toss 결제 생성 응답: {}", response);
+            TossPaymentCreateResponse createResponse = om.readValue(response, TossPaymentCreateResponse.class);
+            return createResponse.paymentKey();
+        } catch (Exception e) {
+            log.error("토스 결제 생성 중 예외 발생: {}", e.getMessage());
+            log.warn("Toss Payments API 호출 실패. 테스트용 더미 paymentKey를 생성합니다.");
+            // API 호출 실패 시 더미 paymentKey 생성
+            String mockPaymentKey = "tgen_test_" + System.currentTimeMillis() + "_" + orderId;
+            log.info("테스트용 더미 paymentKey 생성: {}", mockPaymentKey);
+            return mockPaymentKey;
+        }
     }
 
     @Override

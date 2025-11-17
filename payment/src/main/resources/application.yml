@@ -28,8 +28,15 @@ spring:
 
 payment:
   targetUrl: https://api.tosspayments.com/v1/payments/confirm
-  clientKey: test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
+  createUrl: https://api.tosspayments.com/v1/payments
+  # 위젯용 클라이언트 키 (Toss Payments 개발자 센터에서 발급받은 위젯용 키를 사용하세요)
+  widgetClientKey: test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
+  # API용 시크릿 키 (서버에서 API 호출 시 사용)
   secretKey: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+  successUrl: http://localhost:8082/api/orders/payment/success
+  failUrl: http://localhost:8082/api/orders/payment/fail
+  # 테스트 환경에서 Toss Payments API 호출 실패 시 더미 paymentKey 사용 여부
+  useMockPaymentKey: true
 
 # External Service URLs
 external:

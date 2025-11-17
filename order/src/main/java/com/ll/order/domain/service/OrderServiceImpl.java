@@ -15,6 +15,7 @@ import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     private final OrderJpaRepository orderJpaRepository;
@@ -45,7 +47,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderPageResponse findAllOrders(String userCode, String keyword, Pageable pageable) {
-        ClientResponse userInfo = getUserInfo(userCode);
+        UserResponse userInfo = getUserInfo(userCode);
 
         // keyword가 있으면 상품명으로 검색, 없으면 전체 조회
         Page<Order> orderPage;
@@ -94,6 +96,10 @@ public class OrderServiceImpl implements OrderService {
                 .map(item -> {
                     ProductResponse product = Optional.ofNullable(productServiceClient.getProductById(item.getProductId()))
                             .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.getProductId()));
+                    // images가 비어있지 않으면 첫 번째 이미지의 URL 사용, 없으면 null
+                    String productImage = product.images() != null && !product.images().isEmpty() 
+                            ? product.images().get(0).url() 
+                            : null;
                     return new OrderDetailResponse.ItemInfo(
                             item.getOrderItemCode(),
                             item.getProductId(),
@@ -101,7 +107,7 @@ public class OrderServiceImpl implements OrderService {
                             item.getProductName(),
                             item.getQuantity(),
                             item.getPrice(),
-                            product.image()
+                            productImage
                     );
                 })
                 .collect(Collectors.toList());
@@ -124,7 +130,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request) {
-        ClientResponse userInfo = getUserInfo(request.buyerCode());
+        UserResponse userInfo = getUserInfo(request.buyerCode());
 
         CartItemsResponse cartInfo = getCartInfo(request.cartCode());
 
@@ -151,9 +157,9 @@ public class OrderServiceImpl implements OrderService {
             ProductResponse productInfo = productMap.get(cartItem.productId());
 
             OrderItem orderItem = savedOrder.createOrderItem(
-                    productInfo.productId(),
+                    productInfo.id(),
                     productInfo.sellerId(),
-                    productInfo.productName(),
+                    productInfo.name(),
                     cartItem.quantity(),
                     cartItem.totalPrice() / cartItem.quantity() // totalPrice를 quantity로 나눠서 단가 계산
             );
@@ -187,23 +193,35 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderCreateResponse createDirectOrder(OrderDirectRequest request) {
-        ClientResponse userInfo = getUserInfo(request.userCode());
+        UserResponse userInfo = getUserInfo(request.userCode());
 
         ProductResponse productInfo = getProductInfo(request.productCode());
 
+        log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerId: {}, sellerName: {}, quantity: {}, price: {}, status: {}, images: {}",
+                productInfo.id(), 
+                productInfo.code(),
+                productInfo.name(), 
+                productInfo.sellerId(),
+                productInfo.sellerName(),
+                productInfo.quantity(), 
+                productInfo.price(), 
+                productInfo.status(), 
+                productInfo.images());
+
         Order order = Order.create(
-                userInfo.id(),
+                1L,
+//                userInfo.id(),
                 request.orderType(),
                 request.address()
         );
         Order savedOrder = orderJpaRepository.save(order);
 
         OrderItem orderItem = savedOrder.createOrderItem(
-                productInfo.productId(),
+                productInfo.id(),
                 productInfo.sellerId(),
-                productInfo.productName(),
+                productInfo.name(),
                 request.quantity(),
-                productInfo.totalPrice()
+                productInfo.price()
         );
         orderItemJpaRepository.save(orderItem);
 
@@ -249,7 +267,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderValidateResponse validateOrder(OrderValidateRequest request) {
-        ClientResponse userInfo = getUserInfo(request.buyerCode());
+        UserResponse userInfo = getUserInfo(request.buyerCode());
 
         if (userInfo.address() == null || userInfo.address().isBlank()) {
             throw new IllegalStateException("배송 가능한 주소가 없습니다: " + request.buyerCode());
@@ -271,25 +289,25 @@ public class OrderServiceImpl implements OrderService {
                 throw new IllegalStateException("재고가 부족합니다. 상품 코드: " + productRequest.productCode());
             }
 
-            if (productInfo.totalPrice() <= 0) {
+            if (productInfo.price() <= 0) {
                 throw new IllegalStateException("유효하지 않은 상품 가격입니다. 상품 코드: " + productRequest.productCode());
             }
 
-            if (productInfo.saleStatus() == null || !productInfo.saleStatus().isSaleable()) { // product enum이랑 일치해야 함.
+            if (productInfo.status() == null || productInfo.status() != com.ll.order.domain.model.enums.ProductStatus.ON_SALE) {
                 throw new IllegalStateException("판매 중이 아닌 상품입니다. 상품 코드: " + productRequest.productCode());
             }
 
-            if (productRequest.price() != productInfo.totalPrice()) {
+            if (productRequest.price() != productInfo.price()) {
                 throw new IllegalStateException("요청한 상품 가격이 실제 가격과 일치하지 않습니다. 상품 코드: " + productRequest.productCode());
             }
 
             totalQuantity += productRequest.quantity();
-            totalAmount += (long) productInfo.totalPrice() * productRequest.quantity();
+            totalAmount += (long) productInfo.price() * productRequest.quantity();
 
             itemInfos.add(new OrderValidateResponse.ItemInfo(
                     productRequest.productCode(),
                     productRequest.quantity(),
-                    productInfo.totalPrice()
+                    productInfo.price()
             ));
         }
 
@@ -344,7 +362,7 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
-    private ClientResponse getUserInfo(String userCode) {
+    private UserResponse getUserInfo(String userCode) {
         return Optional.ofNullable(userServiceClient.getUserByCode(userCode))
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userCode));
     }

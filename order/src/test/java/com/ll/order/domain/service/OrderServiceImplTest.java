@@ -8,7 +8,12 @@ import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.OrderType;
-import com.ll.order.domain.model.enums.ProductSaleStatus;
+import com.ll.order.domain.model.enums.AccountStatus;
+import com.ll.order.domain.model.enums.Grade;
+import com.ll.order.domain.model.enums.ProductStatus;
+import com.ll.order.domain.model.enums.Role;
+import com.ll.order.domain.model.enums.SocialProvider;
+import com.ll.order.domain.model.vo.response.ProductImageDto;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.*;
 import com.ll.order.domain.model.vo.response.CartItemInfo;
@@ -62,15 +67,41 @@ class OrderServiceImplTest {
     @InjectMocks
     private OrderServiceImpl orderService;
 
-    private ClientResponse testUserInfo;
+    private UserResponse testUserInfo;
     private ProductResponse testProductInfo;
     private CartItemsResponse testCartInfo;
 
     @BeforeEach
     void setUp() {
-        testUserInfo = new ClientResponse(1L, "홍길동", "서울시 강남구");
+        testUserInfo = new UserResponse(
+                1L,
+                "test_social_id",
+                SocialProvider.KAKAO,
+                "test@test.com",
+                "홍길동",
+                Role.USER,
+                null,
+                5L,
+                Grade.BRONZE,
+                AccountStatus.ACTIVE,
+                null,
+                null,
+                "서울시 강남구",
+                null,
+                null
+        );
 
-        testProductInfo = new ProductResponse(1L, 10L, "테스트상품", 1, 10000, ProductSaleStatus.ON_SALE, null);
+        testProductInfo = ProductResponse.builder()
+                .id(1L)
+                .code("PROD-001")
+                .name("테스트상품")
+                .sellerId(10L)
+                .sellerName("판매자1")
+                .quantity(1)
+                .price(10000)
+                .status(ProductStatus.ON_SALE)
+                .images(null)
+                .build();
 
         List<CartItemInfo> cartItems = new ArrayList<>();
         cartItems.add(new CartItemInfo("CART-ITEM-001", 1L, 2, 20000));
@@ -162,9 +193,39 @@ class OrderServiceImplTest {
         multipleCartItems.add(new CartItemInfo("CART-ITEM-003", 3L, 3, 15000)); // quantity 3, totalPrice 15000
         CartItemsResponse multipleItemCart = new CartItemsResponse("CART-002", 50000, multipleCartItems);
 
-        ProductResponse product1 = new ProductResponse(1L, 10L, "상품1", 2, 10000, ProductSaleStatus.ON_SALE, null);
-        ProductResponse product2 = new ProductResponse(2L, 20L, "상품2", 1, 15000, ProductSaleStatus.ON_SALE, null);
-        ProductResponse product3 = new ProductResponse(3L, 30L, "상품3", 3, 5000, ProductSaleStatus.ON_SALE, null);
+        ProductResponse product1 = ProductResponse.builder()
+                .id(1L)
+                .code("PROD-001")
+                .name("상품1")
+                .sellerId(10L)
+                .sellerName("판매자1")
+                .quantity(2)
+                .price(10000)
+                .status(ProductStatus.ON_SALE)
+                .images(null)
+                .build();
+        ProductResponse product2 = ProductResponse.builder()
+                .id(2L)
+                .code("PROD-002")
+                .name("상품2")
+                .sellerId(20L)
+                .sellerName("판매자2")
+                .quantity(1)
+                .price(15000)
+                .status(ProductStatus.ON_SALE)
+                .images(null)
+                .build();
+        ProductResponse product3 = ProductResponse.builder()
+                .id(3L)
+                .code("PROD-003")
+                .name("상품3")
+                .sellerId(30L)
+                .sellerName("판매자3")
+                .quantity(3)
+                .price(5000)
+                .status(ProductStatus.ON_SALE)
+                .images(null)
+                .build();
 
         OrderCartItemRequest request = new OrderCartItemRequest(
                 "USER-001",
@@ -313,7 +374,23 @@ class OrderServiceImplTest {
     @Test
     void findAllOrders_Success() {
         // given
-        ClientResponse userInfo = new ClientResponse(1L, "사용자", "서울");
+        UserResponse userInfo = new UserResponse(
+                1L,
+                "test_social_id",
+                SocialProvider.KAKAO,
+                "test@test.com",
+                "사용자",
+                Role.USER,
+                null,
+                5L,
+                Grade.BRONZE,
+                AccountStatus.ACTIVE,
+                null,
+                null,
+                "서울",
+                null,
+                null
+        );
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(userInfo);
 
         Order order = mock(Order.class);
@@ -364,8 +441,25 @@ class OrderServiceImplTest {
 
         when(orderJpaRepository.findByOrderCode("ORD-999")).thenReturn(order);
         when(orderItemJpaRepository.findByOrderId(10L)).thenReturn(List.of(orderItem));
+        List<ProductImageDto> images = List.of(
+                ProductImageDto.builder()
+                        .url("image.png")
+                        .sequence(0)
+                        .isMain(true)
+                        .build()
+        );
         when(productServiceClient.getProductById(1L))
-                .thenReturn(new ProductResponse(1L, 21L, "상품1", 10, 10000, ProductSaleStatus.ON_SALE, "image.png"));
+                .thenReturn(ProductResponse.builder()
+                        .id(1L)
+                        .code("PROD-001")
+                        .name("상품1")
+                        .sellerId(21L)
+                        .sellerName("판매자1")
+                        .quantity(10)
+                        .price(10000)
+                        .status(ProductStatus.ON_SALE)
+                        .images(images)
+                        .build());
 
         // when
         OrderDetailResponse response = orderService.findOrderDetails("ORD-999");
@@ -410,7 +504,23 @@ class OrderServiceImplTest {
     void validateOrder_Success() {
         // given
         when(userServiceClient.getUserByCode("USER-001"))
-                .thenReturn(new ClientResponse(1L, "사용자", "서울시 강남구"));
+                .thenReturn(new UserResponse(
+                        1L,
+                        "test_social_id",
+                        SocialProvider.KAKAO,
+                        "test@test.com",
+                        "사용자",
+                        Role.USER,
+                        null,
+                        5L,
+                        Grade.BRONZE,
+                        AccountStatus.ACTIVE,
+                        null,
+                        null,
+                        "서울시 강남구",
+                        null,
+                        null
+                ));
 
         ProductRequest productRequest1 = new ProductRequest("PROD-001", 2, 10000, null);
         ProductRequest productRequest2 = new ProductRequest("PROD-002", 1, 5000, null);
@@ -420,9 +530,29 @@ class OrderServiceImplTest {
         );
 
         when(productServiceClient.getProductByCode("PROD-001"))
-                .thenReturn(new ProductResponse(11L, 21L, "상품1", 5, 10000, ProductSaleStatus.ON_SALE, null));
+                .thenReturn(ProductResponse.builder()
+                        .id(11L)
+                        .code("PROD-001")
+                        .name("상품1")
+                        .sellerId(21L)
+                        .sellerName("판매자1")
+                        .quantity(5)
+                        .price(10000)
+                        .status(ProductStatus.ON_SALE)
+                        .images(null)
+                        .build());
         when(productServiceClient.getProductByCode("PROD-002"))
-                .thenReturn(new ProductResponse(12L, 22L, "상품2", 3, 5000, ProductSaleStatus.ON_SALE, null));
+                .thenReturn(ProductResponse.builder()
+                        .id(12L)
+                        .code("PROD-002")
+                        .name("상품2")
+                        .sellerId(22L)
+                        .sellerName("판매자2")
+                        .quantity(3)
+                        .price(5000)
+                        .status(ProductStatus.ON_SALE)
+                        .images(null)
+                        .build());
 
         // when
         OrderValidateResponse response = orderService.validateOrder(request);

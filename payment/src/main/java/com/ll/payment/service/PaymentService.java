@@ -14,4 +14,6 @@ public interface PaymentService {
     Payment tossPayment(PaymentRequest payment);
 
     Payment refundPayment(PaymentRefundRequest request);
+
+    String createPayment(Long orderId, String orderName, String customerName, Integer amount);
 }

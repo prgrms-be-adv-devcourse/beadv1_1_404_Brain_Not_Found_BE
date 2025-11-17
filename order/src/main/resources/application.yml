@@ -31,9 +31,9 @@ spring:
 # External Service URLs
 external:
   user-service:
-    url: http://localhost:8081
+    url: http://localhost:8080
   product-service:
-    url: http://localhost:8082
+    url: http://localhost:8081
   cart-service:
     url: http://localhost:8083
   payment-service:
