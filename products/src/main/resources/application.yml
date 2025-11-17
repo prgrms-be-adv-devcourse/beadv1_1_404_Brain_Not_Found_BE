@@ -2,6 +2,23 @@ spring:
   application:
     name: products
 
+  # 개발 환경 (운영에서는 prod로 변경)
+  profiles:
+    active: local
+
+  # JPA 설정 (데이터베이스와 Elasticsearch를 함께 사용)
+  data:
+    elasticsearch:
+      repositories:
+        enabled: true
+
+# 로깅 설정
+logging:
+  level:
+    com.ll.products.domain.search: DEBUG
+    org.springframework.data.elasticsearch: DEBUG
+    org.elasticsearch: DEBUG
+
 api:
   user:
     base-url: http://localhost:8080

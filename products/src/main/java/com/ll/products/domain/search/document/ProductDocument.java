@@ -39,8 +39,8 @@ public class ProductDocument {
     @Field(type = FieldType.Integer)
     private Integer quantity;
 
-    @Field(type = FieldType.Keyword)
-    private String sellerCode;
+    @Field(type = FieldType.Long)
+    private Long sellerId;
 
     @Field(type = FieldType.Text, analyzer = "nori")
     private String sellerName;
@@ -58,7 +58,7 @@ public class ProductDocument {
     private Boolean isDeleted;
 
     @Field(type = FieldType.Keyword)
-    private String mainImageFileKey;
+    private String mainImageUrl;
 
     @Field(type = FieldType.Date, format = {}, pattern = "uuuu-MM-dd'T'HH:mm:ss.SSSSSS||uuuu-MM-dd")
     private LocalDateTime createdAt;
@@ -67,10 +67,10 @@ public class ProductDocument {
     private LocalDateTime updatedAt;
 
     public static ProductDocument from(Product product) {
-        String mainImageFileKey = product.getImages().stream()
+        String mainImageUrl = product.getImages().stream()
                 .filter(image -> image.getIsMain())
                 .findFirst()
-                .map(image -> image.getFileKey())
+                .map(image -> image.getUrl())
                 .orElse(null);
 
         return ProductDocument.builder()
@@ -80,13 +80,13 @@ public class ProductDocument {
                 .description(product.getDescription())
                 .price(product.getPrice())
                 .quantity(product.getQuantity())
-                .sellerCode(product.getSellerCode())
+                .sellerId(product.getSellerId())
                 .sellerName(product.getSellerName())
                 .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                 .status(product.getStatus().name())
                 .isDeleted(product.getIsDeleted())
-                .mainImageFileKey(mainImageFileKey)
+                .mainImageUrl(mainImageUrl)
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .build();
