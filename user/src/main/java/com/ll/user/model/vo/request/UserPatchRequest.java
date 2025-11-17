@@ -6,12 +6,12 @@ import com.ll.user.model.enums.Grade;
 public record UserPatchRequest(
         String name,
         String profileImageUrl,
+        String email,
         String accountBank,
         String accountNumber,
         String address,
         Grade grade,
         Long mannerScore
 ) {
-
 
 }

@@ -1,30 +1,37 @@
 package com.ll.order.domain.client;
 
-import com.ll.order.domain.model.vo.response.ClientResponse;
+import com.ll.core.model.response.BaseResponse;
+import com.ll.order.domain.model.vo.response.UserResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceClient {
 
     private final RestClient restClient;
     
-    @Value("${external.user-service.url:http://localhost:8081}")
+    @Value("${external.user-service.url:http://localhost:8080}")
     private String userServiceUrl;
 
-    /**
-     * 회원 서비스에서 userCode로 사용자 정보를 조회합니다.
-     * @param userCode 사용자 코드
-     * @return 사용자 정보 (id, name, address)
-     */
-    public ClientResponse getUserByCode(String userCode) {
-        return restClient.get()
-                .uri(userServiceUrl + "/api/users/{userCode}", userCode)
+    public UserResponse getUserByCode(String userCode) {
+        log.info("userServiceUrl = {}", userServiceUrl);
+        BaseResponse<UserResponse> response = restClient.get()
+                .uri(userServiceUrl + "/api/users/info")
+                .header("X-User-Code", userCode)
                 .retrieve()
-                .body(ClientResponse.class);
+                .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
+        
+        if (response == null || response.getData() == null) {
+            return null;
+        }
+        
+        return response.getData();
     }
 }
 

@@ -1,4 +1,4 @@
-package com.ll.payment.model.vo;
+package com.ll.payment.model.vo.request;
 
 public record TossPaymentRequest(
         String paymentKey,

@@ -17,11 +17,7 @@ public class Order extends BaseEntity {
     private static final String ORDER_PREFIX = "ORD-";
     private static final String ORDER_ITEM_PREFIX = "ORD-ITEM-";
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String orderCode;
 
     @Column(nullable = false)

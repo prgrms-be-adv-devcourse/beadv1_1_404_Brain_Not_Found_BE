@@ -1,4 +1,4 @@
-package com.ll.payment.model.dto;
+package com.ll.payment.model.vo.response;
 
 public record DepositInfoResponse(
         String userCode,

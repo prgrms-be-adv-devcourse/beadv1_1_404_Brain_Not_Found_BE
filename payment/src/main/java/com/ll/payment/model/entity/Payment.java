@@ -105,7 +105,7 @@ public class Payment {
     private static String generatePaymentCode() {
         return "PAY-" + UuidCreator.getTimeOrderedEpoch()
                 .toString()
-                .substring(0, 8)
-                .toUpperCase();
+                .toUpperCase()
+                .replace("-", "");
     }
 }

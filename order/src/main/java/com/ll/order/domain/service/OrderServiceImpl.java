@@ -9,10 +9,13 @@ import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.*;
+import com.ll.order.domain.model.vo.response.CartItemInfo;
+import com.ll.order.domain.model.vo.response.CartItemsResponse;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,6 +33,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     private final OrderJpaRepository orderJpaRepository;
@@ -43,7 +47,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderPageResponse findAllOrders(String userCode, String keyword, Pageable pageable) {
-        ClientResponse userInfo = getUserInfo(userCode);
+        UserResponse userInfo = getUserInfo(userCode);
 
         // keyword가 있으면 상품명으로 검색, 없으면 전체 조회
         Page<Order> orderPage;
@@ -83,14 +87,19 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderDetailResponse findOrderDetails(String orderCode) {
+        // 명확한 행위 메서드인데, 예외를 던지는 것들은 전부 repo impl같은 곳에 모아두는 걸 추천
         Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
-        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId()); // 쿼리 날리는지 디버깅 해보도록.
         List<OrderDetailResponse.ItemInfo> itemInfos = orderItems.stream()
                 .map(item -> {
                     ProductResponse product = Optional.ofNullable(productServiceClient.getProductById(item.getProductId()))
                             .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.getProductId()));
+                    // images가 비어있지 않으면 첫 번째 이미지의 URL 사용, 없으면 null
+                    String productImage = product.images() != null && !product.images().isEmpty() 
+                            ? product.images().get(0).url() 
+                            : null;
                     return new OrderDetailResponse.ItemInfo(
                             item.getOrderItemCode(),
                             item.getProductId(),
@@ -98,7 +107,7 @@ public class OrderServiceImpl implements OrderService {
                             item.getProductName(),
                             item.getQuantity(),
                             item.getPrice(),
-                            product.image()
+                            productImage
                     );
                 })
                 .collect(Collectors.toList());
@@ -121,19 +130,19 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request) {
-        ClientResponse userInfo = getUserInfo(request.buyerCode());
+        UserResponse userInfo = getUserInfo(request.buyerCode());
 
-        CartResponse cartInfo = getCartInfo(request.cartCode());
+        CartItemsResponse cartInfo = getCartInfo(request.cartCode());
 
-        if (cartInfo.items() == null || cartInfo.items().isEmpty()) {
+        if (cartInfo.items() == null || cartInfo.items().isEmpty()) { // 이것도 response 안에 행위로 둘 것 같음.
             throw new IllegalArgumentException("장바구니가 비어있습니다: " + request.cartCode());
         }
 
         //Map 보다 List<객체> 형식으로 사용하는 게 좀 더 확장성과 객체지향적이라고 생각합니다.
-        Map<String, ProductResponse> productMap = new HashMap<>();
-        for (CartResponse.CartItemResponse item : cartInfo.items()) {
-            ProductResponse productInfo = getProductInfo(item.productCode());
-            productMap.put(item.productCode(), productInfo);
+        Map<Long, ProductResponse> productMap = new HashMap<>();
+        for (CartItemInfo item : cartInfo.items()) {
+            ProductResponse productInfo = getProductInfoById(item.productId());
+            productMap.put(item.productId(), productInfo);
         }
 
         Order order = Order.create(
@@ -144,15 +153,15 @@ public class OrderServiceImpl implements OrderService {
         Order savedOrder = orderJpaRepository.save(order);
 
         List<OrderItem> orderItems = new ArrayList<>();
-        for (CartResponse.CartItemResponse cartItem : cartInfo.items()) {
-            ProductResponse productInfo = productMap.get(cartItem.productCode());
+        for (CartItemInfo cartItem : cartInfo.items()) {
+            ProductResponse productInfo = productMap.get(cartItem.productId());
 
             OrderItem orderItem = savedOrder.createOrderItem(
-                    productInfo.productId(),
+                    productInfo.id(),
                     productInfo.sellerId(),
-                    productInfo.productName(),
+                    productInfo.name(),
                     cartItem.quantity(),
-                    cartItem.price()
+                    cartItem.totalPrice() / cartItem.quantity() // totalPrice를 quantity로 나눠서 단가 계산
             );
             orderItems.add(orderItem);
         }
@@ -184,23 +193,35 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderCreateResponse createDirectOrder(OrderDirectRequest request) {
-        ClientResponse userInfo = getUserInfo(request.userCode());
+        UserResponse userInfo = getUserInfo(request.userCode());
 
         ProductResponse productInfo = getProductInfo(request.productCode());
 
+        log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerId: {}, sellerName: {}, quantity: {}, price: {}, status: {}, images: {}",
+                productInfo.id(), 
+                productInfo.code(),
+                productInfo.name(), 
+                productInfo.sellerId(),
+                productInfo.sellerName(),
+                productInfo.quantity(), 
+                productInfo.price(), 
+                productInfo.status(), 
+                productInfo.images());
+
         Order order = Order.create(
-                userInfo.id(),
+                1L,
+//                userInfo.id(),
                 request.orderType(),
                 request.address()
         );
         Order savedOrder = orderJpaRepository.save(order);
 
         OrderItem orderItem = savedOrder.createOrderItem(
-                productInfo.productId(),
+                productInfo.id(),
                 productInfo.sellerId(),
-                productInfo.productName(),
+                productInfo.name(),
                 request.quantity(),
-                productInfo.totalPrice()
+                productInfo.price()
         );
         orderItemJpaRepository.save(orderItem);
 
@@ -246,7 +267,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderValidateResponse validateOrder(OrderValidateRequest request) {
-        ClientResponse userInfo = getUserInfo(request.buyerCode());
+        UserResponse userInfo = getUserInfo(request.buyerCode());
 
         if (userInfo.address() == null || userInfo.address().isBlank()) {
             throw new IllegalStateException("배송 가능한 주소가 없습니다: " + request.buyerCode());
@@ -268,25 +289,25 @@ public class OrderServiceImpl implements OrderService {
                 throw new IllegalStateException("재고가 부족합니다. 상품 코드: " + productRequest.productCode());
             }
 
-            if (productInfo.totalPrice() <= 0) {
+            if (productInfo.price() <= 0) {
                 throw new IllegalStateException("유효하지 않은 상품 가격입니다. 상품 코드: " + productRequest.productCode());
             }
 
-            if (productInfo.saleStatus() == null || !productInfo.saleStatus().isSaleable()) { // product enum이랑 일치해야 함.
+            if (productInfo.status() == null || productInfo.status() != com.ll.order.domain.model.enums.ProductStatus.ON_SALE) {
                 throw new IllegalStateException("판매 중이 아닌 상품입니다. 상품 코드: " + productRequest.productCode());
             }
 
-            if (productRequest.price() != productInfo.totalPrice()) {
+            if (productRequest.price() != productInfo.price()) {
                 throw new IllegalStateException("요청한 상품 가격이 실제 가격과 일치하지 않습니다. 상품 코드: " + productRequest.productCode());
             }
 
             totalQuantity += productRequest.quantity();
-            totalAmount += (long) productInfo.totalPrice() * productRequest.quantity();
+            totalAmount += (long) productInfo.price() * productRequest.quantity();
 
             itemInfos.add(new OrderValidateResponse.ItemInfo(
                     productRequest.productCode(),
                     productRequest.quantity(),
-                    productInfo.totalPrice()
+                    productInfo.price()
             ));
         }
 
@@ -309,6 +330,11 @@ public class OrderServiceImpl implements OrderService {
     private ProductResponse getProductInfo(String productCode) {
         return Optional.ofNullable(productServiceClient.getProductByCode(productCode))
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productCode));
+    }
+
+    private ProductResponse getProductInfoById(Long productId) {
+        return Optional.ofNullable(productServiceClient.getProductById(productId))
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productId));
     }
 
     private OrderCreateResponse convertToOrderCreateResponse(Order order) {
@@ -336,12 +362,12 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
-    private ClientResponse getUserInfo(String userCode) {
+    private UserResponse getUserInfo(String userCode) {
         return Optional.ofNullable(userServiceClient.getUserByCode(userCode))
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userCode));
     }
 
-    private CartResponse getCartInfo(String cartCode) {
+    private CartItemsResponse getCartInfo(String cartCode) {
         return Optional.ofNullable(cartServiceClient.getCartByCode(cartCode))
                 .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다: " + cartCode));
     }

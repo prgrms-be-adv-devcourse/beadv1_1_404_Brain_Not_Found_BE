@@ -53,3 +53,6 @@ custom:
       refund-event.dlq: ${KAFKA_REFUND_DLQ_TOPIC}
       inventory-event: ${KAFKA_INVENTORY_TOPIC}
       inventory-event.dlq: ${KAFKA_INVENTORY_DLQ_TOPIC}
+
+server:
+  port: 8085
