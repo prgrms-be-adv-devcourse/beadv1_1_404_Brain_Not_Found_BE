@@ -35,7 +35,6 @@ public class ElasticsearchIndexInitializer implements ApplicationRunner {
             reindexAll();
         } catch (Exception e) {
             log.error("Elasticsearch 재색인 실패: {}", e.getMessage(), e);
-            log.warn("검색 기능이 정상 동작하지 않을 수 있습니다. Elasticsearch 상태를 확인하세요.");
         }
         log.info("=== Elasticsearch 전체 재색인 종료 ===");
     }
@@ -54,7 +53,7 @@ public class ElasticsearchIndexInitializer implements ApplicationRunner {
         // 새로운 인덱스 생성
         indexOps.create();
         indexOps.putMapping(indexOps.createMapping());
-        log.info("새로운 Elasticsearch 인덱스 생성 완료 (analyzer 설정 적용)");
+        log.info("새로운 Elasticsearch 인덱스 생성 완료");
 
         // 모든 상품 조회
         List<Product> products = productRepository.findAllByIsDeletedFalse();

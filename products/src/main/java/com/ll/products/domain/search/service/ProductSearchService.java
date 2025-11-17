@@ -38,73 +38,58 @@ public class ProductSearchService {
     ) {
         log.info("상품 검색 요청: keyword={}, categoryId={}, price={}-{}, status={}, pageable={}",
                 keyword, categoryId, minPrice, maxPrice, status, pageable);
-
-        // 정렬 전략 결정
-        if (pageable.getSort().isUnsorted()) {
-            // 사용자가 정렬을 지정하지 않은 경우에만 기본 정렬 적용
-            if (keyword == null || keyword.isBlank()) {
-                // 키워드 없음 → 최신순
-                pageable = PageRequest.of(
-                        pageable.getPageNumber(),
-                        pageable.getPageSize(),
-                        Sort.by(Sort.Direction.DESC, "createdAt")
-                );
-                log.debug("기본 정렬: 최신순(createdAt desc)");
-            } else {
-                // 키워드 있고 정렬 없음 → Elasticsearch 자동 관련도순
-                log.debug("기본 정렬: 관련도순 (Elasticsearch score)");
-            }
-        } else {
-            // 사용자가 정렬을 명시적으로 지정한 경우
-            log.debug("사용자 지정 정렬 사용: {}", pageable.getSort());
-        }
-
-        // 동적 쿼리 빌드
+        pageable = applyDefaultSort(keyword, pageable);
         Query query = buildDynamicQuery(keyword, categoryId, minPrice, maxPrice, status);
-
-        // NativeQuery 생성
         NativeQuery nativeQuery = NativeQuery.builder()
                 .withQuery(query)
                 .withPageable(pageable)
                 .build();
-
-        // 검색 실행
         SearchHits<ProductDocument> searchHits = elasticsearchOperations.search(nativeQuery, ProductDocument.class);
-
-        // SearchHits를 Page로 변환
         List<ProductDocument> products = searchHits.getSearchHits().stream()
                 .map(SearchHit::getContent)
                 .toList();
-
         Page<ProductDocument> documents = new PageImpl<>(
                 products,
                 pageable,
                 searchHits.getTotalHits()
         );
-
         log.info("검색 결과: totalElements={}, totalPages={}, currentPage={}, size={}",
                 documents.getTotalElements(), documents.getTotalPages(), documents.getNumber(), documents.getSize());
-
         return documents.map(ProductSearchResponse::from);
     }
 
-    /**
-     * 동적 쿼리 빌드
-     * - 키워드가 있으면: multi_match + match_phrase (필드별 가중치 적용)
-     *   - name: 3.0배 (가장 중요)
-     *   - categoryName: 1.5배 (중간)
-     *   - description: 1.0배 (기본)
-     * - 필터 동적 추가: categoryId, status, price, isDeleted
-     */
+
+
+
+    // 기본 정렬 전략 설정
+    private static Pageable applyDefaultSort(String keyword, Pageable pageable) {
+        if (pageable.getSort().isUnsorted()) {
+            if (keyword == null || keyword.isBlank()) {
+                pageable = PageRequest.of(
+                        pageable.getPageNumber(),
+                        pageable.getPageSize(),
+                        Sort.by(Sort.Direction.DESC, "createdAt")
+                );
+                log.debug("최신순 정렬");
+            } else {
+                log.debug("관련도순 졍렬");
+            }
+        } else {
+            log.debug("사용자 지정 정렬 사용: {}", pageable.getSort());
+        }
+        return pageable;
+    }
+
+    // 동적 쿼리 생성
     private Query buildDynamicQuery(String keyword, Long categoryId, Integer minPrice, Integer maxPrice, String status) {
         BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
         // 키워드 검색
         if (keyword != null && !keyword.isBlank()) {
-            List<Query> shouldQueries = new ArrayList<>();
+            List<Query> queries = new ArrayList<>();
 
             // multi_match: 기본 토큰 매칭(name->3.0, categoryName->1.5, description->1.0)
-            shouldQueries.add(Query.of(q -> q
+            queries.add(Query.of(q -> q
                     .multiMatch(m -> m
                             .query(keyword)
                             .fields("name^3.0", "categoryName^1.5", "description^1.0")
@@ -113,7 +98,7 @@ public class ProductSearchService {
             ));
 
             // match_phrase(name): 순서 일치 시 추가 점수 2.0
-            shouldQueries.add(Query.of(q -> q
+            queries.add(Query.of(q -> q
                     .matchPhrase(mp -> mp
                             .field("name")
                             .query(keyword)
@@ -122,7 +107,7 @@ public class ProductSearchService {
             ));
 
             // match_phrase(categoryName): 순서 일치 시 추가 점수 1.5
-            shouldQueries.add(Query.of(q -> q
+            queries.add(Query.of(q -> q
                     .matchPhrase(mp -> mp
                             .field("categoryName")
                             .query(keyword)
@@ -131,7 +116,7 @@ public class ProductSearchService {
             ));
 
             // match_phrase(description): 순서 일치 시 추가 점수 1.0
-            shouldQueries.add(Query.of(q -> q
+            queries.add(Query.of(q -> q
                     .matchPhrase(mp -> mp
                             .field("description")
                             .query(keyword)
@@ -139,14 +124,12 @@ public class ProductSearchService {
                     )
             ));
 
-            boolBuilder.should(shouldQueries);
+            boolBuilder.should(queries);
             boolBuilder.minimumShouldMatch("1");
         }
 
-        // 동적으로 필터 적용
         List<Query> filterQueries = new ArrayList<>();
-
-        // 삭제된 상품은 제외
+        // 삭제 상품 제외
         filterQueries.add(Query.of(q -> q
                 .term(t -> t
                         .field("isDeleted")
@@ -176,7 +159,6 @@ public class ProductSearchService {
 
         // 가격 범위 필터링
         if (minPrice != null && maxPrice != null) {
-            // 둘 다 있으면 범위 필터
             filterQueries.add(Query.of(q -> q
                     .range(r -> r
                             .number(n -> n
@@ -187,7 +169,6 @@ public class ProductSearchService {
                     )
             ));
         } else if (minPrice != null) {
-            // minPrice만 있으면 gte
             filterQueries.add(Query.of(q -> q
                     .range(r -> r
                             .number(n -> n
@@ -197,7 +178,6 @@ public class ProductSearchService {
                     )
             ));
         } else if (maxPrice != null) {
-            // maxPrice만 있으면 lte
             filterQueries.add(Query.of(q -> q
                     .range(r -> r
                             .number(n -> n
@@ -207,15 +187,12 @@ public class ProductSearchService {
                     )
             ));
         }
-
         boolBuilder.filter(filterQueries);
 
         // 키워드가 없으면 전체 검색
         if (keyword == null || keyword.isBlank()) {
             boolBuilder.must(Query.of(q -> q.matchAll(m -> m)));
         }
-
         return Query.of(q -> q.bool(boolBuilder.build()));
     }
-
 }
