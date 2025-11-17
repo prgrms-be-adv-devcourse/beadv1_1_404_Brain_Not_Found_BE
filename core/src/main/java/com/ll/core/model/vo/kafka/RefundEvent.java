@@ -8,8 +8,6 @@ public record RefundEvent (
         RefundEventType refundEventType,
         @NotBlank(message = "buyerCode 는 공백이거나 null일 수 없습니다.")
         String buyerCode,
-        @NotBlank(message = "sellerCode 는 공백이거나 null일 수 없습니다.")
-        String sellerCode,
         @NotBlank(message = "orderItemCode 는 공백이거나 null일 수 없습니다.")
         String orderItemCode,
         @NotBlank(message = "referenceCode 는 공백이거나 null일 수 없습니다.")
