@@ -40,6 +40,7 @@ dependencies {
     runtimeOnly "mysql:mysql-connector-java:${mysqlVersion}"
 
     api 'com.fasterxml.uuid:java-uuid-generator:5.1.1'
+    api 'com.github.f4b6a3:uuid-creator:5.3.7'
     api 'org.modelmapper:modelmapper:3.2.0'
 
 
