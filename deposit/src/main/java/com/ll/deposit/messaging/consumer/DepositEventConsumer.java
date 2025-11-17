@@ -1,5 +1,6 @@
 package com.ll.deposit.messaging.consumer;
 
+import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import com.ll.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.deposit.service.DepositService;
@@ -37,6 +38,14 @@ public class DepositEventConsumer {
 //            // TODO: 보상 처리 로직 추가 ( Dead Letter Queue 는 KafkaConfig 에서 설정 완료 )
 //        }
 //    }
+
+    @KafkaListener(topics = "order-event", groupId = "deposit-service")
+    public void handleOrderDLQ(OrderEvent event) {
+        if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
+            return;
+        }
+        depositService.paymentDeposit(event);
+    }
 
     @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
     public void handleSettlementCompleteEvent(@Valid SettlementEvent event) {

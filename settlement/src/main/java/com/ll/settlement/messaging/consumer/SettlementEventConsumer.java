@@ -17,18 +17,24 @@ public class SettlementEventConsumer {
 
     @KafkaListener(topics = "order-event", groupId = "settlement-service")
     public void handleOrderCompleteEvent(OrderEvent event) {
-        try {
-            log.info("Received order complete event from settlement service : {}", event.toString());
-            settlementService.createSettlement(event);
-        } catch (Exception e) {
-            log.error("Failed to process OrderCompleteEvent for OrderItemCode {}: {}", event.orderItemCode(), e.getMessage());
-            // TODO: 보상 처리 로직 추가 ( Dead Letter Queue 는 KafkaConfig 에서 설정 완료 )
+        if ( !event.orderEventType().toString().equals("ORDER_COMPLETED") ) {
+            return;
         }
+        log.info("[Settlement Module] Received order complete event from settlement service : {}", event);
+        settlementService.createSettlement(event);
     }
 
-    @KafkaListener(topics = "settlement-event.dlq", groupId = "settlement-service.dlq")
-    public void handleDLQ(SettlementEvent event) {
-        log.error("Received message in DLQ for OrderItemCode {}: {}", event.orderItemCode(), event);
+    @KafkaListener(topics = "settlement-event.dlq", groupId = "settlement-service")
+    public void handleSettlementDLQ(SettlementEvent event) {
+        log.error("[Settlement Module] Received message in DLQ for OrderItemCode {}", event);
         settlementService.failByDlqEvent(event);
+    }
+
+    @KafkaListener(topics = "order-event.dlq", groupId = "settlement-service")
+    public void handleOrderDLQ(OrderEvent event) {
+        if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
+            return;
+        }
+        log.error("[Settlement Module] Received message in DLQ for OrderItemCode {}", event);
     }
 }

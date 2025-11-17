@@ -2,6 +2,7 @@ package com.ll.settlement.service;
 
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import com.ll.core.model.vo.kafka.OrderEvent;
+import com.ll.settlement.messaging.producer.SettlementEventProducer;
 import com.ll.settlement.model.entity.Settlement;
 import com.ll.settlement.model.exception.SettlementNotFoundException;
 import com.ll.settlement.repository.SettlementRepository;
@@ -16,12 +17,14 @@ import org.springframework.stereotype.Service;
 public class SettlementServiceImpl implements SettlementService {
 
     private final SettlementRepository settlementRepository;
+    private final SettlementEventProducer settlementEventProducer;
 
     @Override
     public void createSettlement(OrderEvent event) {
         Settlement settlement = SettlementMapper.from(event);
         settlementRepository.save(settlement);
         log.info("Created settlement : {}", settlement);
+        settlementEventProducer.sendOrder(OrderEvent.fromSettlementComplete(event));
     }
 
     @Override
