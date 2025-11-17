@@ -1,5 +1,6 @@
 package com.ll.settlement.messaging.consumer;
 
+import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.settlement.service.SettlementService;
@@ -15,19 +16,19 @@ public class SettlementEventConsumer {
 
     private final SettlementService settlementService;
 
+    @KafkaListener(topics = "settlement-event.dlq", groupId = "settlement-service")
+    public void handleSettlementDLQ(SettlementEvent event) {
+        log.error("[Settlement][Settlement Module] Received message in DLQ for OrderItemCode {}", event);
+        settlementService.failByDlqEvent(event);
+    }
+
     @KafkaListener(topics = "order-event", groupId = "settlement-service")
-    public void handleOrderCompleteEvent(OrderEvent event) {
+    public void handleOrderEvent(OrderEvent event) {
         if ( !event.orderEventType().toString().equals("ORDER_COMPLETED") ) {
             return;
         }
-        log.info("[Settlement Module] Received order complete event from settlement service : {}", event);
+        log.info("[Order][Settlement Module] Received order complete event from settlement service : {}", event);
         settlementService.createSettlement(event);
-    }
-
-    @KafkaListener(topics = "settlement-event.dlq", groupId = "settlement-service")
-    public void handleSettlementDLQ(SettlementEvent event) {
-        log.error("[Settlement Module] Received message in DLQ for OrderItemCode {}", event);
-        settlementService.failByDlqEvent(event);
     }
 
     @KafkaListener(topics = "order-event.dlq", groupId = "settlement-service")
@@ -35,6 +36,13 @@ public class SettlementEventConsumer {
         if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
             return;
         }
-        log.error("[Settlement Module] Received message in DLQ for OrderItemCode {}", event);
+        log.error("[Order][Settlement Module] Received message in DLQ for OrderItemCode {}", event);
     }
+
+    @KafkaListener(topics = "refund-event", groupId = "settlement-service")
+    public void handleRefundEvent(RefundEvent event) {
+        log.info("[Refund][Settlement Module] Received refund complete event from settlement service : {}", event);
+        settlementService.setSettlementStatusToRefunded(event);
+    }
+
 }

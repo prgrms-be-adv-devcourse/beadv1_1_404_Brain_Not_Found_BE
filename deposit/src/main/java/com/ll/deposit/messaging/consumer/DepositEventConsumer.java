@@ -40,7 +40,7 @@ public class DepositEventConsumer {
 //    }
 
     @KafkaListener(topics = "order-event", groupId = "deposit-service")
-    public void handleOrderDLQ(OrderEvent event) {
+    public void handleOrderEvent(OrderEvent event) {
         if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
             return;
         }
@@ -48,7 +48,7 @@ public class DepositEventConsumer {
     }
 
     @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
-    public void handleSettlementCompleteEvent(@Valid SettlementEvent event) {
+    public void handleSettlementEvent(@Valid SettlementEvent event) {
         depositService.chargeDeposit(event.sellerCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));
     }
 

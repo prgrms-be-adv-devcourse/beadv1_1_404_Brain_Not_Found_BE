@@ -4,4 +4,5 @@ public enum SettlementStatus {
     CREATED,
     SUCCESS,
     FAILED,
+    REFUNDED
 }

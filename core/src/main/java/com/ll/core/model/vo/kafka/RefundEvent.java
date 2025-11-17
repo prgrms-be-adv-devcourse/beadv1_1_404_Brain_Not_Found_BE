@@ -1,11 +1,8 @@
 package com.ll.core.model.vo.kafka;
 
-import com.ll.core.model.vo.kafka.enums.RefundEventType;
 import jakarta.validation.constraints.*;
 
 public record RefundEvent (
-        @NotNull(message = "refundEventType 은 필수입력값입니다.")
-        RefundEventType refundEventType,
         @NotBlank(message = "buyerCode 는 공백이거나 null일 수 없습니다.")
         String buyerCode,
         @NotBlank(message = "orderItemCode 는 공백이거나 null일 수 없습니다.")

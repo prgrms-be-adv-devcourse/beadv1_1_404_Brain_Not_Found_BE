@@ -1,5 +1,6 @@
 package com.ll.settlement.service;
 
+import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.settlement.messaging.producer.SettlementEventProducer;
@@ -32,5 +33,13 @@ public class SettlementServiceImpl implements SettlementService {
         Settlement settlement = settlementRepository.findById(event.settlementId()).orElseThrow(SettlementNotFoundException::new);
         settlement.fail("Settlement failed due to external error");
         settlementRepository.save(settlement);
+    }
+
+    @Override
+    public void setSettlementStatusToRefunded(RefundEvent event) {
+        Settlement settlement = settlementRepository.findByOrderItemCode(event.orderItemCode()).orElseThrow(SettlementNotFoundException::new);
+        settlement.refund();
+        settlementRepository.save(settlement);
+        log.info("Settlement refunded : {}", settlement);
     }
 }
