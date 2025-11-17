@@ -18,6 +18,12 @@ import java.util.List;
 public class UserController {
     private final UserService userService;
 
+    @GetMapping("/ping")
+    public ResponseEntity<BaseResponse<String>> pong() {
+        System.out.println("ProductController.pong");
+        return BaseResponse.ok("Ok");
+    }
+
     // 회원 정보 조회
     @GetMapping("/info")
     public ResponseEntity<BaseResponse<UserResponse>> getUser(

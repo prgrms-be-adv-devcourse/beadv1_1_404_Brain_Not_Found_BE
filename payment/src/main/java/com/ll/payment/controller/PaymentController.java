@@ -8,10 +8,7 @@ import com.ll.payment.model.vo.PaymentRequest;
 import com.ll.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -19,6 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentController { // TODO : 결제 실패 시 주문 상태 갱신 또는 트랜잭션 롤백 정책 ( 트랜잭션 관리가 가장 중요 )
 
     private final PaymentService paymentService;
+
+    @GetMapping("/ping")
+    public ResponseEntity<BaseResponse<String>> pong() {
+        System.out.println("PaymentController.pong");
+        return BaseResponse.ok("Ok");
+    }
+
+
 
     @PostMapping("/toss")
     public ResponseEntity<BaseResponse<Payment>> tossPayment(
