@@ -20,7 +20,7 @@ public class DepositEventConsumer {
 
     private final DepositService depositService;
 
-    @KafkaListener(topics = "user-create-event", groupId = "cart-service")
+    @KafkaListener(topics = "user-create-event", groupId = "deposit-service")
     public void handleUserCreateEvent(UserCreateEvent event) {
         if ( !event.eventType().toString().equals("DEPOSIT_CREATE") ) {
             return;
@@ -42,19 +42,21 @@ public class DepositEventConsumer {
         if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
             return;
         }
+        log.info("[Order][Deposit Module] Received OrderEvent from Order service : {}", event);
         depositService.paymentDeposit(event);
     }
 
-    @KafkaListener(topics = "order-event.dlq", groupId = "settlement-service")
+    @KafkaListener(topics = "order-event.dlq", groupId = "deposit-service")
     public void handleOrderDLQ(OrderEvent event) {
         if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
             return;
         }
-        log.error("[Order][Settlement Module] Received message in DLQ for OrderItemCode {}", event);
+        log.error("[Order][Deposit Module] Received message in DLQ for OrderItemCode {}", event);
     }
 
     @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
     public void handleSettlementEvent(@Valid SettlementEvent event) {
+        log.info("[Settlement][Deposit Module] Received SettlementEvent from Settlement service : {}", event);
         depositService.chargeDeposit(event.sellerCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));
     }
 

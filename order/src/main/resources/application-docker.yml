@@ -16,10 +16,6 @@ spring:
   kafka:
     bootstrap-servers:
       - ${KAFKA_1_CONTAINER_NAME}:9090
-    consumer:
-      group-id: order-service
-      properties:
-        allow.auto.create.topics: false
 
 management:
   endpoints:

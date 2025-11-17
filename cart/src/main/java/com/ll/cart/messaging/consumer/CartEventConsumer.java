@@ -19,7 +19,7 @@ public class CartEventConsumer {
         log.info("[UserCreate][Cart Module] Received UserCreate from User service : {}", event);
     }
 
-    @KafkaListener(topics = "user-create-event.dlq", groupId = "deposit-service")
+    @KafkaListener(topics = "user-create-event.dlq", groupId = "cart-service")
     public void handleUserCreateDLQ(UserCreateEvent event) {
         if ( !event.eventType().toString().equals("CART_CREATE") ) {
             return;

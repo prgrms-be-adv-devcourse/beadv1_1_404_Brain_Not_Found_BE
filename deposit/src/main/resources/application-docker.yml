@@ -21,7 +21,7 @@ spring:
     bootstrap-servers:
       - ${KAFKA_1_CONTAINER_NAME}:9090
     consumer:
-      group-id: order-service
+      group-id: deposit-service
       properties:
         allow.auto.create.topics: false
 

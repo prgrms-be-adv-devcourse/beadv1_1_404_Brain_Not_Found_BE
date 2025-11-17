@@ -31,10 +31,6 @@ spring:
   kafka:
     bootstrap-servers:
       - localhost:9092
-    consumer:
-      group-id: deposit-service
-      properties:
-        allow.auto.create.topics: false
 
 # External Service URLs
 external:
