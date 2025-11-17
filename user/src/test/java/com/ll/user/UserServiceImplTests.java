@@ -1,192 +1,259 @@
 package com.ll.user;
 
+import com.ll.user.exception.UserNotFoundException;
 import com.ll.user.model.entity.User;
-import com.ll.user.model.enums.Grade;
 import com.ll.user.model.enums.SocialProvider;
 import com.ll.user.model.vo.request.UserLoginRequest;
 import com.ll.user.model.vo.request.UserPatchRequest;
+import com.ll.user.model.vo.response.UserLoginResponse;
+import com.ll.user.model.vo.response.UserResponse;
 import com.ll.user.repository.UserRepository;
 import com.ll.user.service.UserServiceImpl;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.modelmapper.ModelMapper;
 
+import java.lang.reflect.Field;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
-//@ExtendWith(MockitoExtension.class)
-//@DisplayName("UserServiceImpl 테스트")
-//class UserServiceImplTests {
-//
-//    @Mock
-//    private UserRepository userRepository;
-//
-//    @InjectMocks
-//    private UserServiceImpl userService;
-//
-//    @Test
-//    @DisplayName("유저 ID로 유저 조회 - 성공")
-//    void getUserById_Success() {
-//        // given
-//        Long userId = 1L;
-//        User expectedUser = User.builder()
-//                .id(userId)
-//                .name("Test User")
-//                .build();
-//        given(userRepository.findById(userId)).willReturn(Optional.of(expectedUser));
-//
-//        // when
-//        User actualUser = userService.getUserById(userId);
-//
-//        // then
-//        assertThat(actualUser).isEqualTo(expectedUser);
-//        then(userRepository).should().findById(userId);
-//    }
-//
-//    @Test
-//    @DisplayName("유저 ID로 유저 조회 - 유저 없음")
-//    void getUserById_NotFound() {
-//        // given
-//        Long userId = 1L;
-//        given(userRepository.findById(userId)).willReturn(Optional.empty());
-//
-//        // when & then
-//        assertThatThrownBy(() -> userService.getUserById(userId))
-//                .isInstanceOf(NoSuchElementException.class)
-//                .hasMessage("유저를 찾을 수 없습니다: " + userId);
-//    }
-//
-//    @Test
-//    @DisplayName("유저 업데이트 - 성공")
-//    void updateUser_Success() {
-//        // given
-//        Long userId = 1L;
-//        UserPatchRequest request = new UserPatchRequest("Updated Name", "updated.jpg", "KB", "123-456", "서울", Grade.GOLD, 4L);
-//        User existingUser = User.builder()
-//                .id(userId)
-//                .name("Old Name")
-//                .build();
-//        given(userRepository.findById(userId)).willReturn(Optional.of(existingUser));
-//        given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
-//
-//        // when
-//        User updatedUser = userService.updateUser(request, userId);
-//
-//        // then
-//        assertThat(updatedUser.getName()).isEqualTo("Updated Name");
-//        assertThat(updatedUser.getProfileImageUrl()).isEqualTo("updated.jpg");
-//        assertThat(updatedUser.getAccountBank()).isEqualTo("KB");
-//        assertThat(updatedUser.getAccountNumber()).isEqualTo("123-456");
-//        assertThat(updatedUser.getAddress()).isEqualTo("서울");
-//        assertThat(updatedUser.getGrade()).isEqualTo(Grade.GOLD);
-//        assertThat(updatedUser.getMannerScore()).isEqualTo(4L);
-//        then(userRepository).should().findById(userId);
-//        then(userRepository).should().save(eq(updatedUser));
-//    }
-//
-//    @Test
-//    @DisplayName("유저 업데이트 - userId null")
-//    void updateUser_UserIdNull() {
-//        // given
-//        UserPatchRequest request = new UserPatchRequest(null, null, null, null, null, null, null);
-//
-//        // when & then
-//        assertThatThrownBy(() -> userService.updateUser(request, null))
-//                .isInstanceOf(IllegalArgumentException.class)
-//                .hasMessage("유저아이디가 필요합니다");
-//    }
-//
-//    @Test
-//    @DisplayName("유저 업데이트 - 유저 없음")
-//    void updateUser_NotFound() {
-//        // given
-//        Long userId = 1L;
-//        UserPatchRequest request = new UserPatchRequest("Updated Name", null, null, null, null, null, null);
-//        given(userRepository.findById(userId)).willReturn(Optional.empty());
-//
-//        // when & then
-//        assertThatThrownBy(() -> userService.updateUser(request, userId))
-//                .isInstanceOf(NoSuchElementException.class)
-//                .hasMessage("유저를 찾을 수 없습니다:" + userId);
-//    }
-//
-//    @Test
-//    @DisplayName("유저 리스트 조회")
-//    void getUserList() {
-//        // given
-//        List<User> expectedUsers = List.of(
-//                User.builder().id(1L).name("User1").build(),
-//                User.builder().id(2L).name("User2").build()
-//        );
-//        given(userRepository.findAll()).willReturn(expectedUsers);
-//
-//        // when
-//        List<User> actualUsers = userService.getUserList();
-//
-//        // then
-//        assertThat(actualUsers).isEqualTo(expectedUsers);
-//        then(userRepository).should().findAll();
-//    }
-//
-//    @Test
-//    @DisplayName("createOrUpdateUser - 기존 유저 업데이트")
-//    void createOrUpdateUser_Existing() {
-//        // given
-//        String socialId = "social123";
-//        SocialProvider socialProvider = SocialProvider.GOOGLE;
-//        String email = "new@example.com";
-//        String name = "Updated Name";
-//        UserLoginRequest request = new UserLoginRequest(socialId, socialProvider, email, name);
-//        User existingUser = User.builder()
-//                .id(1L)
-//                .socialId(socialId)
-//                .socialProvider(socialProvider)
-//                .email("old@example.com")
-//                .name("Old Name")
-//                .build();
-//        given(userRepository.findBySocialIdAndSocialProvider(socialId, socialProvider)).willReturn(Optional.of(existingUser));
-//
-//        // when
-//        User result = userService.createOrUpdateUser(request);
-//
-//        // then
-//        assertThat(result.getId()).isEqualTo(1L);
-//        assertThat(result.getEmail()).isEqualTo(email);
-//        assertThat(result.getName()).isEqualTo(name);
-//        // Note: No save is called in the implementation, so repository.save() is not mocked/verified here
-//        then(userRepository).should().findBySocialIdAndSocialProvider(socialId, socialProvider);
-//    }
-//
-//    @Test
-//    @DisplayName("createOrUpdateUser - 신규 유저 생성")
-//    void createOrUpdateUser_New() {
-//        // given
-//        String socialId = "social123";
-//        SocialProvider socialProvider = SocialProvider.GOOGLE;
-//        String email = "new@example.com";
-//        String name = "New Name";
-//        UserLoginRequest request = new UserLoginRequest(socialId, socialProvider, email, name);
-//        given(userRepository.findBySocialIdAndSocialProvider(socialId, socialProvider)).willReturn(Optional.empty());
-//
-//        // when
-//        User result = userService.createOrUpdateUser(request);
-//
-//        // then
-//        assertThat(result.getSocialId()).isEqualTo(socialId);
-//        assertThat(result.getSocialProvider()).isEqualTo(socialProvider);
-//        assertThat(result.getEmail()).isEqualTo(email);
-//        assertThat(result.getName()).isEqualTo(name);
-//        assertThat(result.getId()).isNull(); // ID is not set as it's not saved
-//        // Note: No save is called in the implementation
-//        then(userRepository).should().findBySocialIdAndSocialProvider(socialId, socialProvider);
-//    }
-//}
+@ExtendWith(MockitoExtension.class)
+class UserServiceImplTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private ModelMapper modelMapper;
+
+    @InjectMocks
+    private UserServiceImpl userService;
+
+    private static final Long TEST_USER_ID = 1L;
+    private static final String TEST_USER_CODE = "U12345";
+    private static final String SOCIAL_ID = "social123";
+    private static final SocialProvider SOCIAL_PROVIDER = SocialProvider.GOOGLE;
+
+    // 리플렉션으로 BaseEntity 필드 주입 (id, code)
+    private void setBaseEntityField(User user, String fieldName, Object value) {
+        try {
+            Field field = user.getClass().getSuperclass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(user, value);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to set BaseEntity field: " + fieldName, e);
+        }
+    }
+
+    private User createTestUser() {
+        User user = User.builder()
+                .socialId(SOCIAL_ID)
+                .socialProvider(SOCIAL_PROVIDER)
+                .email("test@example.com")
+                .name("Test User")
+                .build();
+
+        setBaseEntityField(user, "id", TEST_USER_ID);
+        setBaseEntityField(user, "code", TEST_USER_CODE);
+        return user;
+    }
+
+    private User createAnotherUser() {
+        User user = User.builder()
+                .socialId("social456")
+                .socialProvider(SocialProvider.NAVER)
+                .email("user2@example.com")
+                .name("User Two")
+                .build();
+
+        setBaseEntityField(user, "id", 2L);
+        setBaseEntityField(user, "code", "U67890");
+        return user;
+    }
+
+    @Nested
+    @DisplayName("getUserById")
+    class GetUserById {
+
+        @Test
+        @DisplayName("성공: ID로 조회")
+        void success() {
+            User user = createTestUser();
+            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+
+            UserResponse response = userService.getUserById(TEST_USER_ID);
+
+            assertThat(response.id()).isEqualTo(TEST_USER_ID);
+            assertThat(response.code()).isEqualTo(TEST_USER_CODE);
+            verify(userRepository).findById(TEST_USER_ID);
+        }
+
+        @Test
+        @DisplayName("실패: 존재하지 않음")
+        void notFound() {
+            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.empty());
+            assertThatThrownBy(() -> userService.getUserById(TEST_USER_ID))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("getUserByUserCode")
+    class GetUserByUserCode {
+
+        @Test
+        @DisplayName("성공: 코드로 조회")
+        void success() {
+            User user = createTestUser();
+            when(userRepository.findByCode(TEST_USER_CODE)).thenReturn(Optional.of(user));
+
+            UserResponse response = userService.getUserByUserCode(TEST_USER_CODE);
+
+            assertThat(response.code()).isEqualTo(TEST_USER_CODE);
+            verify(userRepository).findByCode(TEST_USER_CODE);
+        }
+
+        @Test
+        @DisplayName("실패: 존재하지 않음")
+        void notFound() {
+            when(userRepository.findByCode(TEST_USER_CODE)).thenReturn(Optional.empty());
+            assertThatThrownBy(() -> userService.getUserByUserCode(TEST_USER_CODE))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("updateUser")
+    class UpdateUser {
+
+        @Test
+        @DisplayName("성공: 부분 업데이트")
+        void success() {
+            User user = createTestUser();
+
+            UserPatchRequest request = new UserPatchRequest(
+                    "New Name", null, "new@example.com", null, null, null, null, null
+            );
+
+            when(userRepository.findByCode(TEST_USER_CODE)).thenReturn(Optional.of(user));
+            when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+            doAnswer(inv -> {
+                User u = inv.getArgument(1);
+                try {
+                    Field name = User.class.getDeclaredField("name");  name.setAccessible(true);  name.set(u, "New Name");
+                    Field email = User.class.getDeclaredField("email"); email.setAccessible(true); email.set(u, "new@example.com");
+                } catch (Exception ignored) {}
+                return null;
+            }).when(modelMapper).map(request, user);
+
+            UserResponse response = userService.updateUser(request, TEST_USER_CODE);
+
+            verify(userRepository).save(user);
+            assertThat(response.email()).isEqualTo("new@example.com");
+            assertThat(response.name()).isEqualTo("New Name");
+        }
+
+        @Test
+        @DisplayName("실패: 존재하지 않음")
+        void notFound() {
+            UserPatchRequest request = new UserPatchRequest("New name",null,"new@example.com",null,null,null,null,null);
+            when(userRepository.findByCode(TEST_USER_CODE)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.updateUser(request, TEST_USER_CODE))
+                    .isInstanceOf(UserNotFoundException.class);
+            verify(userRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("getUserList")
+    class GetUserList {
+
+        @Test
+        @DisplayName("성공: 전체 조회")
+        void success() {
+            User user1 = createTestUser();
+            User user2 = createAnotherUser();
+
+            when(userRepository.findAll()).thenReturn(List.of(user1, user2));
+
+            List<UserResponse> responses = userService.getUserList();
+
+            assertThat(responses).hasSize(2);
+            assertThat(responses).extracting(UserResponse::code)
+                    .containsExactlyInAnyOrder(TEST_USER_CODE, "U67890");
+        }
+
+        @Test
+        @DisplayName("성공: 빈 리스트")
+        void empty() {
+            when(userRepository.findAll()).thenReturn(List.of());
+            assertThat(userService.getUserList()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("createOrUpdateUser")
+    class CreateOrUpdateUser {
+
+        @Test
+        @DisplayName("성공: 신규 사용자 생성")
+        void createNew() {
+            UserLoginRequest request = new UserLoginRequest(
+                    SOCIAL_ID, SOCIAL_PROVIDER, "new@example.com", "New User"
+            );
+
+            when(userRepository.findBySocialIdAndSocialProvider(SOCIAL_ID, SOCIAL_PROVIDER))
+                    .thenReturn(Optional.empty());
+
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+                User saved = invocation.getArgument(0);
+                setBaseEntityField(saved, "id", 1L);
+                setBaseEntityField(saved, "code", "U1");
+                return saved;
+            });
+
+            UserLoginResponse response = userService.createOrUpdateUser(request);
+
+            verify(userRepository).save(argThat(u ->
+                    u.getSocialId().equals(SOCIAL_ID) &&
+                            u.getEmail().equals("new@example.com") &&
+                            u.getName().equals("New User")
+            ));
+            assertThat(response.code()).isEqualTo("U1");
+        }
+
+        @Test
+        @DisplayName("성공: 기존 사용자 업데이트")
+        void updateExisting() {
+            User existing = spy(createTestUser());
+
+            UserLoginRequest request = new UserLoginRequest(
+                    SOCIAL_ID, SOCIAL_PROVIDER, "updated@example.com", "Updated Name"
+            );
+
+            when(userRepository.findBySocialIdAndSocialProvider(SOCIAL_ID, SOCIAL_PROVIDER))
+                    .thenReturn(Optional.of(existing));
+            when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+            UserLoginResponse response = userService.createOrUpdateUser(request);
+
+            verify(existing).updateSocialInfo(SOCIAL_ID, SOCIAL_PROVIDER, "updated@example.com", "Updated Name");
+            verify(userRepository).save(existing);
+
+            assertThat(response.email()).isEqualTo("updated@example.com");
+            assertThat(response.name()).isEqualTo("Updated Name");
+        }
+    }
+}

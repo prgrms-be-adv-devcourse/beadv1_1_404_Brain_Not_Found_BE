@@ -9,8 +9,9 @@ import com.ll.user.model.enums.SocialProvider;
 import java.time.LocalDateTime;
 
 public record UserLoginResponse (
-        String socialId,
+        Long id,
         String code,
+        String socialId,
         SocialProvider socialProvider,
         String email,
         String name,
@@ -22,8 +23,9 @@ public record UserLoginResponse (
 ){
     public static UserLoginResponse from(User user) {
         return new UserLoginResponse(
-                user.getSocialId(),
+                user.getId(),
                 user.getCode(),
+                user.getSocialId(),
                 user.getSocialProvider(),
                 user.getEmail(),
                 user.getName(),
