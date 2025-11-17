@@ -58,12 +58,11 @@ class CartServiceImplTest {
     void addCartItem_NewItemAndUpdateQuantity_Success() {
         // given
         String userCode = "USER-001";
-        String cartCode = "CART-001";
         CartItemAddRequest firstRequest = new CartItemAddRequest(100L, 2, 10000); // quantity=2, price=10000 (단가)
         CartItemAddRequest secondRequest = new CartItemAddRequest(100L, 5, 10000); // quantity=5, price=10000 (단가)
 
         when(userServiceClient.getUserByCode(userCode)).thenReturn(testUser);
-        when(cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE))
+        when(cartRepository.findByUserIdAndStatus(testUser.id(), CartStatus.ACTIVE))
                 .thenReturn(Optional.of(testCart));
 
         // 첫 번째 추가: 새로운 아이템 (빈 결과 반환)
@@ -72,7 +71,7 @@ class CartServiceImplTest {
         when(cartItemRepository.save(any(CartItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // when - 첫 번째: 새로운 아이템 추가
-        CartItemAddResponse firstResponse = cartService.addCartItem(userCode, cartCode, firstRequest);
+        CartItemAddResponse firstResponse = cartService.addCartItem(userCode, firstRequest);
 
         // then - 첫 번째 추가 검증
         assertThat(firstResponse.productId()).isEqualTo(100L);
@@ -96,7 +95,7 @@ class CartServiceImplTest {
                 .thenReturn(Optional.of(existingCartItem));
 
         // when - 두 번째: 기존 아이템 수량 업데이트
-        CartItemAddResponse secondResponse = cartService.addCartItem(userCode, cartCode, secondRequest);
+        CartItemAddResponse secondResponse = cartService.addCartItem(userCode, secondRequest);
 
         // then - 두 번째 업데이트 검증
         assertThat(secondResponse.productId()).isEqualTo(100L);
@@ -107,7 +106,7 @@ class CartServiceImplTest {
         assertThat(testCart.getTotalPrice()).isEqualTo(50000);
 
         verify(userServiceClient, times(2)).getUserByCode(userCode);
-        verify(cartRepository, times(2)).findByCodeAndStatus(cartCode, CartStatus.ACTIVE);
+        verify(cartRepository, times(2)).findByUserIdAndStatus(testUser.id(), CartStatus.ACTIVE);
         verify(cartItemRepository, times(2)).findByCartAndProductId(testCart, 100L);
         verify(cartItemRepository, times(1)).save(any(CartItem.class));
     }
@@ -117,18 +116,17 @@ class CartServiceImplTest {
     void addCartItem_Success() {
         // given
         String userCode = "USER-001";
-        String cartCode = "CART-001";
         CartItemAddRequest request = new CartItemAddRequest(100L, 1, 10000); // quantity=1, price=10000 (단가)
 
         when(userServiceClient.getUserByCode(userCode)).thenReturn(testUser);
-        when(cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE))
+        when(cartRepository.findByUserIdAndStatus(testUser.id(), CartStatus.ACTIVE))
                 .thenReturn(Optional.of(testCart));
         when(cartItemRepository.findByCartAndProductId(testCart, 100L))
                 .thenReturn(Optional.empty());
         when(cartItemRepository.save(any(CartItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // when
-        CartItemAddResponse response = cartService.addCartItem(userCode, cartCode, request);
+        CartItemAddResponse response = cartService.addCartItem(userCode, request);
 
         // then
         assertThat(response.productId()).isEqualTo(100L);
@@ -146,7 +144,7 @@ class CartServiceImplTest {
         assertThat(testCart.getTotalPrice()).isEqualTo(10000);
 
         verify(userServiceClient).getUserByCode(userCode);
-        verify(cartRepository).findByCodeAndStatus(cartCode, CartStatus.ACTIVE);
+        verify(cartRepository).findByUserIdAndStatus(testUser.id(), CartStatus.ACTIVE);
     }
 
     @DisplayName("장바구니 아이템 삭제 및 총액 차감 - 성공")
@@ -154,12 +152,6 @@ class CartServiceImplTest {
     void removeCartItem_DecreaseTotalPrice_Success() throws Exception {
         // given
         String userCode = "USER-001";
-        String cartCode = "CART-001";
-        
-        // testCart의 code를 cartCode로 설정
-        Field codeField = testCart.getClass().getSuperclass().getDeclaredField("code");
-        codeField.setAccessible(true);
-        codeField.set(testCart, cartCode);
         
         CartItem cartItem1 = CartItem.create(testCart, 100L, 2, 10000); // quantity=2, price=10000 (단가) → totalPrice=20000
         CartItem cartItem2 = CartItem.create(testCart, 200L, 1, 15000); // quantity=1, price=15000 (단가) → totalPrice=15000
@@ -167,7 +159,7 @@ class CartServiceImplTest {
         testCart.increaseTotalPrice(15000);
 
         when(userServiceClient.getUserByCode(userCode)).thenReturn(testUser);
-        when(cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE))
+        when(cartRepository.findByUserIdAndStatus(testUser.id(), CartStatus.ACTIVE))
                 .thenReturn(Optional.of(testCart));
 
         // 첫 번째 삭제: cartItem1 삭제
@@ -176,7 +168,7 @@ class CartServiceImplTest {
                 .thenReturn(Optional.of(cartItem1));
 
         // when - 첫 번째 아이템 삭제
-        CartItemRemoveResponse firstResponse = cartService.removeCartItem(userCode, cartCode, firstCartItemCode);
+        CartItemRemoveResponse firstResponse = cartService.removeCartItem(userCode, firstCartItemCode);
 
         // then - 첫 번째 삭제 검증
         assertThat(firstResponse.cartItemCode()).isEqualTo(firstCartItemCode);
@@ -193,7 +185,7 @@ class CartServiceImplTest {
                 .thenReturn(Optional.of(cartItem2));
 
         // when - 두 번째 아이템 삭제
-        CartItemRemoveResponse secondResponse = cartService.removeCartItem(userCode, cartCode, secondCartItemCode);
+        CartItemRemoveResponse secondResponse = cartService.removeCartItem(userCode, secondCartItemCode);
 
         // then - 두 번째 삭제 검증
         assertThat(secondResponse.cartItemCode()).isEqualTo(secondCartItemCode);
@@ -207,7 +199,7 @@ class CartServiceImplTest {
 
         verify(cartItemRepository).findByCodeAndCartStatus(firstCartItemCode, CartStatus.ACTIVE);
         verify(cartItemRepository).findByCodeAndCartStatus(secondCartItemCode, CartStatus.ACTIVE);
-        verify(cartRepository, times(2)).findByCodeAndStatus(cartCode, CartStatus.ACTIVE);
+        verify(cartRepository, times(2)).findByUserIdAndStatus(testUser.id(), CartStatus.ACTIVE);
         verify(userServiceClient, times(2)).getUserByCode(userCode);
     }
 }

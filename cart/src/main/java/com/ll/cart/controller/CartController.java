@@ -1,11 +1,11 @@
 package com.ll.cart.controller;
 
-import com.example.core.model.response.BaseResponse;
 import com.ll.cart.model.vo.request.CartItemAddRequest;
 import com.ll.cart.model.vo.response.CartItemAddResponse;
 import com.ll.cart.model.vo.response.CartItemRemoveResponse;
 import com.ll.cart.model.vo.response.CartItemsResponse;
 import com.ll.cart.service.CartService;
+import com.ll.core.model.response.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,34 +18,31 @@ public class CartController {
 
     private final CartService cartService;
 
-    @PostMapping("/cartItems/{cartCode}")
+    @PostMapping("/cartItems")
     public ResponseEntity<BaseResponse<CartItemAddResponse>> addCartItem(
-            @PathVariable String cartCode,
             @RequestHeader("X-User-Code") String userCode,
             @Valid @RequestBody CartItemAddRequest request
     ) {
-        CartItemAddResponse response = cartService.addCartItem(userCode, cartCode, request);
+        CartItemAddResponse response = cartService.addCartItem(userCode, request);
 
         return BaseResponse.ok(response);
     }
 
-    @DeleteMapping("/{cartCode}/cartItems/{cartItemCode}")
+    @DeleteMapping("/cartItems/{cartItemCode}")
     public ResponseEntity<BaseResponse<CartItemRemoveResponse>> removeCartItem(
-            @PathVariable String cartCode,
             @PathVariable String cartItemCode,
             @RequestHeader("X-User-Code") String userCode
     ) {
-        CartItemRemoveResponse response = cartService.removeCartItem(userCode, cartCode, cartItemCode);
+        CartItemRemoveResponse response = cartService.removeCartItem(userCode, cartItemCode);
 
         return BaseResponse.ok(response);
     }
 
-    @GetMapping("/cartItems/{cartCode}")
+    @GetMapping("/cartItems")
     public ResponseEntity<BaseResponse<CartItemsResponse>> getCartItems(
-            @PathVariable String cartCode,
             @RequestHeader("X-User-Code") String userCode
     ) {
-        CartItemsResponse response = cartService.getCartItems(cartCode, userCode);
+        CartItemsResponse response = cartService.getCartItems(userCode);
         return BaseResponse.ok(response);
     }
 

@@ -1,8 +1,8 @@
 package com.ll.payment.client;
 
 import com.ll.core.model.response.BaseResponse;
-import com.ll.payment.model.dto.DepositInfoResponse;
-import com.ll.payment.model.dto.DepositWithdrawRequest;
+import com.ll.payment.model.vo.request.DepositWithdrawRequest;
+import com.ll.payment.model.vo.response.DepositInfoResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;

@@ -31,17 +31,12 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public CartItemAddResponse addCartItem(String userCode, String cartCode, CartItemAddRequest request) {
+    public CartItemAddResponse addCartItem(String userCode, CartItemAddRequest request) {
 //        validateCartItemRequest(request);
 
         UserResponse user = userServiceClient.getUserByCode(userCode);
 
-        Cart cart = cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE)
-                .orElseGet(() -> getOrCreateCart(user.id()));
-
-        if (!cart.getUserId().equals(user.id())) {
-            throw new IllegalArgumentException("다른 사용자의 장바구니에는 아이템을 추가할 수 없습니다.");
-        }
+        Cart cart = getOrCreateCart(user.id());
 
         Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndProductId(cart, request.productId());
 
@@ -73,20 +68,16 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public CartItemRemoveResponse removeCartItem(String userCode, String cartCode, String cartItemCode) {
+    public CartItemRemoveResponse removeCartItem(String userCode, String cartItemCode) {
         UserResponse user = userServiceClient.getUserByCode(userCode);
 
-        Cart cart = cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE)
-                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없거나 활성 상태가 아닙니다: " + cartCode));
-
-        if (!cart.getUserId().equals(user.id())) {
-            throw new IllegalArgumentException("다른 사용자의 장바구니에는 접근할 수 없습니다.");
-        }
+        Cart cart = cartRepository.findByUserIdAndStatus(user.id(), CartStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없거나 활성 상태가 아닙니다."));
 
         CartItem cartItem = cartItemRepository.findByCodeAndCartStatus(cartItemCode, CartStatus.ACTIVE)
                 .orElseThrow(() -> new IllegalArgumentException("장바구니 아이템을 찾을 수 없거나 활성 상태의 장바구니가 아닙니다: " + cartItemCode));
 
-        if (!cartItem.getCart().getCode().equals(cartCode)) {
+        if (!cartItem.getCart().getId().equals(cart.getId())) {
             throw new IllegalArgumentException("해당 장바구니에 속하지 않은 아이템입니다.");
         }
 
@@ -108,15 +99,11 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    public CartItemsResponse getCartItems(String cartCode, String userCode) {
+    public CartItemsResponse getCartItems(String userCode) {
         UserResponse user = userServiceClient.getUserByCode(userCode);
 
-        Cart cart = cartRepository.findByCodeAndStatus(cartCode, CartStatus.ACTIVE)
-                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없거나 활성 상태가 아닙니다: " + cartCode));
-
-        if (!cart.getUserId().equals(user.id())) {
-            throw new IllegalArgumentException("다른 사용자의 장바구니에는 접근할 수 없습니다.");
-        }
+        Cart cart = cartRepository.findByUserIdAndStatus(user.id(), CartStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없거나 활성 상태가 아닙니다."));
 
         List<CartItem> items = cartItemRepository.findByCart(cart);
 

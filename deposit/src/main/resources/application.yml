@@ -1,3 +1,5 @@
+
+
 spring:
   application:
     name: deposit
@@ -37,4 +39,5 @@ spring:
 external:
   user-service:
     url: http://localhost:8081
-
+server:
+  port: 8085

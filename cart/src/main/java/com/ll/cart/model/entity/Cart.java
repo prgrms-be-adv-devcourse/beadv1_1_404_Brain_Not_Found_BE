@@ -1,8 +1,11 @@
 package com.ll.cart.model.entity;
 
-import com.example.core.model.persistence.BaseEntity;
 import com.ll.cart.model.enums.CartStatus;
-import jakarta.persistence.*;
+import com.ll.core.model.persistence.BaseEntity;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,10 +28,6 @@ public class Cart extends BaseEntity {
         this.status = status;
     }
 
-    public void changeStatus(CartStatus status) {
-        this.status = status;
-    }
-
     public void increaseTotalPrice(int amount) {
         totalPrice += amount;
     }
@@ -38,9 +37,5 @@ public class Cart extends BaseEntity {
         if (totalPrice < 0) {
             totalPrice = 0;
         }
-    }
-
-    public void updateTotalPrice(int totalPrice) {
-        this.totalPrice = Math.max(totalPrice, 0);
     }
 }

@@ -1,7 +1,10 @@
 package com.ll.cart.model.entity;
 
-import com.example.core.model.persistence.BaseEntity;
-import jakarta.persistence.*;
+import com.ll.core.model.persistence.BaseEntity;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

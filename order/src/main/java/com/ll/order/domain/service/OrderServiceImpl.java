@@ -9,6 +9,8 @@ import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.*;
+import com.ll.order.domain.model.vo.response.CartItemInfo;
+import com.ll.order.domain.model.vo.response.CartItemsResponse;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import jakarta.validation.Valid;
@@ -124,17 +126,17 @@ public class OrderServiceImpl implements OrderService {
     public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request) {
         ClientResponse userInfo = getUserInfo(request.buyerCode());
 
-        CartResponse cartInfo = getCartInfo(request.cartCode());
+        CartItemsResponse cartInfo = getCartInfo(request.cartCode());
 
         if (cartInfo.items() == null || cartInfo.items().isEmpty()) { // 이것도 response 안에 행위로 둘 것 같음.
             throw new IllegalArgumentException("장바구니가 비어있습니다: " + request.cartCode());
         }
 
         //Map 보다 List<객체> 형식으로 사용하는 게 좀 더 확장성과 객체지향적이라고 생각합니다.
-        Map<String, ProductResponse> productMap = new HashMap<>();
-        for (CartResponse.CartItemResponse item : cartInfo.items()) {
-            ProductResponse productInfo = getProductInfo(item.productCode());
-            productMap.put(item.productCode(), productInfo);
+        Map<Long, ProductResponse> productMap = new HashMap<>();
+        for (CartItemInfo item : cartInfo.items()) {
+            ProductResponse productInfo = getProductInfoById(item.productId());
+            productMap.put(item.productId(), productInfo);
         }
 
         Order order = Order.create(
@@ -145,15 +147,15 @@ public class OrderServiceImpl implements OrderService {
         Order savedOrder = orderJpaRepository.save(order);
 
         List<OrderItem> orderItems = new ArrayList<>();
-        for (CartResponse.CartItemResponse cartItem : cartInfo.items()) {
-            ProductResponse productInfo = productMap.get(cartItem.productCode());
+        for (CartItemInfo cartItem : cartInfo.items()) {
+            ProductResponse productInfo = productMap.get(cartItem.productId());
 
             OrderItem orderItem = savedOrder.createOrderItem(
                     productInfo.productId(),
                     productInfo.sellerId(),
                     productInfo.productName(),
                     cartItem.quantity(),
-                    cartItem.price()
+                    cartItem.totalPrice() / cartItem.quantity() // totalPrice를 quantity로 나눠서 단가 계산
             );
             orderItems.add(orderItem);
         }
@@ -312,6 +314,11 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productCode));
     }
 
+    private ProductResponse getProductInfoById(Long productId) {
+        return Optional.ofNullable(productServiceClient.getProductById(productId))
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productId));
+    }
+
     private OrderCreateResponse convertToOrderCreateResponse(Order order) {
         List<OrderCreateResponse.OrderItemInfo> orderItemInfoList = orderItemJpaRepository.findByOrderId(order.getId()).stream()
                 .map(item -> new OrderCreateResponse.OrderItemInfo(
@@ -342,7 +349,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userCode));
     }
 
-    private CartResponse getCartInfo(String cartCode) {
+    private CartItemsResponse getCartInfo(String cartCode) {
         return Optional.ofNullable(cartServiceClient.getCartByCode(cartCode))
                 .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다: " + cartCode));
     }

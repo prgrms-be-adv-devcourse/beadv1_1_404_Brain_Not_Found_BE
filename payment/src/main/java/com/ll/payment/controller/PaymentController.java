@@ -1,10 +1,10 @@
 package com.ll.payment.controller;
 
 import com.ll.core.model.response.BaseResponse;
-import com.ll.payment.model.dto.PaymentProcessResult;
 import com.ll.payment.model.entity.Payment;
-import com.ll.payment.model.vo.PaymentRefundRequest;
-import com.ll.payment.model.vo.PaymentRequest;
+import com.ll.payment.model.vo.PaymentProcessResult;
+import com.ll.payment.model.vo.request.PaymentRefundRequest;
+import com.ll.payment.model.vo.request.PaymentRequest;
 import com.ll.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
