@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 
 public record UserLoginResponse (
         String socialId,
+        String code,
         SocialProvider socialProvider,
         String email,
         String name,
@@ -22,6 +23,7 @@ public record UserLoginResponse (
     public static UserLoginResponse from(User user) {
         return new UserLoginResponse(
                 user.getSocialId(),
+                user.getCode(),
                 user.getSocialProvider(),
                 user.getEmail(),
                 user.getName(),
