@@ -19,6 +19,12 @@ import org.springframework.web.bind.annotation.*;
 public class DepositController {
     private final DepositService depositService;
 
+    @GetMapping("/ping")
+    public ResponseEntity<BaseResponse<String>> pong() {
+        System.out.println("DepositController.pong");
+        return BaseResponse.ok("Ok");
+    }
+
     @GetMapping
     public ResponseEntity<BaseResponse<DepositResponse>> getDeposit(
             @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
