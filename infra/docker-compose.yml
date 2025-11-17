@@ -3,20 +3,95 @@ networks:
     name: ${NETWORK_NAME}
     driver: ${NETWORK_DRIVER}
 
+
+x-healthcheck: &default-healthcheck
+  test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+  interval: 10s
+  timeout: 10s
+  retries: 10
+
 services:
-#module <--
-#  gateway-module:
-#    container_name: ${GATEWAY_CONTAINER_NAME}
-#    build:
-#      context: ${DOCKER_FILE_CONTEXT}
-#      dockerfile: ${GATEWAY_DOCKER_FILE}
-#    environment:
-#      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-#    env_file: ${ENV_FILE}
+  #module <--
+
+
+#  prometheus:
+#    image: prom/prometheus:latest
+#    container_name: prometheus
+#    volumes:
+#      - ./prometheus.yml:/etc/prometheus/prometheus.yml
 #    ports:
-#      - ${GATEWAY_PORTS}
+#      - "9080:9080"
 #    networks:
 #      - ${NETWORK_NAME}
+
+  nginx-proxy:    #초기 계정 : admin@example.com / changeme
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    container_name: 'nginx'
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+      - /opt/websites:/mnt/user/appdata/NginxProxyManager/websites
+    networks:
+      - ${NETWORK_NAME}
+
+#  grafana:
+#    image: grafana/grafana:latest
+#    container_name: grafana
+#    ports:
+#      - "3000:3000"   # 브라우저 접속 포트
+#    environment:
+#      - GF_SECURITY_ADMIN_PASSWORD=admin  # admin / admin 기본 비밀번호 설정
+#    depends_on:
+#      - prometheus
+#    networks:
+#      - ${NETWORK_NAME}
+
+
+  discovery-module:
+    build:
+      context: ${DOCKER_FILE_CONTEXT}
+      dockerfile: ${DISCOVERY_DOCKER_FILE}
+    container_name: ${DISCOVERY_CONTAINER_NAME}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+    ports:
+      - ${DISCOVERY_PORTS}
+    env_file: ${ENV_FILE}
+    networks:
+      - ${NETWORK_NAME}
+
+
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway-module:
+    build:
+      context: ${DOCKER_FILE_CONTEXT}
+      dockerfile: ${GATEWAY_DOCKER_FILE}
+    container_name: ${GATEWAY_CONTAINER_NAME}
+    ports:
+      - ${GATEWAY_PORTS}
+    env_file: ${ENV_FILE}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+#    depends_on:
+#      discovery-module:
+#        condition: service_healthy
+    networks:
+      - ${NETWORK_NAME}
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8000/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   order-module:
     container_name: ${ORDER_CONTAINER_NAME}
@@ -33,6 +108,7 @@ services:
     depends_on:
       order-db:
         condition: service_healthy
+    healthcheck: *default-healthcheck
 
   user-module:
     container_name: ${USER_CONTAINER_NAME}
@@ -49,22 +125,23 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
+    healthcheck: *default-healthcheck
 
-#  auth-module:
-#    container_name: ${AUTH_CONTAINER_NAME}
-#    build:
-#      context: ${AUTH_FILE_CONTEXT}
-#      dockerfile: ${DOCKER_FILE}
-#    environment:
-#      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-#    env_file: ${ENV_FILE}
-#    ports:
-#      - ${AUTH_PORTS}
-#    networks:
-#      - ${NETWORK_NAME}
-#    depends_on:
-#      auth-db:
-#        condition: service_healthy
+  #  auth-module:
+  #    container_name: ${AUTH_CONTAINER_NAME}
+  #    build:
+  #      context: ${AUTH_FILE_CONTEXT}
+  #      dockerfile: ${DOCKER_FILE}
+  #    environment:
+  #      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+  #    env_file: ${ENV_FILE}
+  #    ports:
+  #      - ${AUTH_PORTS}
+  #    networks:
+  #      - ${NETWORK_NAME}
+  #    depends_on:
+  #      auth-db:
+  #        condition: service_healthy
 
   product-module:
     container_name: ${PRODUCT_CONTAINER_NAME}
@@ -81,8 +158,9 @@ services:
     depends_on:
       product-db:
         condition: service_healthy
-      elasticsearch-1:
+      kibana:
         condition: service_healthy
+    healthcheck: *default-healthcheck
 
   deposit-module:
     container_name: ${DEPOSIT_CONTAINER_NAME}
@@ -99,28 +177,46 @@ services:
     depends_on:
       deposit-db:
         condition: service_healthy
-
-
-#  mysql <--
-#  auth-db:
-#    ports:
-#      - ${AUTH_DB_PORTS}
-#    container_name: ${AUTH_DB_CONTAINER_NAME}
-#    image: ${MYSQL_VERSION}
-#    environment:
-#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-#      - MYSQL_DATABASE=${AUTH_DB_NAME}
-#      - MYSQL_USER=${MYSQL_USER}
-#      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-#      - TZ=${TZ}
-##    volumes:
-##      - ./data/${AUTH_DB_NAME}:/var/lib/mysql
-#    networks:
-#      - ${NETWORK_NAME}
-#    healthcheck:
-#      test: [ "CMD-SHELL", "mysqladmin ping -h auth-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-#      interval: 5s
-#      retries: 10
+    healthcheck: *default-healthcheck
+  settlement-module:
+    container_name: ${SETTLEMENT_CONTAINER_NAME}
+    build:
+      context: ${DOCKER_FILE_CONTEXT}
+      dockerfile: ${SETTLEMENT_DOCKER_FILE}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+    env_file: ${ENV_FILE}
+    ports:
+      - ${SETTLEMENT_PORTS}
+    networks:
+      - ${NETWORK_NAME}
+    depends_on:
+      settlement-db:
+        condition: service_healthy
+    healthcheck: *default-healthcheck
+  #  mysql <--
+  #  auth-db:
+  #    ports:
+  #      - ${AUTH_DB_PORTS}
+  #    container_name: ${AUTH_DB_CONTAINER_NAME}
+  #    image: ${MYSQL_VERSION}
+  #    environment:
+  #      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+  #      - MYSQL_DATABASE=${AUTH_DB_NAME}
+  #      - MYSQL_USER=${MYSQL_USER}
+  #      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+  #      - TZ=${TZ}
+  ##    volumes:
+  ##      - ./data/${AUTH_DB_NAME}:/var/lib/mysql
+  #    networks:
+  #      - ${NETWORK_NAME}
+#      depends_on:
+#        gateway-module:
+#          condition: service_healthy
+  #    healthcheck:
+  #      test: [ "CMD-SHELL", "mysqladmin ping -h ${AUTH_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+  #      interval: 5s
+  #      retries: 10
 
   user-db:
     ports:
@@ -137,11 +233,41 @@ services:
       - ${NETWORK_NAME}
     #    volumes:
     #      - ./data/${USER_DB_NAME}:/var/lib/mysql
+    depends_on:
+      gateway-module:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h user-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 5s
+      test: [ "CMD-SHELL", "mysqladmin ping -h ${USER_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+      interval: 10s
+      timeout: 10s
       retries: 10
-#
+      start_period: 30s
+
+  settlement-db:
+    ports:
+      - ${SETTLEMENT_DB_PORTS}
+    container_name: ${SETTLEMENT_DB_CONTAINER_NAME}
+    image: ${MYSQL_VERSION}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${SETTLEMENT_DB_NAME}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - TZ=${TZ}
+    networks:
+      - ${NETWORK_NAME}
+    #    volumes:
+    #      - ./data/${USER_DB_NAME}:/var/lib/mysql
+    depends_on:
+      gateway-module:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h ${SETTLEMENT_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+  #
   order-db:
     ports:
       - ${ORDER_DB_PORTS}
@@ -153,15 +279,20 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - TZ=${TZ}
-#    volumes:
-#      - ./data/${ORDER_DB_NAME}:/var/lib/mysql
+    #    volumes:
+    #      - ./data/${ORDER_DB_NAME}:/var/lib/mysql
     networks:
       - ${NETWORK_NAME}
+    depends_on:
+      gateway-module:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h order-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 5s
+      test: [ "CMD-SHELL", "mysqladmin ping -h ${ORDER_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+      interval: 10s
+      timeout: 10s
       retries: 10
-#
+      start_period: 30s
+  #
   product-db:
     ports:
       - ${PRODUCT_DB_PORTS}
@@ -173,14 +304,20 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - TZ=${TZ}
-#    volumes:
-#      - ./data/${PRODUCT_DB_NAME}:/var/lib/mysql
+    #    volumes:
+    #      - ./data/${PRODUCT_DB_NAME}:/var/lib/mysql
     networks:
       - ${NETWORK_NAME}
+    depends_on:
+      gateway-module:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h product-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+      test: [ "CMD-SHELL", "mysqladmin ping -h ${PRODUCT_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
       interval: 5s
+      timeout: 10s
       retries: 10
+      start_period: 30s
+
 
   deposit-db:
     ports:
@@ -193,14 +330,20 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - TZ=${TZ}
-#    volumes:
-#      - ./data/${DEPOSIT_DB_NAME}:/var/lib/mysql
+    #    volumes:
+    #      - ./data/${DEPOSIT_DB_NAME}:/var/lib/mysql
     networks:
       - ${NETWORK_NAME}
+    depends_on:
+      gateway-module:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h deposit-db -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 5s
+      test: [ "CMD-SHELL", "mysqladmin ping -h ${DEPOSIT_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
+      interval: 10s
+      timeout: 10s
       retries: 10
+      start_period: 30s
+
   #mysql -->
 
   #kafka <--
@@ -213,14 +356,14 @@ services:
       - KAFKA_NODE_ID=${KAFKA_1_NODE_ID}
       - KAFKA_LISTENERS=${KAFKA_1_LISTENERS}
       - KAFKA_ADVERTISED_LISTENERS=${KAFKA_1_ADVERTISED_LISTENERS}
-#     common
+      #     common
       - CLUSTER_ID=${CLUSTER_ID}
       - KAFKA_PROCESS_ROLES=${KAFKA_PROCESS_ROLES}
       - KAFKA_CONTROLLER_QUORUM_VOTERS=${KAFKA_CONTROLLER_QUORUM_VOTERS}
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
       - KAFKA_CONTROLLER_LISTENER_NAMES=${KAFKA_CONTROLLER_LISTENER_NAMES}
       - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
-#     extra
+      #     extra
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
       - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR}
@@ -232,72 +375,75 @@ services:
     volumes:
       - ./scripts:/scripts
       - ./kafka-data-1:/var/lib/kafka/data
+    depends_on:
+      gateway-module:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-1:9090 --list"]
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server ${KAFKA_1_CONTAINER_NAME}:9090 --list" ]
       interval: 5s
       retries: 10
-#  kafka-2:
-#    image: ${KAFKA_IMAGE}
-#    container_name: ${KAFKA_2_CONTAINER_NAME}
-#    ports:
-#      - ${KAFKA_2_PORTS}
-#    environment:
-#      - KAFKA_NODE_ID=${KAFKA_2_NODE_ID}
-#      - KAFKA_LISTENERS=${KAFKA_2_LISTENERS}
-#      - KAFKA_ADVERTISED_LISTENERS=${KAFKA_2_ADVERTISED_LISTENERS}
-##     common
-#      - CLUSTER_ID=${CLUSTER_ID}
-#      - KAFKA_PROCESS_ROLES=${KAFKA_PROCESS_ROLES}
-#      - KAFKA_CONTROLLER_QUORUM_VOTERS=${KAFKA_CONTROLLER_QUORUM_VOTERS}
-#      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
-#      - KAFKA_CONTROLLER_LISTENER_NAMES=${KAFKA_CONTROLLER_LISTENER_NAMES}
-#      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
-#    networks:
-#      - ${NETWORK_NAME}
-#    healthcheck:
-#      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-2:9090 --list"]
-#      interval: 5s
-#      retries: 10
-#  kafka-3:
-#    image: ${KAFKA_IMAGE}
-#    container_name: ${KAFKA_3_CONTAINER_NAME}
-#    ports:
-#      - ${KAFKA_3_PORTS}
-#    environment:
-#      - KAFKA_NODE_ID=${KAFKA_3_NODE_ID}
-#      - KAFKA_LISTENERS=${KAFKA_3_LISTENERS}
-#      - KAFKA_ADVERTISED_LISTENERS=${KAFKA_3_ADVERTISED_LISTENERS}
-##     common
-#      - CLUSTER_ID=${CLUSTER_ID}
-#      - KAFKA_PROCESS_ROLES=${KAFKA_PROCESS_ROLES}
-#      - KAFKA_CONTROLLER_QUORUM_VOTERS=${KAFKA_CONTROLLER_QUORUM_VOTERS}
-#      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
-#      - KAFKA_CONTROLLER_LISTENER_NAMES=${KAFKA_CONTROLLER_LISTENER_NAMES}
-#      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
-#    networks:
-#      - ${NETWORK_NAME}
-#    healthcheck:
-#      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-3:9090 --list"]
-#      interval: 5s
-#      retries: 10
-#
-#  kafka-init:
-#    image: ${KAFKA_IMAGE}
-#    container_name: kafka-init
-#    depends_on:
-#      - kafka-1
-#    #      - kafka-2
-#    #      - kafka-3
-#    volumes:
-#      - ./scripts:/scripts
-#    entrypoint: ["/bin/bash", "-c", "/scripts/init-topics.sh"]
-#    restart: "no"
-#    networks:
-#      - ${NETWORK_NAME}
+  #  kafka-2:
+  #    image: ${KAFKA_IMAGE}
+  #    container_name: ${KAFKA_2_CONTAINER_NAME}
+  #    ports:
+  #      - ${KAFKA_2_PORTS}
+  #    environment:
+  #      - KAFKA_NODE_ID=${KAFKA_2_NODE_ID}
+  #      - KAFKA_LISTENERS=${KAFKA_2_LISTENERS}
+  #      - KAFKA_ADVERTISED_LISTENERS=${KAFKA_2_ADVERTISED_LISTENERS}
+  ##     common
+  #      - CLUSTER_ID=${CLUSTER_ID}
+  #      - KAFKA_PROCESS_ROLES=${KAFKA_PROCESS_ROLES}
+  #      - KAFKA_CONTROLLER_QUORUM_VOTERS=${KAFKA_CONTROLLER_QUORUM_VOTERS}
+  #      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+  #      - KAFKA_CONTROLLER_LISTENER_NAMES=${KAFKA_CONTROLLER_LISTENER_NAMES}
+  #      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+  #    networks:
+  #      - ${NETWORK_NAME}
+  #    healthcheck:
+  #      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-2:9090 --list"]
+  #      interval: 5s
+  #      retries: 10
+  #  kafka-3:
+  #    image: ${KAFKA_IMAGE}
+  #    container_name: ${KAFKA_3_CONTAINER_NAME}
+  #    ports:
+  #      - ${KAFKA_3_PORTS}
+  #    environment:
+  #      - KAFKA_NODE_ID=${KAFKA_3_NODE_ID}
+  #      - KAFKA_LISTENERS=${KAFKA_3_LISTENERS}
+  #      - KAFKA_ADVERTISED_LISTENERS=${KAFKA_3_ADVERTISED_LISTENERS}
+  ##     common
+  #      - CLUSTER_ID=${CLUSTER_ID}
+  #      - KAFKA_PROCESS_ROLES=${KAFKA_PROCESS_ROLES}
+  #      - KAFKA_CONTROLLER_QUORUM_VOTERS=${KAFKA_CONTROLLER_QUORUM_VOTERS}
+  #      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP}
+  #      - KAFKA_CONTROLLER_LISTENER_NAMES=${KAFKA_CONTROLLER_LISTENER_NAMES}
+  #      - KAFKA_INTER_BROKER_LISTENER_NAME=${KAFKA_INTER_BROKER_LISTENER_NAME}
+  #    networks:
+  #      - ${NETWORK_NAME}
+  #    healthcheck:
+  #      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-3:9090 --list"]
+  #      interval: 5s
+  #      retries: 10
+  #
+  kafka-init:
+    image: ${KAFKA_IMAGE}
+    container_name: kafka-init
+    depends_on:
+      - kafka-1
+    #      - kafka-2
+    #      - kafka-3
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: ["/bin/bash", "-c", "/scripts/init-topics.sh"]
+    restart: "no"
+    networks:
+      - ${NETWORK_NAME}
 
   #kafka -->
 
-#  elasticsearch <--
+  #  elasticsearch <--
   elasticsearch-1:
     image: ${ES_IMAGE}
     container_name: ${ES_1_CONTAINER_NAME}
@@ -308,88 +454,105 @@ services:
       #common
       - cluster.name=${ES_CLUSTER_NAME}
       - discovery.type=${ES_DISCOVERY_TYPE}
-#      - discovery.seed_hosts=${ES_1_DISCOVERY_SEED_HOSTS}
-#      - cluster.initial_master_nodes=${ES_CLUSTER_INITIAL_MASTER_NODES}
+      #      - discovery.seed_hosts=${ES_1_DISCOVERY_SEED_HOSTS}
+      #      - cluster.initial_master_nodes=${ES_CLUSTER_INITIAL_MASTER_NODES}
       - xpack.security.enabled=${ES_XPACK_SECURITY_ENABLED}
       - xpack.security.http.ssl.enabled=${ES_XPACK_SECURITY_HTTP_SSL_ENABLED}
       - "ES_JAVA_OPTS=${ES_JAVA_OPTS}"
     networks:
       - ${NETWORK_NAME}
+    command: >
+      sh -c "elasticsearch-plugin install analysis-nori --batch && elasticsearch"
+    depends_on:
+      gateway-module:
+        condition: service_healthy
     healthcheck:
       test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
       start_period: 30s
-#  elasticsearch-2:
-#    image: ${ES_IMAGE}
-#    container_name: ${ES_2_CONTAINER_NAME}
-#    ports:
-#      - ${ES_2_PORTS}
-#    environment:
-#      - node.name=${ES_2_NODE_NAME}
-#      #common
-#      - cluster.name=${ES_CLUSTER_NAME}
-##      - discovery.type=${ES_DISCOVERY_TYPE}
-#      - discovery.seed_hosts=${ES_2_DISCOVERY_SEED_HOSTS}
-#      - cluster.initial_master_nodes=${ES_CLUSTER_INITIAL_MASTER_NODES}
-#      - xpack.security.enabled=${ES_XPACK_SECURITY_ENABLED}
-#      - xpack.security.http.ssl.enabled=${ES_XPACK_SECURITY_HTTP_SSL_ENABLED}
-#      - "ES_JAVA_OPTS=${ES_JAVA_OPTS}"
-#    networks:
-#      - ${NETWORK_NAME}
-#    healthcheck:
-#      test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-#      start_period: 30s
-#  elasticsearch-3:
-#    image: ${ES_IMAGE}
-#    container_name: ${ES_3_CONTAINER_NAME}
-#    ports:
-#      - ${ES_3_PORTS}
-#    environment:
-#      - node.name=${ES_3_NODE_NAME}
-#      #common
-#      - cluster.name=${ES_CLUSTER_NAME}
-##      - discovery.type=${ES_DISCOVERY_TYPE}
-#      - discovery.seed_hosts=${ES_3_DISCOVERY_SEED_HOSTS}
-#      - cluster.initial_master_nodes=${ES_CLUSTER_INITIAL_MASTER_NODES}
-#      - xpack.security.enabled=${ES_XPACK_SECURITY_ENABLED}
-#      - xpack.security.http.ssl.enabled=${ES_XPACK_SECURITY_HTTP_SSL_ENABLED}
-#      - "ES_JAVA_OPTS=${ES_JAVA_OPTS}"
-#    networks:
-#      - ${NETWORK_NAME}
-#    healthcheck:
-#      test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
-#      start_period: 30s
-#  #elasticsearch -->
-#
-#  #kibana <--
+  #  elasticsearch-2:
+  #    image: ${ES_IMAGE}
+  #    container_name: ${ES_2_CONTAINER_NAME}
+  #    ports:
+  #      - ${ES_2_PORTS}
+  #    environment:
+  #      - node.name=${ES_2_NODE_NAME}
+  #      #common
+  #      - cluster.name=${ES_CLUSTER_NAME}
+  ##      - discovery.type=${ES_DISCOVERY_TYPE}
+  #      - discovery.seed_hosts=${ES_2_DISCOVERY_SEED_HOSTS}
+  #      - cluster.initial_master_nodes=${ES_CLUSTER_INITIAL_MASTER_NODES}
+  #      - xpack.security.enabled=${ES_XPACK_SECURITY_ENABLED}
+  #      - xpack.security.http.ssl.enabled=${ES_XPACK_SECURITY_HTTP_SSL_ENABLED}
+  #      - "ES_JAVA_OPTS=${ES_JAVA_OPTS}"
+  #    networks:
+  #      - ${NETWORK_NAME}
+  #    healthcheck:
+  #      test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
+  #      interval: 10s
+  #      timeout: 5s
+  #      retries: 5
+  #      start_period: 30s
+  #  elasticsearch-3:
+  #    image: ${ES_IMAGE}
+  #    container_name: ${ES_3_CONTAINER_NAME}
+  #    ports:
+  #      - ${ES_3_PORTS}
+  #    environment:
+  #      - node.name=${ES_3_NODE_NAME}
+  #      #common
+  #      - cluster.name=${ES_CLUSTER_NAME}
+  ##      - discovery.type=${ES_DISCOVERY_TYPE}
+  #      - discovery.seed_hosts=${ES_3_DISCOVERY_SEED_HOSTS}
+  #      - cluster.initial_master_nodes=${ES_CLUSTER_INITIAL_MASTER_NODES}
+  #      - xpack.security.enabled=${ES_XPACK_SECURITY_ENABLED}
+  #      - xpack.security.http.ssl.enabled=${ES_XPACK_SECURITY_HTTP_SSL_ENABLED}
+  #      - "ES_JAVA_OPTS=${ES_JAVA_OPTS}"
+  #    networks:
+  #      - ${NETWORK_NAME}
+  #    healthcheck:
+  #      test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
+  #      interval: 10s
+  #      timeout: 5s
+  #      retries: 5
+  #      start_period: 30s
+  #  #elasticsearch -->
+  #
+  #  #kibana <--
   kibana:
     image: ${KIBANA_IMAGE}
     container_name: ${KIBANA_CONTAINER_NAME}
     ports:
       - ${KIBANA_PORTS}
     environment:
-#      - ELASTICSEARCH_HOSTS=${KIBANA_ES_HOSTS}
-      elasticsearch_hosts: "elasticsearch-01:9200"
-#      ,elasticsearch-02:9200,elasticsearch-03:9200"
+      #      - ELASTICSEARCH_HOSTS=${KIBANA_ES_HOSTS}
+      elasticsearch_hosts: "${ES_1_CONTAINER_NAME}:9200"
+    #      ,elasticsearch-02:9200,elasticsearch-03:9200"
+    depends_on:
+      gateway-module:
+        condition: service_healthy
+      elasticsearch-1:
+        condition: service_healthy
     networks:
       - ${NETWORK_NAME}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5601/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
   #kibana -->
 
 
-
-  #  logstash:
-  #    image: eddie1031/ls:9.1.3
-  #    container_name: logstash
-  #    ports:
-  #      - "5044:5044"
-  #    volumes:
-  #      - ./lib/pipeline:/usr/share/logstash/pipeline
+  #logstach <--
+#  logstash:
+#    image: eddie1031/ls:9.1.3
+#    container_name: logstash
+#    ports:
+#      - "5044:5044"
+#    volumes:
+#      - ./lib/pipeline:/usr/share/logstash/pipeline
+  #logstach -->
 
