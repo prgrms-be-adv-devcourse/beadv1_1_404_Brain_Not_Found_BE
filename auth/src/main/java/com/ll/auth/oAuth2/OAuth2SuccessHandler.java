@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -44,12 +45,21 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = tokens.accessToken().trim();
         String refreshToken = tokens.refreshToken().trim();
 
+        Optional<Auth> findedAuth = authService.getAuthByUserCode(user.code());
+        Auth auth;
+        if(findedAuth.isPresent()){
+            auth = findedAuth.get();
+            auth.updateRefreshToken(refreshToken);
+        }
+        else{
+            auth = Auth.builder()
+                    .userCode(user.code())
+                    .refreshToken(refreshToken)
+                    .build();
+        }
         // Refresh Token 저장 (Redis 등)
-        Auth auth = Auth.builder()
-                .userCode(user.code())
-                .refreshToken(refreshToken)
-                .build();
         authService.save(auth);
+
         Map<String, Object> body = Map.of(
                 "accessToken", accessToken,
                 "refreshToken", refreshToken,
