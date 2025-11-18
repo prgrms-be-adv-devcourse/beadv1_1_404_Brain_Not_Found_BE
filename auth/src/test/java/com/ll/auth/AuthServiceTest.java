@@ -74,24 +74,28 @@ class AuthServiceTest {
 
             given(authRepository.findByUserCode(USER_CODE))
                     .willReturn(Optional.of(existingAuth));
+
+            Tokens newTokens = new Tokens(NEW_ACCESS, NEW_REFRESH);
             given(jWTProvider.createToken(USER_CODE, ROLE))
-                    .willReturn(newTokens());
+                    .willReturn(newTokens);
+
+            TokenValidRequest request = validRequest(); // 기존에 만든 fixture
 
             // when
-            Tokens result = authService.refreshToken(validRequest());
+            Tokens result = authService.refreshToken(request);
 
             // then
             assertThat(result.accessToken()).isEqualTo(NEW_ACCESS);
             assertThat(result.refreshToken()).isEqualTo(NEW_REFRESH);
 
+            then(authRepository).should(times(1)).save(any(Auth.class));
+
             then(authRepository).should().save(argThat(saved ->
                     saved.getUserCode().equals(USER_CODE) &&
                             saved.getRefreshToken().equals(NEW_REFRESH)
             ));
-            then(authRepository).should().delete(argThat(deleted ->
-                    deleted.getUserCode().equals(USER_CODE) &&
-                            deleted.getRefreshToken().equals(EXIST_REFRESH)
-            ));
+
+            then(authRepository).shouldHaveNoMoreInteractions();
         }
 
         @Test
