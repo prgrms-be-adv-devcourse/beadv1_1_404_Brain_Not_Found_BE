@@ -19,6 +19,12 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
+    @GetMapping("/ping")
+    public ResponseEntity<BaseResponse<String>> pong() {
+        System.out.println("CategoryController.pong");
+        return BaseResponse.ok("Ok");
+    }
+
     // 카테고리 생성
     @PostMapping
     public ResponseEntity<BaseResponse<CategoryResponse>> createCategory(@Valid @RequestBody CategoryCreateRequest request) {

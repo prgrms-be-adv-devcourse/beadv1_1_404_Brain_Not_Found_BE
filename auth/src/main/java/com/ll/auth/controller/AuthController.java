@@ -24,4 +24,10 @@ public class AuthController {
         TokenValidRequest validRequest = new TokenValidRequest(userCode,role, request.refreshToken());
         return BaseResponse.ok(authService.refreshToken(validRequest));
     }
+
+    @GetMapping("/ping")
+    public ResponseEntity<BaseResponse<String>> pong(){
+
+        return  BaseResponse.ok("Ok");
+    }
 }

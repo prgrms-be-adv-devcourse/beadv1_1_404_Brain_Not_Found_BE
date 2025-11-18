@@ -1,13 +1,13 @@
 package com.ll.cart.service;
 
 import com.ll.cart.client.UserServiceClient;
+import com.ll.cart.model.enums.*;
 import com.ll.cart.model.vo.request.CartItemAddRequest;
 import com.ll.cart.model.vo.response.CartItemAddResponse;
 import com.ll.cart.model.vo.response.CartItemRemoveResponse;
 import com.ll.cart.model.vo.response.UserResponse;
 import com.ll.cart.model.entity.Cart;
 import com.ll.cart.model.entity.CartItem;
-import com.ll.cart.model.enums.CartStatus;
 import com.ll.cart.repository.CartItemRepository;
 import com.ll.cart.repository.CartRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,7 +49,23 @@ class CartServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        testUser = new UserResponse(1L, "홍길동", "서울시 강남구");
+        testUser = new UserResponse(
+                1L,
+                "test_social_id_1",
+                SocialProvider.KAKAO,
+                "user1@test.com",
+                "홍길동",
+                Role.USER,
+                null,
+                5L,
+                Grade.BRONZE,
+                AccountStatus.ACTIVE,
+                null,
+                null,
+                "서울시 강남구",
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
         testCart = new Cart(1L, CartStatus.ACTIVE);
         testCartItem = CartItem.create(testCart, 100L, 2, 10000); // quantity=2, price=10000 (단가)
     }
