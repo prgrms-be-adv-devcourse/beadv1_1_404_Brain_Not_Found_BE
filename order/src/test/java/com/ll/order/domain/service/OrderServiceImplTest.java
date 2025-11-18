@@ -162,10 +162,10 @@ class OrderServiceImplTest {
         assertThat(itemInfo.price()).isEqualTo(10000); // totalPrice(20000) / quantity(2) = 10000
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
-        verify(orderJpaRepository).save(orderCaptor.capture());
+        verify(orderJpaRepository, times(2)).save(orderCaptor.capture()); // 주문 생성 시 1번, 결제 성공 후 상태 변경 시 1번
         Order capturedOrder = orderCaptor.getValue();
 
-        assertThat(orderCaptor.getAllValues()).hasSize(1);
+        assertThat(orderCaptor.getAllValues()).hasSize(2);
         assertThat(capturedOrder.getBuyerId()).isEqualTo(1L);
         assertThat(capturedOrder.getTotalPrice()).isEqualTo(20000);
         assertThat(capturedOrder.getOrderType()).isEqualTo(OrderType.ONLINE);
@@ -273,10 +273,10 @@ class OrderServiceImplTest {
         assertThat(result.orderItems()).hasSize(3);
         
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
-        verify(orderJpaRepository).save(orderCaptor.capture());
+        verify(orderJpaRepository, times(2)).save(orderCaptor.capture()); // 주문 생성 시 1번, 결제 성공 후 상태 변경 시 1번
         Order capturedOrder = orderCaptor.getValue();
 
-        assertThat(orderCaptor.getAllValues()).hasSize(1);
+        assertThat(orderCaptor.getAllValues()).hasSize(2);
         assertThat(capturedOrder.getBuyerId()).isEqualTo(1L);
         assertThat(capturedOrder.getTotalPrice()).isEqualTo(50000);
         assertThat(capturedOrder.getOrderType()).isEqualTo(OrderType.ONLINE);
@@ -345,10 +345,10 @@ class OrderServiceImplTest {
         assertThat(orderItemInfo.price()).isEqualTo(10000);
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
-        verify(orderJpaRepository).save(orderCaptor.capture());
+        verify(orderJpaRepository, times(2)).save(orderCaptor.capture()); // 주문 생성 시 1번, 결제 성공 후 상태 변경 시 1번
         Order capturedOrder = orderCaptor.getValue();
 
-        assertThat(orderCaptor.getAllValues()).hasSize(1);
+        assertThat(orderCaptor.getAllValues()).hasSize(2);
         assertThat(capturedOrder.getBuyerId()).isEqualTo(1L);
         assertThat(capturedOrder.getTotalPrice()).isEqualTo(20000);
         assertThat(capturedOrder.getOrderType()).isEqualTo(OrderType.ONLINE);

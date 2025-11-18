@@ -140,10 +140,10 @@ public class OrderServiceImpl implements OrderService {
         }
 
         //Map 보다 List<객체> 형식으로 사용하는 게 좀 더 확장성과 객체지향적이라고 생각합니다.
-        Map<Long, ProductResponse> productMap = new HashMap<>();
+        List<ProductResponse> productList = new ArrayList<>();
         for (CartItemInfo item : cartInfo.items()) {
             ProductResponse productInfo = getProductInfoById(item.productId());
-            productMap.put(item.productId(), productInfo);
+            productList.add(productInfo);
         }
 
         Order order = Order.create(
@@ -155,14 +155,17 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> orderItems = new ArrayList<>();
         for (CartItemInfo cartItem : cartInfo.items()) {
-            ProductResponse productInfo = productMap.get(cartItem.productId());
+            ProductResponse productInfo = productList.stream()
+                    .filter(p -> p.id().equals(cartItem.productId()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + cartItem.productId()));
 
             OrderItem orderItem = savedOrder.createOrderItem(
                     productInfo.id(),
                     productInfo.sellerCode(),
                     productInfo.name(),
                     cartItem.quantity(),
-                    cartItem.totalPrice() / cartItem.quantity() // totalPrice를 quantity로 나눠서 단가 계산
+                    productInfo.price() // 상품 정보에서 정확한 단가 사용
             );
             orderItems.add(orderItem);
         }
