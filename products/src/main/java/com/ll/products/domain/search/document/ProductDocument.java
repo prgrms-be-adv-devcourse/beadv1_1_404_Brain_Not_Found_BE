@@ -39,8 +39,8 @@ public class ProductDocument {
     @Field(type = FieldType.Integer)
     private Integer quantity;
 
-    @Field(type = FieldType.Long)
-    private Long sellerId;
+    @Field(type = FieldType.Keyword)
+    private String sellerCode;
 
     @Field(type = FieldType.Text, analyzer = "nori")
     private String sellerName;
@@ -80,7 +80,7 @@ public class ProductDocument {
                 .description(product.getDescription())
                 .price(product.getPrice())
                 .quantity(product.getQuantity())
-                .sellerId(product.getSellerId())
+                .sellerCode(product.getSellerCode())
                 .sellerName(product.getSellerName())
                 .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)

@@ -15,7 +15,7 @@ public record ProductResponse(
         String name,
         Long categoryId,
         String categoryName,
-        Long sellerId,
+        String sellerCode,
         String sellerName,
         ProductStatus status,
         Integer quantity,
@@ -32,7 +32,7 @@ public record ProductResponse(
                 .name(product.getName())
                 .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
-                .sellerId(product.getSellerId())
+                .sellerCode(product.getSellerCode())
                 .sellerName(product.getSellerName())
                 .quantity(product.getQuantity())
                 .description(product.getDescription())

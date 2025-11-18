@@ -11,7 +11,7 @@ public record ProductListResponse(
         Long id,
         String code,
         String name,
-        Long sellerId,
+        String sellerCode,
         String sellerName,
         Integer price,
         ProductStatus status,
@@ -29,7 +29,7 @@ public record ProductListResponse(
                 .id(product.getId())
                 .code(product.getCode())
                 .name(product.getName())
-                .sellerId(product.getSellerId())
+                .sellerCode(product.getSellerCode())
                 .sellerName(product.getSellerName())
                 .price(product.getPrice())
                 .status(product.getStatus())
