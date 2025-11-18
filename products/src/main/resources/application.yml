@@ -15,6 +15,14 @@ spring:
       repositories:
         enabled: true
 
+  kafka:
+    bootstrap-servers:
+      - localhost:9092
+    consumer:
+      group-id: product-service
+      properties:
+        allow.auto.create.topics: false
+
 # 로깅 설정
 logging:
   level:

@@ -45,7 +45,7 @@ public class SettlementWriter implements ItemWriter<Settlement> {
                 settlement.getSettlementBalance()
         );
         log.info("Publishing SettlementCompleteEvent: {}", event);
-        settlementEventProducer.send(event);
+        settlementEventProducer.sendSettlement(event);
     }
 
 }

@@ -6,6 +6,7 @@ import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -52,6 +53,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse<Void>> handleMissingRequestParam(MissingServletRequestParameterException e) {
         log.error(LOG_PREFIX, e.getMessage(), e);
         return BaseResponse.error(ErrorCode.BAD_REQUEST, String.format("필수 파라미터 '%s'가 누락되었습니다.", e.getParameterName()));
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<BaseResponse<Void>> handleMissingRequestHeader(MissingRequestHeaderException e) {
+        log.error(LOG_PREFIX, e.getMessage(), e);
+        return BaseResponse.error(ErrorCode.BAD_REQUEST, String.format("필수 헤더 '%s'가 누락되었습니다.", e.getHeaderName()));
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

@@ -24,6 +24,14 @@ spring:
   elasticsearch:
     uris: http://elasticsearch-1:9200
 
+  kafka:
+    bootstrap-servers:
+      - ${KAFKA_1_CONTAINER_NAME}:9090
+    consumer:
+      group-id: product-service
+      properties:
+        allow.auto.create.topics: false
+
 management:
   endpoints:
     web:
@@ -36,9 +44,6 @@ management:
       show-details: always                           # 헬스체크 상세 정보
     info:
       enabled: true
-
-
-
 
 api:
   user:
