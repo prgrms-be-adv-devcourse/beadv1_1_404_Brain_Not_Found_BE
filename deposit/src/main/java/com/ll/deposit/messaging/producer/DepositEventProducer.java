@@ -11,10 +11,8 @@ public class DepositEventProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    private static final String TOPIC = "order-event";
-
     public void send(OrderEvent event) {
-        kafkaTemplate.send(TOPIC, event);
+        kafkaTemplate.send("order-event", event);
     }
 
 }

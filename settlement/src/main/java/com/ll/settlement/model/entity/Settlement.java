@@ -101,6 +101,13 @@ public class Settlement extends BaseEntity {
         this.errorDate = LocalDateTime.now();
     }
 
+    public void refund() {
+        if (this.settlementStatus != SettlementStatus.CREATED) {
+            throw new SettlementStateTransitionException("REFUNDED 상태로 전환할 수 없습니다.");
+        }
+        this.settlementStatus = SettlementStatus.REFUNDED;
+    }
+
     public Long calculateSettlementCommission() {
         return BigDecimal.valueOf(this.totalAmount)
                 .multiply(this.settlementRate)

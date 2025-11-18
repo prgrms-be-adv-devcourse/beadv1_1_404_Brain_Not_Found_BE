@@ -20,6 +20,14 @@ spring:
   elasticsearch:
     uris: http://localhost:9202
 
+  kafka:
+    bootstrap-servers:
+      - localhost:9092
+    consumer:
+      group-id: product-service
+      properties:
+        allow.auto.create.topics: false
+
 api:
   user:
     base-url: http://localhost:8083
