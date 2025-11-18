@@ -12,6 +12,7 @@ import com.ll.products.domain.category.model.entity.Category;
 import com.ll.products.domain.category.repository.CategoryRepository;
 import com.ll.products.domain.product.event.ProductEvent;
 import com.ll.products.domain.product.exception.ProductNotFoundException;
+import com.ll.products.domain.product.exception.ProductOwnershipException;
 import com.ll.products.domain.product.model.dto.ProductImageDto;
 import com.ll.products.domain.product.model.dto.request.ProductCreateRequest;
 import com.ll.products.domain.product.model.dto.request.ProductUpdateStatusRequest;
@@ -38,13 +39,14 @@ public class ProductService {
 
     // 1. 상품 생성
     @Transactional
-    public ProductResponse createProduct(ProductCreateRequest request) {
+    public ProductResponse createProduct(ProductCreateRequest request, String sellerCode, String role) {
+        validateRole(role);
         Category category = getCategory(request.categoryId());
-        String sellerName = getSellerName(request.sellerId());
+        String sellerName = getSellerName(sellerCode);
         Product product = Product.builder()
                 .name(request.name())
                 .category(category)
-                .sellerId(request.sellerId())
+                .sellerCode(sellerCode)
                 .sellerName(sellerName)
                 .quantity(request.quantity())
                 .description(request.description())
@@ -67,20 +69,21 @@ public class ProductService {
 
     // 3. 상품 목록조회
     public Page<ProductListResponse> getProducts(
-            Long sellerId,
+            String sellerCode,
             Long categoryId,
             ProductStatus status,
             String name,
             Pageable pageable
     ) {
-        Page<Product> products = productRepository.searchProducts(sellerId, categoryId, status, name, pageable);
+        Page<Product> products = productRepository.searchProducts(sellerCode, categoryId, status, name, pageable);
         return products.map(ProductListResponse::from);
     }
 
     // 4. 상품 삭제(soft delete)
     @Transactional
-    public void deleteProduct(String code) {
+    public void deleteProduct(String code, String userCode, String role) {
         Product product = getProductByCode(code);
+        validateOwnership(product, userCode, role);
         product.softDelete();
         log.info("상품 삭제 완료: {} (ID: {})", product.getName(), product.getId());
         eventPublisher.publishEvent(ProductEvent.deleted(this, product));
@@ -88,8 +91,9 @@ public class ProductService {
 
     // 5. 상품 수정
     @Transactional
-    public ProductResponse updateProduct(String code, ProductUpdateRequest request) {
+    public ProductResponse updateProduct(String code, ProductUpdateRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
+        validateOwnership(product, userCode, role);
         product.updateBasicInfo(
                 request.name(),
                 request.description(),
@@ -106,8 +110,9 @@ public class ProductService {
 
     // 6. 상품 상태변경
     @Transactional
-    public ProductResponse updateProductStatus(String code, ProductUpdateStatusRequest request) {
+    public ProductResponse updateProductStatus(String code, ProductUpdateStatusRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
+        validateOwnership(product, userCode, role);
         product.updateStatus(request.status());
         log.info("상품 상태변경 완료: {} -> {} (ID: {})", product.getName(), request.status(), product.getId());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
@@ -130,8 +135,8 @@ public class ProductService {
     }
 
     // 판매자명 조회
-    private String getSellerName(Long sellerId) {
-        String sellerName = userClient.getSellerName(sellerId);
+    private String getSellerName(String sellerCode) {
+        String sellerName = userClient.getSellerName(sellerCode);
         return sellerName != null ? sellerName : "알 수 없는 판매자";
     }
 
@@ -150,5 +155,22 @@ public class ProductService {
         Product product = productRepository.findByCodeAndIsDeletedFalse(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
         return product;
+    }
+
+    // Role 검증
+    private void validateRole(String role) {
+        if (!"SELLER".equals(role) && !"ADMIN".equals(role)) {
+            throw new ProductOwnershipException(null, "상품 생성 권한 없음");
+        }
+    }
+
+    // 소유권 검증
+    private void validateOwnership(Product product, String userCode, String role) {
+        if ("ADMIN".equals(role)) {
+            return;
+        }
+        if (!userCode.equals(product.getSellerCode())) {
+            throw new ProductOwnershipException(null, product.getCode());
+        }
     }
 }

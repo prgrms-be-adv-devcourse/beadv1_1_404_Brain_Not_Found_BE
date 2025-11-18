@@ -15,22 +15,22 @@ public class UserClient {
 
     private final RestClient userRestClient;
 
-    public String getSellerName(Long sellerId) {
+    public String getSellerName(String sellerCode) {
         try {
             BaseResponse<UserResponse> response = userRestClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/users/info")
-                            .queryParam("id", sellerId)
                             .build())
+                    .header("X-User-Code", sellerCode)
                     .retrieve()
                     .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
             if (response != null && response.getData() != null) {
                 return response.getData().name();
             }
-            log.warn("판매자 정보 조회 실패 : {}", sellerId);
+            log.warn("판매자명 조회 실패 : {}", sellerCode);
             return null;
         } catch (Exception e) {
-            log.error("해당하는 id의 판매자를 찾을 수 없음 : {}",sellerId, e);
+            log.error("판매자명 조회 중 예외 발생 : {}, error: {}", sellerCode, e.getMessage(), e);
             return null;
         }
     }

@@ -27,7 +27,7 @@ public class Product extends BaseEntity {
     private Category category;
 
     @Column(nullable = false)
-    private Long sellerId;
+    private String sellerCode;
 
     @Column(nullable = false)
     private String sellerName;

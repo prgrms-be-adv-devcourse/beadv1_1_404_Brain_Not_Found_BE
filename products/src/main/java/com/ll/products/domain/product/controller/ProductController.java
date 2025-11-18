@@ -33,8 +33,12 @@ public class ProductController {
 
     // 1. 상품 생성
     @PostMapping
-    public ResponseEntity<BaseResponse<ProductResponse>> createProduct(@Valid @RequestBody ProductCreateRequest request) {
-        ProductResponse response = productService.createProduct(request);
+    public ResponseEntity<BaseResponse<ProductResponse>> createProduct(
+            @Valid @RequestBody ProductCreateRequest request,
+            @RequestHeader("X-User-Code") String sellerCode,
+            @RequestHeader("X-Role") String role
+    ) {
+        ProductResponse response = productService.createProduct(request, sellerCode, role);
         return BaseResponse.created(response);
     }
 
@@ -48,22 +52,26 @@ public class ProductController {
     // 3. 상품 목록조회
     @GetMapping
     public ResponseEntity<BaseResponse<Page<ProductListResponse>>> getProducts(
-            @RequestParam(required = false) Long sellerId,
+            @RequestParam(required = false) String sellerCode,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) ProductStatus status,
             @RequestParam(required = false) String name,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Page<ProductListResponse> response = productService.getProducts(
-                sellerId, categoryId, status, name, pageable
+                sellerCode, categoryId, status, name, pageable
         );
         return BaseResponse.ok(response);
     }
 
     // 4. 상품 삭제(soft delete)
     @DeleteMapping("/{code}")
-    public ResponseEntity<BaseResponse<Void>> deleteProduct(@PathVariable String code) {
-        productService.deleteProduct(code);
+    public ResponseEntity<BaseResponse<Void>> deleteProduct(
+            @PathVariable String code,
+            @RequestHeader("X-User-Code") String userCode,
+            @RequestHeader("X-Role") String role
+    ) {
+        productService.deleteProduct(code, userCode, role);
         return BaseResponse.ok(null);
     }
 
@@ -71,9 +79,11 @@ public class ProductController {
     @PutMapping("/{code}")
     public ResponseEntity<BaseResponse<ProductResponse>> updateProduct(
             @PathVariable String code,
-            @Valid @RequestBody ProductUpdateRequest request
+            @Valid @RequestBody ProductUpdateRequest request,
+            @RequestHeader("X-User-Code") String userCode,
+            @RequestHeader("X-Role") String role
     ) {
-        ProductResponse response = productService.updateProduct(code, request);
+        ProductResponse response = productService.updateProduct(code, request, userCode, role);
         return BaseResponse.ok(response);
     }
 
@@ -81,9 +91,11 @@ public class ProductController {
     @PatchMapping("/{code}/status")
     public ResponseEntity<BaseResponse<ProductResponse>> updateProductStatus(
             @PathVariable String code,
-            @Valid @RequestBody ProductUpdateStatusRequest request
+            @Valid @RequestBody ProductUpdateStatusRequest request,
+            @RequestHeader("X-User-Code") String userCode,
+            @RequestHeader("X-Role") String role
     ) {
-        ProductResponse response = productService.updateProductStatus(code, request);
+        ProductResponse response = productService.updateProductStatus(code, request, userCode, role);
         return BaseResponse.ok(response);
     }
 }

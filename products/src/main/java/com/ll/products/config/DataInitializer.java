@@ -29,7 +29,7 @@ public class DataInitializer implements CommandLineRunner {
         // 테스트용 상품 1 (판매중)
         Product product1 = Product.builder()
                 .name("테스트 상품 1")
-                .sellerId(3L) // User 모듈의 seller ID
+                .sellerCode("USER-001")
                 .sellerName("판매자1")
                 .quantity(100)
                 .description("테스트용 상품입니다.")
@@ -46,13 +46,13 @@ public class DataInitializer implements CommandLineRunner {
         log.info("  - 가격: {}원", product1.getPrice());
         log.info("  - 수량: {}", product1.getQuantity());
         log.info("  - 상태: {}", product1.getStatus());
-        log.info("  - 판매자 ID: {}", product1.getSellerId());
+        log.info("  - 판매자 코드: {}", product1.getSellerCode());
         log.info("========================================");
 
         // 테스트용 상품 2 (판매중)
         Product product2 = Product.builder()
                 .name("테스트 상품 2")
-                .sellerId(3L)
+                .sellerCode("USER-001")
                 .sellerName("판매자1")
                 .quantity(50)
                 .description("테스트용 상품 2입니다.")
@@ -69,14 +69,14 @@ public class DataInitializer implements CommandLineRunner {
         log.info("  - 가격: {}원", product2.getPrice());
         log.info("  - 수량: {}", product2.getQuantity());
         log.info("  - 상태: {}", product2.getStatus());
-        log.info("  - 판매자 ID: {}", product2.getSellerId());
+        log.info("  - 판매자 코드: {}", product2.getSellerCode());
         log.info("========================================");
 
         // 테스트용 상품 3 (판매대기)
         Product product3 = Product.builder()
                 .name("테스트 상품 3")
-                .sellerId(3L)
-                .sellerName("판매자1")
+                .sellerCode("USER-002")
+                .sellerName("판매자2")
                 .quantity(30)
                 .description("판매 대기 중인 상품입니다.")
                 .price(15000)
@@ -92,14 +92,14 @@ public class DataInitializer implements CommandLineRunner {
         log.info("  - 가격: {}원", product3.getPrice());
         log.info("  - 수량: {}", product3.getQuantity());
         log.info("  - 상태: {}", product3.getStatus());
-        log.info("  - 판매자 ID: {}", product3.getSellerId());
+        log.info("  - 판매자 코드: {}", product3.getSellerCode());
         log.info("========================================");
 
         // 테스트용 상품 4 (품절)
         Product product4 = Product.builder()
                 .name("테스트 상품 4")
-                .sellerId(3L)
-                .sellerName("판매자1")
+                .sellerCode("USER-002")
+                .sellerName("판매자2")
                 .quantity(0)
                 .description("품절된 상품입니다.")
                 .price(30000)
@@ -115,7 +115,7 @@ public class DataInitializer implements CommandLineRunner {
         log.info("  - 가격: {}원", product4.getPrice());
         log.info("  - 수량: {}", product4.getQuantity());
         log.info("  - 상태: {}", product4.getStatus());
-        log.info("  - 판매자 ID: {}", product4.getSellerId());
+        log.info("  - 판매자 코드: {}", product4.getSellerCode());
         log.info("========================================");
 
         log.info("더미 상품 데이터 생성 완료. 총 {}개", productRepository.count());

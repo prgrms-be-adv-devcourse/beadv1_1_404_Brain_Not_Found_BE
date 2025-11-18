@@ -26,7 +26,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
 
     @Override
     public Page<Product> searchProducts(
-            Long sellerId,
+            String sellerCode,
             Long categoryId,
             ProductStatus status,
             String name,
@@ -36,7 +36,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .selectFrom(product)
                 .where(
                         isDeletedFalse(),
-                        sellerIdEq(sellerId),
+                        sellerCodeEq(sellerCode),
                         categoryIdEq(categoryId),
                         statusEq(status),
                         nameContains(name)
@@ -51,7 +51,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .from(product)
                 .where(
                         isDeletedFalse(),
-                        sellerIdEq(sellerId),
+                        sellerCodeEq(sellerCode),
                         categoryIdEq(categoryId),
                         statusEq(status),
                         nameContains(name)
@@ -65,8 +65,8 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         return product.isDeleted.eq(false);
     }
 
-    private BooleanExpression sellerIdEq(Long sellerId) {
-        return sellerId != null ? product.sellerId.eq(sellerId) : null;
+    private BooleanExpression sellerCodeEq(String sellerCode) {
+        return sellerCode != null && !sellerCode.isBlank() ? product.sellerCode.eq(sellerCode) : null;
     }
 
     private BooleanExpression categoryIdEq(Long categoryId) {
