@@ -1,6 +1,7 @@
 package com.ll.products.domain.product.controller;
 
 import com.ll.core.model.response.BaseResponse;
+import com.ll.products.domain.product.model.dto.request.ProductUpdateInventoryRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -42,7 +43,7 @@ public class ProductController {
         return BaseResponse.created(response);
     }
 
-    // 2. 상품 상세조회(code 기반)
+    // 2. 상품 상세조회
     @GetMapping("/{code}")
     public ResponseEntity<BaseResponse<ProductResponse>> getProduct(@PathVariable String code) {
         ProductResponse response = productService.getProduct(code);
@@ -97,5 +98,15 @@ public class ProductController {
     ) {
         ProductResponse response = productService.updateProductStatus(code, request, userCode, role);
         return BaseResponse.ok(response);
+    }
+
+    // 7. 재고 차감(주문 모듈)
+    @PatchMapping("/{code}/inventory")
+    public ResponseEntity<BaseResponse<Void>> updateInventory(
+            @PathVariable String code,
+            @Valid @RequestBody ProductUpdateInventoryRequest request
+    ) {
+        productService.updateInventory(code, request.quantity());
+        return BaseResponse.ok(null);
     }
 }
