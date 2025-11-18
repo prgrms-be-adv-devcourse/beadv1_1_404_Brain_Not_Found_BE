@@ -119,7 +119,14 @@ public class ProductService {
         return ProductResponse.from(product);
     }
 
-
+    // 7. 재고 수정
+    @Transactional
+    public void updateInventory(String code, Integer quantity) {
+        Product product = getProductByCode(code);
+        product.updateQuantity(quantity);
+        log.info("재고 수정 완료: {}, 남은재고: {}", product.getName(), product.getQuantity());
+        eventPublisher.publishEvent(ProductEvent.updated(this, product));
+    }
 
 
 
