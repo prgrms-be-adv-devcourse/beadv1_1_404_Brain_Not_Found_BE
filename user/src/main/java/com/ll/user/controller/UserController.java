@@ -27,20 +27,9 @@ public class UserController {
     // 회원 정보 조회
     @GetMapping("/info")
     public ResponseEntity<BaseResponse<UserResponse>> getUser(
-            @RequestHeader(value = "X-User-Code", required = false) String userCode,
-            @RequestParam(value = "id", required = false) Long id) {
-            UserResponse user;
-            if (userCode != null && !userCode.isBlank()) {
-                user = userService.getUserByUserCode(userCode);
-            }
-            else if (id != null) {
-                user = userService.getUserById(id);
-            }
-            else {
-                return BaseResponse.error(ErrorCode.BAD_REQUEST, "userCode (헤더) 또는 id (쿼리 파라미터) 중 하나가 필요합니다.");
-            }
-            return BaseResponse.ok(user);
-
+            @RequestHeader(value = "X-User-Code") String userCode
+    ) {
+            return BaseResponse.ok(userService.getUserByUserCode(userCode));
     }
 
     // 소셜로그인
