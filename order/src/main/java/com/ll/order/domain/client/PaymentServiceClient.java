@@ -18,7 +18,7 @@ public class PaymentServiceClient {
 
     private final RestClient restClient;
 
-    @Value("${external.payment-service.url:http://localhost:8084}")
+    @Value("${external.payment-service.url:http://localhost:8087}")
     private String paymentServiceUrl;
 
     public String requestDepositPayment(OrderPaymentRequest request) {

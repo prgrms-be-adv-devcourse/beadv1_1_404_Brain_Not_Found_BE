@@ -6,7 +6,8 @@ public enum OrderStatus {
     PAID,
     DELIVERY,
     COMPLETED,
-    REFUNDED;
+    REFUNDED,
+    FAILED;
 
     public boolean canTransitionTo(OrderStatus target) {
         return switch (this) {
@@ -15,6 +16,7 @@ public enum OrderStatus {
             case DELIVERY -> target == COMPLETED || target == REFUNDED;
             case COMPLETED -> target == REFUNDED;
             case CANCELLED, REFUNDED -> false;
+            case FAILED -> false;
         };
     }
 }

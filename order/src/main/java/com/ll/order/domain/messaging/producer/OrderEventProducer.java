@@ -22,6 +22,7 @@ public class OrderEventProducer {
         kafkaTemplate.send("refund-event", event);
     }
 
+    // 재고 처리는 API 요청으로
     public void sendInventoryDecrease(String productCode, int quantity) {
         String referenceCode = Generators.timeBasedEpochGenerator().generate().toString();
         kafkaTemplate.send("inventory-event", InventoryEvent.stockDecreaseEvent(productCode, quantity, referenceCode));

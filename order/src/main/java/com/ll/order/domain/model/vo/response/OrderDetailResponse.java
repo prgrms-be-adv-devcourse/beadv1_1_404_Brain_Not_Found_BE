@@ -20,7 +20,7 @@ public record OrderDetailResponse(
     public record ItemInfo(
             String orderItemCode,
             Long productId,
-            Long sellerId,
+            String sellerCode,
             String productName,
             int quantity,
             int price,

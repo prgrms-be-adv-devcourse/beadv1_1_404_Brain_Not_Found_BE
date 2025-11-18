@@ -18,7 +18,7 @@ public class DepositServiceClient {
 
     private final RestClient restClient;
 
-    @Value("${external.deposit-service.url:http://localhost:8085}")
+    @Value("${external.deposit-service.url:http://localhost:8086}")
     private String depositServiceUrl;
 
     public DepositInfoResponse getDepositInfo(String userCode) {
