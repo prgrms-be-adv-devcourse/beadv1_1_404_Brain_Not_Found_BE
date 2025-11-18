@@ -1,18 +1,24 @@
 package com.ll.order.domain.service;
 
+import com.ll.cart.model.vo.response.CartItemInfo;
+import com.ll.cart.model.vo.response.CartItemsResponse;
+import com.ll.core.model.vo.kafka.OrderEvent;
+import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.order.domain.client.CartServiceClient;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.client.UserServiceClient;
+import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.*;
-import com.ll.order.domain.model.vo.response.CartItemInfo;
-import com.ll.order.domain.model.vo.response.CartItemsResponse;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
+import com.ll.products.domain.product.model.dto.response.ProductResponse;
+import com.ll.products.domain.product.model.entity.ProductStatus;
+import com.ll.user.model.vo.response.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,13 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,6 +43,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductServiceClient productServiceClient;
     private final CartServiceClient cartServiceClient;
     private final PaymentServiceClient paymentApiClient;
+    private final OrderEventProducer orderEventProducer;
 
     @Override
     @Transactional(readOnly = true)
@@ -97,8 +98,8 @@ public class OrderServiceImpl implements OrderService {
                     ProductResponse product = Optional.ofNullable(productServiceClient.getProductById(item.getProductId()))
                             .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.getProductId()));
                     // images가 비어있지 않으면 첫 번째 이미지의 URL 사용, 없으면 null
-                    String productImage = product.images() != null && !product.images().isEmpty() 
-                            ? product.images().get(0).url() 
+                    String productImage = product.images() != null && !product.images().isEmpty()
+                            ? product.images().get(0).url()
                             : null;
                     return new OrderDetailResponse.ItemInfo(
                             item.getOrderItemCode(),
@@ -182,11 +183,27 @@ public class OrderServiceImpl implements OrderService {
         );
 
         // 결제 도메인 호출
-        switch (request.paidType()) {
-            case DEPOSIT -> paymentApiClient.requestDepositPayment(orderPaymentRequest);
-            case TOSS_PAYMENT -> paymentApiClient.requestTossPayment(orderPaymentRequest);
-            default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+        try {
+            switch (request.paidType()) {
+                case DEPOSIT -> paymentApiClient.requestDepositPayment(orderPaymentRequest);
+                case TOSS_PAYMENT -> paymentApiClient.requestTossPayment(orderPaymentRequest);
+                default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+            }
+
+            // 결제 성공 후
+            savedOrder.changeStatus(OrderStatus.COMPLETED);
+            orderJpaRepository.save(savedOrder);
+
+            publishOrderCompletedEvents(savedOrder, orderItems, request.buyerCode());
+
+        } catch (Exception e) {
+            // 결제 실패 시 주문 상태를 FAILED로 변경
+            savedOrder.changeStatus(OrderStatus.FAILED);
+            orderJpaRepository.save(savedOrder);
+            log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getOrderCode(), e.getMessage(), e);
+            throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
         }
+
         return convertToOrderCreateResponse(savedOrder);
     }
 
@@ -198,14 +215,14 @@ public class OrderServiceImpl implements OrderService {
         ProductResponse productInfo = getProductInfo(request.productCode());
 
         log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerId: {}, sellerName: {}, quantity: {}, price: {}, status: {}, images: {}",
-                productInfo.id(), 
+                productInfo.id(),
                 productInfo.code(),
-                productInfo.name(), 
+                productInfo.name(),
                 productInfo.sellerId(),
                 productInfo.sellerName(),
-                productInfo.quantity(), 
-                productInfo.price(), 
-                productInfo.status(), 
+                productInfo.quantity(),
+                productInfo.price(),
+                productInfo.status(),
                 productInfo.images());
 
         Order order = Order.create(
@@ -234,10 +251,27 @@ public class OrderServiceImpl implements OrderService {
                 request.paymentKey()
         );
 
-        switch (request.paidType()) {
-            case DEPOSIT -> paymentApiClient.requestDepositPayment(orderPaymentRequest);
-            case TOSS_PAYMENT -> paymentApiClient.requestTossPayment(orderPaymentRequest);
-            default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+        try {
+            switch (request.paidType()) {
+                case DEPOSIT -> paymentApiClient.requestDepositPayment(orderPaymentRequest);
+                case TOSS_PAYMENT -> paymentApiClient.requestTossPayment(orderPaymentRequest);
+                default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+            }
+
+            // 결제 성공 후
+            savedOrder.changeStatus(OrderStatus.COMPLETED);
+            orderJpaRepository.save(savedOrder);
+
+            // 결제 성공 후 이벤트 발행
+            List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(savedOrder.getId());
+            publishOrderCompletedEvents(savedOrder, orderItems, request.userCode());
+
+        } catch (Exception e) {
+            // 결제 실패 시
+            savedOrder.changeStatus(OrderStatus.FAILED);
+            orderJpaRepository.save(savedOrder);
+            log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getOrderCode(), e.getMessage(), e);
+            throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
         }
 
         return convertToOrderCreateResponse(savedOrder);
@@ -256,7 +290,13 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalStateException("해당 상태로 전환할 수 없습니다: " + current + " -> " + target);
         }
 
+        // 주문 취소 시 추가 로직 처리
+        if (target == OrderStatus.CANCELLED) {
+            handleOrderCancellation(order);
+        }
+
         order.changeStatus(target);
+        orderJpaRepository.save(order);
 
         return new OrderStatusUpdateResponse(
                 order.getOrderCode(),
@@ -267,11 +307,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderValidateResponse validateOrder(OrderValidateRequest request) {
-        UserResponse userInfo = getUserInfo(request.buyerCode());
-
-        if (userInfo.address() == null || userInfo.address().isBlank()) {
-            throw new IllegalStateException("배송 가능한 주소가 없습니다: " + request.buyerCode());
-        }
+//        UserResponse userInfo = getUserInfo(request.buyerCode());
 
         Set<String> duplicatedCheck = new HashSet<>();
         int totalQuantity = 0;
@@ -293,7 +329,7 @@ public class OrderServiceImpl implements OrderService {
                 throw new IllegalStateException("유효하지 않은 상품 가격입니다. 상품 코드: " + productRequest.productCode());
             }
 
-            if (productInfo.status() == null || productInfo.status() != com.ll.order.domain.model.enums.ProductStatus.ON_SALE) {
+            if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
                 throw new IllegalStateException("판매 중이 아닌 상품입니다. 상품 코드: " + productRequest.productCode());
             }
 
@@ -325,6 +361,63 @@ public class OrderServiceImpl implements OrderService {
                 BigDecimal.valueOf(totalAmount),
                 itemInfos
         );
+    }
+
+    /**
+     * 주문 취소 처리
+     * - 환불 이벤트 발행
+     * - 재고 복구 요청
+     */
+    private void handleOrderCancellation(Order order) {
+        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+
+        UserResponse buyerInfo = getUserInfoById(order.getBuyerId());
+        String buyerCode = buyerInfo != null ? buyerInfo.code() : null;
+        if (buyerCode == null) {
+            log.warn("주문 취소 시 buyerCode를 찾을 수 없습니다. orderCode: {}, buyerId: {}",
+                    order.getOrderCode(), order.getBuyerId());
+        }
+
+        for (OrderItem orderItem : orderItems) {
+            // 환불 이벤트 발행
+            if (buyerCode != null) {
+                RefundEvent refundEvent = new RefundEvent(
+                    buyerCode,
+                    orderItem.getOrderItemCode(),
+                    order.getOrderCode(),
+                    (long) orderItem.getPrice() * orderItem.getQuantity()
+                );
+                orderEventProducer.sendRefund(refundEvent);
+                log.info("Refund event sent - orderCode: {}, orderItemCode: {}, amount: {}",
+                        order.getOrderCode(), orderItem.getOrderItemCode(), refundEvent.amount());
+            }
+
+            try {
+                ProductResponse productInfo = getProductInfoById(orderItem.getProductId());
+                if (productInfo != null && productInfo.code() != null) {
+                    productServiceClient.restoreInventory(productInfo.code(), orderItem.getQuantity());
+                    log.info("재고 복구 요청 - productCode: {}, quantity: {}",
+                            productInfo.code(), orderItem.getQuantity());
+                } else {
+                    log.warn("재고 복구 실패 - 상품 정보를 찾을 수 없습니다. productId: {}", orderItem.getProductId());
+                }
+            } catch (Exception e) {
+                log.error("재고 복구 요청 실패 - productId: {}, quantity: {}, error: {}",
+                        orderItem.getProductId(), orderItem.getQuantity(), e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
+     * 사용자 ID로 사용자 정보 조회
+     */
+    private UserResponse getUserInfoById(Long userId) {
+        try {
+            return userServiceClient.getUserById(userId);
+        } catch (Exception e) {
+            log.warn("사용자 정보 조회 실패 - userId: {}, error: {}", userId, e.getMessage());
+            return null;
+        }
     }
 
     private ProductResponse getProductInfo(String productCode) {
@@ -370,6 +463,33 @@ public class OrderServiceImpl implements OrderService {
     private CartItemsResponse getCartInfo(String cartCode) {
         return Optional.ofNullable(cartServiceClient.getCartByCode(cartCode))
                 .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다: " + cartCode));
+    }
+
+    /**
+     * 주문 완료 후 이벤트 발행
+     * - 정산 이벤트 (order-event)
+     * - 재고 감소 이벤트 (inventory-event)
+     */
+    private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
+        for (OrderItem orderItem : orderItems) {
+            // 정산을 위한 주문 이벤트 발행
+            OrderEvent orderEvent = OrderEvent.of(
+                    buyerCode,
+                    orderItem.getCode(),
+                    orderItem.getOrderItemCode(),
+                    order.getOrderCode(),
+                    (long) orderItem.getPrice() * orderItem.getQuantity()
+            );
+            orderEventProducer.sendOrder(orderEvent);
+            log.info("주문 이벤트 send - orderCode: {}, orderItemCode: {}", order.getOrderCode(), orderItem.getOrderItemCode());
+
+            // 재고 감소 이벤트 발행
+//            orderEventProducer.sendInventoryDecrease(
+//                    String.valueOf(orderItem.getCode()),
+//                    orderItem.getQuantity()
+//            );
+//            log.info("Inventory decrease event sent - productId: {}, quantity: {}", orderItem.getProductId(), orderItem.getQuantity());
+        }
     }
 
     // 도메인 별 규칙에 맞는 검증 로직이 필요하면 추가 작성할 것.

@@ -1,26 +1,29 @@
 package com.ll.order.domain.service;
 
+import com.ll.cart.model.vo.response.CartItemInfo;
+import com.ll.cart.model.vo.response.CartItemsResponse;
 import com.ll.order.domain.client.CartServiceClient;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.client.UserServiceClient;
+import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.OrderType;
-import com.ll.order.domain.model.enums.AccountStatus;
-import com.ll.order.domain.model.enums.Grade;
-import com.ll.order.domain.model.enums.ProductStatus;
-import com.ll.order.domain.model.enums.Role;
-import com.ll.order.domain.model.enums.SocialProvider;
-import com.ll.order.domain.model.vo.response.ProductImageDto;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.*;
-import com.ll.order.domain.model.vo.response.CartItemInfo;
-import com.ll.order.domain.model.vo.response.CartItemsResponse;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.payment.model.enums.PaidType;
+import com.ll.products.domain.product.model.dto.ProductImageDto;
+import com.ll.products.domain.product.model.dto.response.ProductResponse;
+import com.ll.products.domain.product.model.entity.ProductStatus;
+import com.ll.user.model.enums.AccountStatus;
+import com.ll.user.model.enums.Grade;
+import com.ll.user.model.enums.Role;
+import com.ll.user.model.enums.SocialProvider;
+import com.ll.user.model.vo.response.UserResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +67,9 @@ class OrderServiceImplTest {
     @Mock
     private OrderItemJpaRepository orderItemJpaRepository;
 
+    @Mock
+    private OrderEventProducer orderEventProducer;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -75,6 +81,7 @@ class OrderServiceImplTest {
     void setUp() {
         testUserInfo = new UserResponse(
                 1L,
+                "USER-001",  // code 필드 추가
                 "test_social_id",
                 SocialProvider.KAKAO,
                 "test@test.com",
@@ -86,9 +93,8 @@ class OrderServiceImplTest {
                 AccountStatus.ACTIVE,
                 null,
                 null,
-                "서울시 강남구",
-                null,
-                null
+                null,  // createAt
+                null   // updatedAt (address 필드 제거)
         );
 
         testProductInfo = ProductResponse.builder()
@@ -146,7 +152,7 @@ class OrderServiceImplTest {
         assertThat(result.buyerId()).isEqualTo(1L);
         assertThat(result.totalPrice()).isEqualTo(20000);
         assertThat(result.orderType()).isEqualTo(OrderType.ONLINE);
-        assertThat(result.orderStatus()).isEqualTo(OrderStatus.CREATED);
+        assertThat(result.orderStatus()).isEqualTo(OrderStatus.COMPLETED);
         assertThat(result.address()).isEqualTo("서울시 강남구");
         assertThat(result.orderItems()).hasSize(1);
         OrderCreateResponse.OrderItemInfo itemInfo = result.orderItems().get(0);
@@ -163,7 +169,7 @@ class OrderServiceImplTest {
         assertThat(capturedOrder.getBuyerId()).isEqualTo(1L);
         assertThat(capturedOrder.getTotalPrice()).isEqualTo(20000);
         assertThat(capturedOrder.getOrderType()).isEqualTo(OrderType.ONLINE);
-        assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.CREATED);
+        assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.COMPLETED);
         assertThat(capturedOrder.getAddress()).isEqualTo("서울시 강남구");
         assertThat(capturedOrder.getOrderCode()).startsWith("ORD-");
 
@@ -263,7 +269,7 @@ class OrderServiceImplTest {
         assertThat(result.buyerId()).isEqualTo(1L);
         assertThat(result.totalPrice()).isEqualTo(50000);
         assertThat(result.orderType()).isEqualTo(OrderType.ONLINE);
-        assertThat(result.orderStatus()).isEqualTo(OrderStatus.CREATED);
+        assertThat(result.orderStatus()).isEqualTo(OrderStatus.COMPLETED);
         assertThat(result.orderItems()).hasSize(3);
         
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
@@ -274,7 +280,7 @@ class OrderServiceImplTest {
         assertThat(capturedOrder.getBuyerId()).isEqualTo(1L);
         assertThat(capturedOrder.getTotalPrice()).isEqualTo(50000);
         assertThat(capturedOrder.getOrderType()).isEqualTo(OrderType.ONLINE);
-        assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.CREATED);
+        assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.COMPLETED);
 
         // ProductService가 3번 호출되었는지
         ArgumentCaptor<Long> productIdCaptor = ArgumentCaptor.forClass(Long.class);
@@ -328,7 +334,7 @@ class OrderServiceImplTest {
         assertThat(result.orderCode()).startsWith("ORD-");
         assertThat(result.buyerId()).isEqualTo(1L);
         assertThat(result.totalPrice()).isEqualTo(20000);
-        assertThat(result.orderStatus()).isEqualTo(OrderStatus.CREATED);
+        assertThat(result.orderStatus()).isEqualTo(OrderStatus.COMPLETED);
         assertThat(result.orderType()).isEqualTo(OrderType.ONLINE);
         assertThat(result.address()).isEqualTo("서울시 강남구");
         assertThat(result.orderItems()).hasSize(1);
@@ -341,12 +347,12 @@ class OrderServiceImplTest {
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderJpaRepository).save(orderCaptor.capture());
         Order capturedOrder = orderCaptor.getValue();
-        
+
         assertThat(orderCaptor.getAllValues()).hasSize(1);
         assertThat(capturedOrder.getBuyerId()).isEqualTo(1L);
         assertThat(capturedOrder.getTotalPrice()).isEqualTo(20000);
         assertThat(capturedOrder.getOrderType()).isEqualTo(OrderType.ONLINE);
-        assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.CREATED);
+        assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.COMPLETED);
         assertThat(capturedOrder.getAddress()).isEqualTo("서울시 강남구");
         assertThat(capturedOrder.getOrderCode()).startsWith("ORD-");
         
@@ -376,6 +382,7 @@ class OrderServiceImplTest {
         // given
         UserResponse userInfo = new UserResponse(
                 1L,
+                "USER-001",  // code 필드 추가
                 "test_social_id",
                 SocialProvider.KAKAO,
                 "test@test.com",
@@ -387,9 +394,8 @@ class OrderServiceImplTest {
                 AccountStatus.ACTIVE,
                 null,
                 null,
-                "서울",
-                null,
-                null
+                null,  // createAt
+                null   // updatedAt (address 필드 제거)
         );
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(userInfo);
 
@@ -503,25 +509,6 @@ class OrderServiceImplTest {
     @Test
     void validateOrder_Success() {
         // given
-        when(userServiceClient.getUserByCode("USER-001"))
-                .thenReturn(new UserResponse(
-                        1L,
-                        "test_social_id",
-                        SocialProvider.KAKAO,
-                        "test@test.com",
-                        "사용자",
-                        Role.USER,
-                        null,
-                        5L,
-                        Grade.BRONZE,
-                        AccountStatus.ACTIVE,
-                        null,
-                        null,
-                        "서울시 강남구",
-                        null,
-                        null
-                ));
-
         ProductRequest productRequest1 = new ProductRequest("PROD-001", 2, 10000, null);
         ProductRequest productRequest2 = new ProductRequest("PROD-002", 1, 5000, null);
         OrderValidateRequest request = new OrderValidateRequest(

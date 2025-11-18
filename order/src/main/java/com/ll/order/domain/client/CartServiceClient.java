@@ -1,7 +1,7 @@
 package com.ll.order.domain.client;
 
+import com.ll.cart.model.vo.response.CartItemsResponse;
 import com.ll.core.model.response.BaseResponse;
-import com.ll.order.domain.model.vo.response.CartItemsResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
