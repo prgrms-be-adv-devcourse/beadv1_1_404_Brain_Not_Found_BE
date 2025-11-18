@@ -1,5 +1,6 @@
 package com.ll.products.domain.product.service;
 
+import com.ll.products.domain.product.exception.InsufficientInventoryException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -119,7 +120,15 @@ public class ProductService {
         return ProductResponse.from(product);
     }
 
-
+    // 7. 재고 수정
+    @Transactional
+    public void updateInventory(String productCode, Integer quantity) {
+        Product product = getProductByCode(productCode);
+        quantityCheck(productCode, quantity, product);
+        product.updateQuantity(quantity);
+        log.info("재고 수정 완료: {}, 남은재고: {}", product.getName(), product.getQuantity());
+        eventPublisher.publishEvent(ProductEvent.updated(this, product));
+    }
 
 
 
@@ -171,6 +180,14 @@ public class ProductService {
         }
         if (!userCode.equals(product.getSellerCode())) {
             throw new ProductOwnershipException(null, product.getCode());
+        }
+    }
+
+    // 재고 확인
+    private static void quantityCheck(String productCode, Integer quantity, Product product) {
+        if (quantity < 0 && product.getQuantity() + quantity < 0) {
+            throw new InsufficientInventoryException(
+                    productCode, product.getQuantity());
         }
     }
 }

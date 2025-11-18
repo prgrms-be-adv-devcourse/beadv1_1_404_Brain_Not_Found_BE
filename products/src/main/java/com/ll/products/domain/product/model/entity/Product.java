@@ -78,6 +78,10 @@ public class Product extends BaseEntity {
         this.status = status;
     }
 
+    public void updateQuantity(Integer quantity) {
+        this.quantity += quantity;
+    }
+
     public void softDelete() {
         this.isDeleted = true;
     }
