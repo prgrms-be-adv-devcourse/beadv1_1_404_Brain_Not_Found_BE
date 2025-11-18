@@ -15,7 +15,7 @@ ext {
 
 
 
-subprojects {
+subprojects {subproject ->
     apply plugin: 'java'
     apply plugin: 'org.springframework.boot'
     apply plugin: 'io.spring.dependency-management'
@@ -37,9 +37,9 @@ subprojects {
     repositories {
         mavenCentral()
     }
-
-    if (it.name != 'core') {
-        dependencies {
+    def excluded = ['core', 'discovery', 'gateway']
+    if (!excluded.contains(subproject.name)) {
+        subproject.dependencies {
             implementation project(':core')
         }
     }

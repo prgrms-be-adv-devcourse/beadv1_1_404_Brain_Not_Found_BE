@@ -26,7 +26,7 @@ RUN apt-get update && \
 # 8. 빌드된 jar파일 최상위로 복사
 COPY --from=builder /app/auth/build/libs/*.jar app.jar
 # 9. 외부 포트 노출
-EXPOSE 8084
+EXPOSE 8080
 
 # x. 컨테이너 시작 명령
 ENTRYPOINT ["java", "-jar", "app.jar"]
