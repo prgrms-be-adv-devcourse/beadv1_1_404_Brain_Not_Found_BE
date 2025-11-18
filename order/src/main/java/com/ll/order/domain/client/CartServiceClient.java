@@ -1,7 +1,7 @@
 package com.ll.order.domain.client;
 
+import com.ll.cart.model.vo.response.CartItemsResponse;
 import com.ll.core.model.response.BaseResponse;
-import com.ll.order.domain.model.vo.response.CartItemsResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -14,7 +14,7 @@ public class CartServiceClient {
 
     private final RestClient restClient;
     
-    @Value("${external.cart-service.url:http://localhost:8083}")
+    @Value("${external.cart-service.url:http://localhost:8089}")
     private String cartServiceUrl;
 
     public CartItemsResponse getCartByCode(String cartCode) {

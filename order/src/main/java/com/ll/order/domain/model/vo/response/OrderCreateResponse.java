@@ -19,7 +19,7 @@ public record OrderCreateResponse(
             Long id,
             String orderItemCode,
             Long productId,
-            Long sellerId,
+            String sellerCode,
             String productName,
             Integer quantity,
             Integer price

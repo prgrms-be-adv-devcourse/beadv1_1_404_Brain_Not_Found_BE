@@ -53,14 +53,14 @@ public class Order extends BaseEntity {
     }
 
     public OrderItem createOrderItem(Long productId,
-                                     Long sellerId,
+                                     String sellerCode,
                                      String productName,
                                      int quantity,
                                      int pricePerUnit) {
         OrderItem orderItem = OrderItem.create(
                 this,
                 productId,
-                sellerId,
+                sellerCode,
                 generateOrderItemCode(),
                 productName,
                 quantity,

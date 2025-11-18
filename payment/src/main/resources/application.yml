@@ -43,4 +43,4 @@ external:
   order-service:
     url: http://localhost:8082
   deposit-service:
-    url: http://localhost:8085
+    url: http://localhost:8086
