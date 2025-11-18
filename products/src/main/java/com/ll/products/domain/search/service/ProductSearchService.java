@@ -129,13 +129,6 @@ public class ProductSearchService {
         }
 
         List<Query> filterQueries = new ArrayList<>();
-        // 삭제 상품 제외
-        filterQueries.add(Query.of(q -> q
-                .term(t -> t
-                        .field("isDeleted")
-                        .value(false)
-                )
-        ));
 
         // 카테고리 필터링
         if (categoryId != null) {
