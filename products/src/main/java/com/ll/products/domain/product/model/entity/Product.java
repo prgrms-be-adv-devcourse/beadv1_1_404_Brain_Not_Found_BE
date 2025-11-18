@@ -98,7 +98,7 @@ public class Product extends BaseEntity {
     }
 
     private void validateUpdateQuantity(Integer quantity) {
-        if (quantity < 0 && this.quantity + quantity < 0) {
+        if (this.quantity + quantity < 0) {
             throw new InsufficientInventoryException(this.getCode(), this.quantity);
         }
     }
