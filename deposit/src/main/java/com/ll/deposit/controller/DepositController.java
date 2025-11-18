@@ -22,7 +22,9 @@ public class DepositController {
     @GetMapping
     public ResponseEntity<BaseResponse<DepositResponse>> getDeposit(
             @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
-            @RequestParam String userCode
+            @RequestHeader(value = "X-User-Code")
+            String userCode
+
     ) {
         return BaseResponse.ok(depositService.getDepositByUserCode(userCode));
     }
@@ -30,7 +32,8 @@ public class DepositController {
     @PostMapping
     public ResponseEntity<BaseResponse<DepositResponse>> createDeposit(
             @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
-            @RequestParam String userCode
+            @RequestHeader(value = "X-User-Code")
+            String userCode
     ) {
         return BaseResponse.created(depositService.createDeposit(userCode));
     }
@@ -38,7 +41,8 @@ public class DepositController {
     @PostMapping("/charge")
     public ResponseEntity<BaseResponse<DepositTransactionResponse>> chargeDeposit(
             @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
-            @RequestParam String userCode,
+            @RequestHeader(value = "X-User-Code")
+            String userCode,
             @Valid @RequestBody DepositTransactionRequest request
     ) {
         return BaseResponse.created(depositService.chargeDeposit(userCode, request));
@@ -47,7 +51,8 @@ public class DepositController {
     @PostMapping("/withdraw")
     public ResponseEntity<BaseResponse<DepositTransactionResponse>> withdrawDeposit(
             @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
-            @RequestParam String userCode,
+            @RequestHeader(value = "X-User-Code")
+            String userCode,
             @Valid @RequestBody DepositTransactionRequest request
     ) {
         return BaseResponse.created(depositService.withdrawDeposit(userCode, request));
@@ -56,7 +61,8 @@ public class DepositController {
     @PatchMapping("/close")
     public ResponseEntity<BaseResponse<DepositDeleteResponse>> deleteDeposit(
             @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
-            @RequestParam String userCode,
+            @RequestHeader(value = "X-User-Code")
+            String userCode,
             @Valid @RequestBody DepositDeleteRequest request
     ) {
         return BaseResponse.ok(depositService.deleteDepositByUserCode(userCode, request));
@@ -65,7 +71,8 @@ public class DepositController {
     @GetMapping("/histories")
     public ResponseEntity<BaseResponse<DepositHistoryPageResponse>> getDepositHistories(
             @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
-            @RequestParam String userCode,
+            @RequestHeader(value = "X-User-Code")
+            String userCode,
             @Valid @ModelAttribute DateRange dateRange,
             Pageable pageable
     ) {
