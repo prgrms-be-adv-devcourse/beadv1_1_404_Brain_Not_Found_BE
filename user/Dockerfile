@@ -19,6 +19,9 @@ RUN ./gradlew :user:bootJar -x test --no-daemon --stacktrace
 FROM azul/zulu-openjdk:21-latest
 WORKDIR /app
 
+RUN apt-get update && \
+    apt-get install -y curl
+
 # 8. 빌드된 jar파일 최상위로 복사
 COPY --from=builder /app/user/build/libs/*.jar app.jar
 # 9. 외부 포트 노출

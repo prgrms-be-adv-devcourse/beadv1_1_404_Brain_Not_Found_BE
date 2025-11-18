@@ -22,6 +22,12 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    @GetMapping("/ping")
+    public ResponseEntity<BaseResponse<String>> pong() {
+        System.out.println("OrderController.pong");
+        return BaseResponse.ok("Ok");
+    }
+
     /*
     주문 생성 : 클라이언트 주문 생성 및 DB 저장
     → 결제 요청 : 주문 서비스에서 결제 서비스에 요청 및 응답 대기

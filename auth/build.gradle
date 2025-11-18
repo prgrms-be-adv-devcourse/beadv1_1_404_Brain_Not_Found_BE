@@ -17,9 +17,14 @@ java {
 repositories {
     mavenCentral()
 }
-
+springBoot {
+    mainClass = 'com.ll.auth.AuthApplication'
+}
 dependencies {
     implementation project(':core')
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-security'
