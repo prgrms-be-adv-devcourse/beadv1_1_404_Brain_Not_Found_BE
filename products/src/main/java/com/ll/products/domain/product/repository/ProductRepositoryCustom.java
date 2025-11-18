@@ -8,7 +8,7 @@ import com.ll.products.domain.product.model.entity.ProductStatus;
 public interface ProductRepositoryCustom {
 
     Page<Product> searchProducts(
-            Long sellerId,
+            String sellerCode,
             Long categoryId,
             ProductStatus status,
             String name,
