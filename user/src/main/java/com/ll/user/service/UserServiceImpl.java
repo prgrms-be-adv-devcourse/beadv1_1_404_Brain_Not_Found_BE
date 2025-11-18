@@ -1,6 +1,7 @@
 package com.ll.user.service;
 
 import com.ll.user.exception.UserNotFoundException;
+import com.ll.user.messaging.producer.UserEventProducer;
 import com.ll.user.model.entity.User;
 import com.ll.user.model.vo.request.UserLoginRequest;
 import com.ll.user.model.vo.request.UserPatchRequest;
@@ -24,6 +25,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
+    private final UserEventProducer userEventProducer;
 
     @Override
     public UserResponse getUserById(Long id) {
@@ -58,25 +60,28 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserLoginResponse createOrUpdateUser(UserLoginRequest request) {
         Optional<User> existing = userRepository.findBySocialIdAndSocialProvider(request.socialId(), request.socialProvider());
-        User user;
+        User savedUser;
         if(existing.isPresent()) {
-            user = existing.get();
+            User user = existing.get();
             user.updateSocialInfo(
                     request.socialId(),
                     request.socialProvider(),
                     request.email(),
                     request.name()
             );
+            savedUser = userRepository.save(user);
         }
-        else{
-            user = User.builder()
+        else {
+            User user = User.builder()
                     .socialId(request.socialId())
                     .socialProvider(request.socialProvider())
                     .email(request.email())
                     .name(request.name())
                     .build();
+            savedUser = userRepository.save(user);
+            userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
+            userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
         }
-        User savedUser = userRepository.save(user);
         return UserLoginResponse.from(savedUser);
     }
 }
