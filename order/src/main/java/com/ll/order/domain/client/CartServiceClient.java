@@ -14,7 +14,7 @@ public class CartServiceClient {
 
     private final RestClient restClient;
     
-    @Value("${external.cart-service.url:http://localhost:8083}")
+    @Value("${external.cart-service.url:http://localhost:8089}")
     private String cartServiceUrl;
 
     public CartItemsResponse getCartByCode(String cartCode) {

@@ -209,8 +209,8 @@ public class OrderServiceImpl implements OrderService {
                 productInfo.images());
 
         Order order = Order.create(
-                1L,
-//                userInfo.id(),
+//                1L,
+                userInfo.id(),
                 request.orderType(),
                 request.address()
         );

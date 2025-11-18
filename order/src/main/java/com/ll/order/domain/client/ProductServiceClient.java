@@ -14,7 +14,7 @@ public class ProductServiceClient {
 
     private final RestClient restClient;
 
-    @Value("${external.product-service.url:http://localhost:8081}")
+    @Value("${external.product-service.url:http://localhost:8085}")
     private String productServiceUrl;
 
     public ProductResponse getProductByCode(String productCode) {

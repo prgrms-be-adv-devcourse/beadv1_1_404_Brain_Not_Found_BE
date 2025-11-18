@@ -16,7 +16,7 @@ public class UserServiceClient {
 
     private final RestClient restClient;
     
-    @Value("${external.user-service.url:http://localhost:8080}")
+    @Value("${external.user-service.url:http://localhost:8083}")
     private String userServiceUrl;
 
     public UserResponse getUserByCode(String userCode) {
