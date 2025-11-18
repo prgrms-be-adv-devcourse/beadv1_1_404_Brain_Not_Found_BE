@@ -101,7 +101,7 @@ class OrderServiceImplTest {
                 .id(1L)
                 .code("PROD-001")
                 .name("테스트상품")
-                .sellerId(10L)
+                .sellerCode("SELLER-001")
                 .sellerName("판매자1")
                 .quantity(1)
                 .price(10000)
@@ -157,7 +157,7 @@ class OrderServiceImplTest {
         assertThat(result.orderItems()).hasSize(1);
         OrderCreateResponse.OrderItemInfo itemInfo = result.orderItems().get(0);
         assertThat(itemInfo.productId()).isEqualTo(1L);
-        assertThat(itemInfo.sellerId()).isEqualTo(10L);
+        assertThat(itemInfo.sellerCode()).isEqualTo("SELLER-001");
         assertThat(itemInfo.quantity()).isEqualTo(2);
         assertThat(itemInfo.price()).isEqualTo(10000); // totalPrice(20000) / quantity(2) = 10000
 
@@ -203,7 +203,7 @@ class OrderServiceImplTest {
                 .id(1L)
                 .code("PROD-001")
                 .name("상품1")
-                .sellerId(10L)
+                .sellerCode("SELLER-001")
                 .sellerName("판매자1")
                 .quantity(2)
                 .price(10000)
@@ -214,7 +214,7 @@ class OrderServiceImplTest {
                 .id(2L)
                 .code("PROD-002")
                 .name("상품2")
-                .sellerId(20L)
+                .sellerCode("SELLER-002")
                 .sellerName("판매자2")
                 .quantity(1)
                 .price(15000)
@@ -225,7 +225,7 @@ class OrderServiceImplTest {
                 .id(3L)
                 .code("PROD-003")
                 .name("상품3")
-                .sellerId(30L)
+                .sellerCode("SELLER-003")
                 .sellerName("판매자3")
                 .quantity(3)
                 .price(5000)
@@ -292,11 +292,11 @@ class OrderServiceImplTest {
         
         // OrderItems 검증
         assertThat(result.orderItems().get(0).productId()).isEqualTo(1L);
-        assertThat(result.orderItems().get(0).sellerId()).isEqualTo(10L);
+        assertThat(result.orderItems().get(0).sellerCode()).isEqualTo("SELLER-001");
         assertThat(result.orderItems().get(1).productId()).isEqualTo(2L);
-        assertThat(result.orderItems().get(1).sellerId()).isEqualTo(20L);
+        assertThat(result.orderItems().get(1).sellerCode()).isEqualTo("SELLER-002");
         assertThat(result.orderItems().get(2).productId()).isEqualTo(3L);
-        assertThat(result.orderItems().get(2).sellerId()).isEqualTo(30L);
+        assertThat(result.orderItems().get(2).sellerCode()).isEqualTo("SELLER-003");
     }
 
     @DisplayName("직접 주문 생성")
@@ -340,7 +340,7 @@ class OrderServiceImplTest {
         assertThat(result.orderItems()).hasSize(1);
         OrderCreateResponse.OrderItemInfo orderItemInfo = result.orderItems().get(0);
         assertThat(orderItemInfo.productId()).isEqualTo(1L);
-        assertThat(orderItemInfo.sellerId()).isEqualTo(10L);
+        assertThat(orderItemInfo.sellerCode()).isEqualTo("SELLER-001");
         assertThat(orderItemInfo.quantity()).isEqualTo(2);
         assertThat(orderItemInfo.price()).isEqualTo(10000);
 
@@ -440,7 +440,7 @@ class OrderServiceImplTest {
         OrderItem orderItem = mock(OrderItem.class);
         when(orderItem.getOrderItemCode()).thenReturn("ITEM-001");
         when(orderItem.getProductId()).thenReturn(1L);
-        when(orderItem.getSellerId()).thenReturn(21L);
+        when(orderItem.getSellerCode()).thenReturn("SELLER-021");
         when(orderItem.getProductName()).thenReturn("상품1");
         when(orderItem.getQuantity()).thenReturn(2);
         when(orderItem.getPrice()).thenReturn(10000);
@@ -459,7 +459,7 @@ class OrderServiceImplTest {
                         .id(1L)
                         .code("PROD-001")
                         .name("상품1")
-                        .sellerId(21L)
+                        .sellerCode("SELLER-021")
                         .sellerName("판매자1")
                         .quantity(10)
                         .price(10000)
@@ -480,7 +480,7 @@ class OrderServiceImplTest {
         OrderDetailResponse.ItemInfo itemInfo = response.items().get(0);
         assertThat(itemInfo.orderItemCode()).isEqualTo("ITEM-001");
         assertThat(itemInfo.productId()).isEqualTo(1L);
-        assertThat(itemInfo.sellerId()).isEqualTo(21L);
+        assertThat(itemInfo.sellerCode()).isEqualTo("SELLER-021");
         assertThat(itemInfo.productName()).isEqualTo("상품1");
         assertThat(itemInfo.quantity()).isEqualTo(2);
         assertThat(itemInfo.price()).isEqualTo(10000);
@@ -521,7 +521,7 @@ class OrderServiceImplTest {
                         .id(11L)
                         .code("PROD-001")
                         .name("상품1")
-                        .sellerId(21L)
+                        .sellerCode("SELLER-021")
                         .sellerName("판매자1")
                         .quantity(5)
                         .price(10000)
@@ -533,7 +533,7 @@ class OrderServiceImplTest {
                         .id(12L)
                         .code("PROD-002")
                         .name("상품2")
-                        .sellerId(22L)
+                        .sellerCode("SELLER-022")
                         .sellerName("판매자2")
                         .quantity(3)
                         .price(5000)

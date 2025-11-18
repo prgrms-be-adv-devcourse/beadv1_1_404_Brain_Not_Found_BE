@@ -104,7 +104,7 @@ public class OrderServiceImpl implements OrderService {
                     return new OrderDetailResponse.ItemInfo(
                             item.getOrderItemCode(),
                             item.getProductId(),
-                            item.getSellerId(),
+                            item.getSellerCode(),
                             item.getProductName(),
                             item.getQuantity(),
                             item.getPrice(),
@@ -159,7 +159,7 @@ public class OrderServiceImpl implements OrderService {
 
             OrderItem orderItem = savedOrder.createOrderItem(
                     productInfo.id(),
-                    productInfo.sellerId(),
+                    productInfo.sellerCode(),
                     productInfo.name(),
                     cartItem.quantity(),
                     cartItem.totalPrice() / cartItem.quantity() // totalPrice를 quantity로 나눠서 단가 계산
@@ -214,11 +214,11 @@ public class OrderServiceImpl implements OrderService {
 
         ProductResponse productInfo = getProductInfo(request.productCode());
 
-        log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerId: {}, sellerName: {}, quantity: {}, price: {}, status: {}, images: {}",
+        log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerCode: {}, sellerName: {}, quantity: {}, price: {}, status: {}, images: {}",
                 productInfo.id(),
                 productInfo.code(),
                 productInfo.name(),
-                productInfo.sellerId(),
+                productInfo.sellerCode(),
                 productInfo.sellerName(),
                 productInfo.quantity(),
                 productInfo.price(),
@@ -235,7 +235,7 @@ public class OrderServiceImpl implements OrderService {
 
         OrderItem orderItem = savedOrder.createOrderItem(
                 productInfo.id(),
-                productInfo.sellerId(),
+                productInfo.sellerCode(),
                 productInfo.name(),
                 request.quantity(),
                 productInfo.price()
@@ -436,7 +436,7 @@ public class OrderServiceImpl implements OrderService {
                         item.getId(),
                         item.getOrderItemCode(),
                         item.getProductId(),
-                        item.getSellerId(),
+                        item.getSellerCode(),
                         item.getProductName(),
                         item.getQuantity(),
                         item.getPrice()

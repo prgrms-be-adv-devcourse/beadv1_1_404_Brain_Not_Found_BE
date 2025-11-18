@@ -18,6 +18,7 @@ import com.ll.payment.repository.PaymentJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -180,7 +181,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(createRequest)
                     .retrieve()
-                    .onStatus(status -> status.isError(), (req, res) -> {
+                    .onStatus(HttpStatusCode::isError, (req, res) -> {
                         try {
                             String errorBody = res.getBody() != null ? new String(res.getBody().readAllBytes()) : "No error body";
                             log.error("Toss 결제 생성 API 에러 - Status: {}, Body: {}", res.getStatusCode(), errorBody);
