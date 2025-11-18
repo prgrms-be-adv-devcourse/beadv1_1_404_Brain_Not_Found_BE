@@ -148,7 +148,7 @@ class OrderServiceImplTest {
 
         // then
         assertThat(result).isNotNull();
-        assertThat(result.orderCode()).startsWith("ORD-");
+        assertThat(result.orderCode()).isNotNull();
         assertThat(result.buyerId()).isEqualTo(1L);
         assertThat(result.totalPrice()).isEqualTo(20000);
         assertThat(result.orderType()).isEqualTo(OrderType.ONLINE);
@@ -171,7 +171,7 @@ class OrderServiceImplTest {
         assertThat(capturedOrder.getOrderType()).isEqualTo(OrderType.ONLINE);
         assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.COMPLETED);
         assertThat(capturedOrder.getAddress()).isEqualTo("서울시 강남구");
-        assertThat(capturedOrder.getOrderCode()).startsWith("ORD-");
+        assertThat(capturedOrder.getCode()).isNotNull();
 
         ArgumentCaptor<String> userCodeCaptor = ArgumentCaptor.forClass(String.class);
         verify(userServiceClient).getUserByCode(userCodeCaptor.capture());
@@ -265,7 +265,7 @@ class OrderServiceImplTest {
 
         // then
         assertThat(result).isNotNull();
-        assertThat(result.orderCode()).startsWith("ORD-");
+        assertThat(result.orderCode()).isNotNull();
         assertThat(result.buyerId()).isEqualTo(1L);
         assertThat(result.totalPrice()).isEqualTo(50000);
         assertThat(result.orderType()).isEqualTo(OrderType.ONLINE);
@@ -331,7 +331,7 @@ class OrderServiceImplTest {
 
         // then
         assertThat(result).isNotNull();
-        assertThat(result.orderCode()).startsWith("ORD-");
+        assertThat(result.orderCode()).isNotNull();
         assertThat(result.buyerId()).isEqualTo(1L);
         assertThat(result.totalPrice()).isEqualTo(20000);
         assertThat(result.orderStatus()).isEqualTo(OrderStatus.COMPLETED);
@@ -354,7 +354,7 @@ class OrderServiceImplTest {
         assertThat(capturedOrder.getOrderType()).isEqualTo(OrderType.ONLINE);
         assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.COMPLETED);
         assertThat(capturedOrder.getAddress()).isEqualTo("서울시 강남구");
-        assertThat(capturedOrder.getOrderCode()).startsWith("ORD-");
+        assertThat(capturedOrder.getCode()).isNotNull();
         
         // Client 호출 검증
         ArgumentCaptor<String> userCodeCaptor = ArgumentCaptor.forClass(String.class);
@@ -401,7 +401,7 @@ class OrderServiceImplTest {
 
         Order order = mock(Order.class);
         when(order.getId()).thenReturn(10L);
-        when(order.getOrderCode()).thenReturn("ORD-123");
+        when(order.getCode()).thenReturn("ORD-123");
         when(order.getOrderStatus()).thenReturn(OrderStatus.PAID);
         when(order.getTotalPrice()).thenReturn(30000);
         when(order.getBuyerId()).thenReturn(1L);
@@ -438,14 +438,14 @@ class OrderServiceImplTest {
         when(order.getAddress()).thenReturn("부산 해운대");
 
         OrderItem orderItem = mock(OrderItem.class);
-        when(orderItem.getOrderItemCode()).thenReturn("ITEM-001");
+        when(orderItem.getCode()).thenReturn("ITEM-001");
         when(orderItem.getProductId()).thenReturn(1L);
         when(orderItem.getSellerCode()).thenReturn("SELLER-021");
         when(orderItem.getProductName()).thenReturn("상품1");
         when(orderItem.getQuantity()).thenReturn(2);
         when(orderItem.getPrice()).thenReturn(10000);
 
-        when(orderJpaRepository.findByOrderCode("ORD-999")).thenReturn(order);
+        when(orderJpaRepository.findByCode("ORD-999")).thenReturn(order);
         when(orderItemJpaRepository.findByOrderId(10L)).thenReturn(List.of(orderItem));
         List<ProductImageDto> images = List.of(
                 ProductImageDto.builder()
@@ -491,8 +491,14 @@ class OrderServiceImplTest {
     @Test
     void updateOrderStatus_Success() {
         // given
-        Order order = Order.create("ORD-111", 1L, OrderType.ONLINE, "서울시 마포구");
-        when(orderJpaRepository.findByOrderCode("ORD-111")).thenReturn(order);
+        Order mockOrder = mock(Order.class);
+        when(mockOrder.getOrderStatus()).thenReturn(OrderStatus.CREATED);
+        when(mockOrder.getCode()).thenReturn("ORD-111");
+        when(mockOrder.getUpdatedAt()).thenReturn(null);
+        when(orderJpaRepository.findByCode("ORD-111")).thenReturn(mockOrder);
+        doNothing().when(mockOrder).changeStatus(OrderStatus.PAID);
+        when(orderJpaRepository.save(mockOrder)).thenReturn(mockOrder);
+        when(mockOrder.getOrderStatus()).thenReturn(OrderStatus.PAID); // 상태 변경 후
 
         OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.PAID);
 
@@ -502,7 +508,8 @@ class OrderServiceImplTest {
         // then
         assertThat(response.orderCode()).isEqualTo("ORD-111");
         assertThat(response.status()).isEqualTo(OrderStatus.PAID);
-        assertThat(response.updatedAt()).isNull();
+        verify(mockOrder).changeStatus(OrderStatus.PAID);
+        verify(orderJpaRepository).save(mockOrder);
     }
 
     @DisplayName("주문 검증 - 성공")

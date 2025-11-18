@@ -63,7 +63,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderPageResponse.OrderInfo> orderInfoList = orderPage.getContent().stream()
                 .map(order -> new OrderPageResponse.OrderInfo(
                         order.getId(),
-                        order.getOrderCode(),
+                        order.getCode(),
                         order.getOrderStatus(),
                         order.getTotalPrice(),
                         new OrderPageResponse.UserInfo(
@@ -89,7 +89,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public OrderDetailResponse findOrderDetails(String orderCode) {
         // 명확한 행위 메서드인데, 예외를 던지는 것들은 전부 repo impl같은 곳에 모아두는 걸 추천
-        Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
+        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId()); // 쿼리 날리는지 디버깅 해보도록.
@@ -102,7 +102,7 @@ public class OrderServiceImpl implements OrderService {
                             ? product.images().get(0).url()
                             : null;
                     return new OrderDetailResponse.ItemInfo(
-                            item.getOrderItemCode(),
+                            item.getCode(),
                             item.getProductId(),
                             item.getSellerCode(),
                             item.getProductName(),
@@ -165,7 +165,7 @@ public class OrderServiceImpl implements OrderService {
                     productInfo.sellerCode(),
                     productInfo.name(),
                     cartItem.quantity(),
-                    productInfo.price() // 상품 정보에서 정확한 단가 사용
+                    productInfo.price()
             );
             orderItems.add(orderItem);
         }
@@ -203,7 +203,7 @@ public class OrderServiceImpl implements OrderService {
             // 결제 실패 시 주문 상태를 FAILED로 변경
             savedOrder.changeStatus(OrderStatus.FAILED);
             orderJpaRepository.save(savedOrder);
-            log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getOrderCode(), e.getMessage(), e);
+            log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
             throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
         }
 
@@ -273,7 +273,7 @@ public class OrderServiceImpl implements OrderService {
             // 결제 실패 시
             savedOrder.changeStatus(OrderStatus.FAILED);
             orderJpaRepository.save(savedOrder);
-            log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getOrderCode(), e.getMessage(), e);
+            log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
             throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
         }
 
@@ -283,7 +283,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request) {
-        Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
+        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
         OrderStatus current = order.getOrderStatus();
@@ -302,7 +302,7 @@ public class OrderServiceImpl implements OrderService {
         orderJpaRepository.save(order);
 
         return new OrderStatusUpdateResponse(
-                order.getOrderCode(),
+                order.getCode(),
                 order.getOrderStatus(),
                 order.getUpdatedAt()
         );
@@ -378,7 +378,7 @@ public class OrderServiceImpl implements OrderService {
         String buyerCode = buyerInfo != null ? buyerInfo.code() : null;
         if (buyerCode == null) {
             log.warn("주문 취소 시 buyerCode를 찾을 수 없습니다. orderCode: {}, buyerId: {}",
-                    order.getOrderCode(), order.getBuyerId());
+                    order.getCode(), order.getBuyerId());
         }
 
         for (OrderItem orderItem : orderItems) {
@@ -386,13 +386,13 @@ public class OrderServiceImpl implements OrderService {
             if (buyerCode != null) {
                 RefundEvent refundEvent = new RefundEvent(
                     buyerCode,
-                    orderItem.getOrderItemCode(),
-                    order.getOrderCode(),
+                    orderItem.getCode(),
+                    order.getCode(),
                     (long) orderItem.getPrice() * orderItem.getQuantity()
                 );
                 orderEventProducer.sendRefund(refundEvent);
                 log.info("Refund event sent - orderCode: {}, orderItemCode: {}, amount: {}",
-                        order.getOrderCode(), orderItem.getOrderItemCode(), refundEvent.amount());
+                        order.getCode(), orderItem.getCode(), refundEvent.amount());
             }
 
             try {
@@ -437,7 +437,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderCreateResponse.OrderItemInfo> orderItemInfoList = orderItemJpaRepository.findByOrderId(order.getId()).stream()
                 .map(item -> new OrderCreateResponse.OrderItemInfo(
                         item.getId(),
-                        item.getOrderItemCode(),
+                        item.getCode(),
                         item.getProductId(),
                         item.getSellerCode(),
                         item.getProductName(),
@@ -448,7 +448,7 @@ public class OrderServiceImpl implements OrderService {
 
         return new OrderCreateResponse(
                 order.getId(),
-                order.getOrderCode(),
+                order.getCode(),
                 order.getOrderStatus(),
                 order.getTotalPrice(),
                 order.getOrderType(),
@@ -476,15 +476,16 @@ public class OrderServiceImpl implements OrderService {
     private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             // 정산을 위한 주문 이벤트 발행
+            // OrderEvent.of(buyerCode, sellerCode, orderItemCode, referenceCode, amount)
             OrderEvent orderEvent = OrderEvent.of(
                     buyerCode,
+                    orderItem.getSellerCode(),
                     orderItem.getCode(),
-                    orderItem.getOrderItemCode(),
-                    order.getOrderCode(),
+                    order.getCode(),
                     (long) orderItem.getPrice() * orderItem.getQuantity()
             );
             orderEventProducer.sendOrder(orderEvent);
-            log.info("주문 이벤트 send - orderCode: {}, orderItemCode: {}", order.getOrderCode(), orderItem.getOrderItemCode());
+            log.info("주문 이벤트 send - orderCode: {}, orderItemCode: {}", order.getCode(), orderItem.getCode());
 
             // 재고 감소 이벤트 발행
 //            orderEventProducer.sendInventoryDecrease(

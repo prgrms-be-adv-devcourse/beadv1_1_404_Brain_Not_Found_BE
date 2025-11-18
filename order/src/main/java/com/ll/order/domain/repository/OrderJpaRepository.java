@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface OrderJpaRepository extends JpaRepository<Order, Long> {
 
-    Order findByOrderCode(String orderCode);
+    Order findByCode(String code);
 
     Page<Order> findByBuyerId(Long buyerId, Pageable pageable);
 
