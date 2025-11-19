@@ -22,9 +22,6 @@ public class OrderItem extends BaseEntity {
     @Column(nullable = false)
     private String sellerCode;
 
-    @Column(nullable = false, unique = true)
-    private String orderItemCode;
-
     @Column(nullable = false)
     private String productName;
 
@@ -37,14 +34,12 @@ public class OrderItem extends BaseEntity {
     private OrderItem(Order order,
                       Long productId,
                       String sellerCode,
-                      String orderItemCode,
                       String productName,
                       Integer quantity,
                       Integer price) {
         this.order = order;
         this.productId = productId;
         this.sellerCode = sellerCode;
-        this.orderItemCode = orderItemCode;
         this.productName = productName;
         this.quantity = quantity;
         this.price = price;
@@ -53,11 +48,10 @@ public class OrderItem extends BaseEntity {
     public static OrderItem create(Order order,
                                    Long productId,
                                    String sellerCode,
-                                   String orderItemCode,
                                    String productName,
                                    Integer quantity,
                                    Integer price) {
-        return new OrderItem(order, productId, sellerCode, orderItemCode, productName, quantity, price);
+        return new OrderItem(order, productId, sellerCode, productName, quantity, price);
     }
 }
 

@@ -62,6 +62,7 @@ class PaymentServiceImplTest {
         PaymentServiceImpl service = createServiceSpy();
         PaymentRequest paymentRequest = new PaymentRequest(
                 1L,
+                "ORD-1",
                 2L,
                 "USER-001",
                 5_000,
@@ -102,6 +103,7 @@ class PaymentServiceImplTest {
         PaymentServiceImpl service = createServiceSpy();
         PaymentRequest paymentRequest = new PaymentRequest(
                 1L,
+                "ORD-1",
                 2L,
                 "USER-001",
                 5_000,
@@ -139,6 +141,7 @@ class PaymentServiceImplTest {
         assertThat(tossRequest.paidAmount()).isEqualTo(2_000);
         assertThat(tossRequest.paidType()).isEqualTo(PaidType.TOSS_PAYMENT);
         assertThat(tossRequest.orderId()).isEqualTo(paymentRequest.orderId());
+        assertThat(tossRequest.orderCode()).isEqualTo(paymentRequest.orderCode());
         assertThat(tossRequest.buyerId()).isEqualTo(paymentRequest.buyerId());
         assertThat(tossRequest.buyerCode()).isEqualTo(paymentRequest.buyerCode());
         assertThat(tossRequest.paymentKey()).isEqualTo(paymentRequest.paymentKey());
@@ -151,6 +154,7 @@ class PaymentServiceImplTest {
         PaymentServiceImpl service = createServiceSpy();
         PaymentRequest paymentRequest = new PaymentRequest(
                 1L,
+                "ORD-1",
                 2L,
                 "USER-001",
                 5_000,

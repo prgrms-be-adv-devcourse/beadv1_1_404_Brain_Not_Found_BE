@@ -8,11 +8,18 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 양방향 관계 테스트를 위한 Order 엔티티
+ * 실제 프로덕션에서는 사용하지 않고 성능 비교 테스트용으로만 사용
+ */
 @Entity
 @Getter
-@Table(name = "orders")
+@Table(name = "orders_bidirectional")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Order extends BaseEntity {
+public class OrderWithBidirectional extends BaseEntity {
 
     @Column(nullable = false)
     private Long buyerId;
@@ -31,31 +38,18 @@ public class Order extends BaseEntity {
     @Column(nullable = false)
     private String address;
 
-    public static Order create(Long buyerId, OrderType orderType, String address) {
-        Order order = new Order();
+    // 양방향 관계: @OneToMany 추가
+    @OneToMany(mappedBy = "order", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<OrderItemWithBidirectional> orderItems = new ArrayList<>();
+
+    public static OrderWithBidirectional create(Long buyerId, OrderType orderType, String address) {
+        OrderWithBidirectional order = new OrderWithBidirectional();
         order.buyerId = buyerId;
         order.orderType = orderType;
         order.orderStatus = OrderStatus.CREATED;
         order.address = address;
         order.totalPrice = 0;
         return order;
-    }
-
-    public OrderItem createOrderItem(Long productId,
-                                     String sellerCode,
-                                     String productName,
-                                     int quantity,
-                                     int pricePerUnit) {
-        OrderItem orderItem = OrderItem.create(
-                this,
-                productId,
-                sellerCode,
-                productName,
-                quantity,
-                pricePerUnit
-        );
-        increaseTotalPrice(pricePerUnit * quantity);
-        return orderItem;
     }
 
     public void changeStatus(OrderStatus orderStatus) {
@@ -65,5 +59,5 @@ public class Order extends BaseEntity {
     private void increaseTotalPrice(int amount) {
         this.totalPrice += amount;
     }
-
 }
+

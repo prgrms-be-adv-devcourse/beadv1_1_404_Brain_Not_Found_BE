@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>결제 실패</title>
+</head>
+<body>
+    <div>
+        <h2>결제에 실패했습니다</h2>
+        <p th:if="${orderId}">주문번호: <span th:text="${orderId}"></span></p>
+        <p th:if="${errorCode}">에러 코드: <span th:text="${errorCode}"></span></p>
+        <p th:if="${errorMessage}">에러 메시지: <span th:text="${errorMessage}"></span></p>
+    </div>
+</body>
+</html>
+

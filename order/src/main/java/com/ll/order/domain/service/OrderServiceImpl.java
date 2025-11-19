@@ -63,7 +63,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderPageResponse.OrderInfo> orderInfoList = orderPage.getContent().stream()
                 .map(order -> new OrderPageResponse.OrderInfo(
                         order.getId(),
-                        order.getOrderCode(),
+                        order.getCode(),
                         order.getOrderStatus(),
                         order.getTotalPrice(),
                         new OrderPageResponse.UserInfo(
@@ -89,7 +89,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public OrderDetailResponse findOrderDetails(String orderCode) {
         // 명확한 행위 메서드인데, 예외를 던지는 것들은 전부 repo impl같은 곳에 모아두는 걸 추천
-        Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
+        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId()); // 쿼리 날리는지 디버깅 해보도록.
@@ -102,7 +102,7 @@ public class OrderServiceImpl implements OrderService {
                             ? product.images().get(0).url()
                             : null;
                     return new OrderDetailResponse.ItemInfo(
-                            item.getOrderItemCode(),
+                            item.getCode(),
                             item.getProductId(),
                             item.getSellerCode(),
                             item.getProductName(),
@@ -130,8 +130,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request) {
-        UserResponse userInfo = getUserInfo(request.buyerCode());
+    public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request, String userCode) {
+        UserResponse userInfo = getUserInfo(userCode);
 
         CartItemsResponse cartInfo = getCartInfo(request.cartCode());
 
@@ -165,7 +165,7 @@ public class OrderServiceImpl implements OrderService {
                     productInfo.sellerCode(),
                     productInfo.name(),
                     cartItem.quantity(),
-                    productInfo.price() // 상품 정보에서 정확한 단가 사용
+                    productInfo.price()
             );
             orderItems.add(orderItem);
         }
@@ -176,35 +176,45 @@ public class OrderServiceImpl implements OrderService {
         2) OrderServiceImpl에서 PaidType 유효성 검사
         3) OrderPaymentRequest에 PaidType 포함 → 결제 도메인 전달
         */
-        OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
-                savedOrder.getId(),
-                savedOrder.getBuyerId(),
-                request.buyerCode(),
-                savedOrder.getTotalPrice(),
-                request.paidType(),
-                request.paymentKey()
-        );
+        
+        // 결제 방식에 따라 처리 분기
+        switch (request.paidType()) {
+            case DEPOSIT -> {
+                // 예치금 결제: 주문 생성 시 바로 결제 처리
+                OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
+                        savedOrder.getId(),
+                        savedOrder.getCode(),
+                        savedOrder.getBuyerId(),
+                        request.buyerCode(),
+                        savedOrder.getTotalPrice(),
+                        request.paidType(),
+                        request.paymentKey()
+                );
 
-        // 결제 도메인 호출
-        try {
-            switch (request.paidType()) {
-                case DEPOSIT -> paymentApiClient.requestDepositPayment(orderPaymentRequest);
-                case TOSS_PAYMENT -> paymentApiClient.requestTossPayment(orderPaymentRequest);
-                default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+                try {
+                    paymentApiClient.requestDepositPayment(orderPaymentRequest);
+
+                    // 결제 성공 후
+                    savedOrder.changeStatus(OrderStatus.COMPLETED);
+                    orderJpaRepository.save(savedOrder);
+
+                    publishOrderCompletedEvents(savedOrder, orderItems, request.buyerCode());
+
+                } catch (Exception e) {
+                    // 결제 실패 시 주문 상태를 FAILED로 변경
+                    savedOrder.changeStatus(OrderStatus.FAILED);
+                    orderJpaRepository.save(savedOrder);
+                    log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
+                    throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
+                }
             }
-
-            // 결제 성공 후
-            savedOrder.changeStatus(OrderStatus.COMPLETED);
-            orderJpaRepository.save(savedOrder);
-
-            publishOrderCompletedEvents(savedOrder, orderItems, request.buyerCode());
-
-        } catch (Exception e) {
-            // 결제 실패 시 주문 상태를 FAILED로 변경
-            savedOrder.changeStatus(OrderStatus.FAILED);
-            orderJpaRepository.save(savedOrder);
-            log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getOrderCode(), e.getMessage(), e);
-            throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
+            case TOSS_PAYMENT -> {
+                // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
+                // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
+                log.info("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)", 
+                        savedOrder.getId(), savedOrder.getCode());
+            }
+            default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
         }
 
         return convertToOrderCreateResponse(savedOrder);
@@ -212,8 +222,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderCreateResponse createDirectOrder(OrderDirectRequest request) {
-        UserResponse userInfo = getUserInfo(request.userCode());
+    public OrderCreateResponse createDirectOrder(OrderDirectRequest request, String userCode) {
+        UserResponse userInfo = getUserInfo(userCode);
 
         ProductResponse productInfo = getProductInfo(request.productCode());
 
@@ -245,36 +255,46 @@ public class OrderServiceImpl implements OrderService {
         );
         orderItemJpaRepository.save(orderItem);
 
-        OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
-                savedOrder.getId(),
-                savedOrder.getBuyerId(),
-                request.userCode(),
-                savedOrder.getTotalPrice(),
-                request.paidType(),
-                request.paymentKey()
-        );
+        // 결제 방식에 따라 처리 분기
+        switch (request.paidType()) {
+            case DEPOSIT -> {
+                // 예치금 결제: 주문 생성 시 바로 결제 처리
+                OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
+                        savedOrder.getId(),
+                        savedOrder.getCode(),
+                        savedOrder.getBuyerId(),
+                        request.userCode(),
+                        savedOrder.getTotalPrice(),
+                        request.paidType(),
+                        request.paymentKey()
+                );
 
-        try {
-            switch (request.paidType()) {
-                case DEPOSIT -> paymentApiClient.requestDepositPayment(orderPaymentRequest);
-                case TOSS_PAYMENT -> paymentApiClient.requestTossPayment(orderPaymentRequest);
-                default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+                try {
+                    paymentApiClient.requestDepositPayment(orderPaymentRequest);
+
+                    // 결제 성공 후
+                    savedOrder.changeStatus(OrderStatus.COMPLETED);
+                    orderJpaRepository.save(savedOrder);
+
+                    // 결제 성공 후 이벤트 발행
+                    List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(savedOrder.getId());
+                    publishOrderCompletedEvents(savedOrder, orderItems, request.userCode());
+
+                } catch (Exception e) {
+                    // 결제 실패 시
+                    savedOrder.changeStatus(OrderStatus.FAILED);
+                    orderJpaRepository.save(savedOrder);
+                    log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
+                    throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
+                }
             }
-
-            // 결제 성공 후
-            savedOrder.changeStatus(OrderStatus.COMPLETED);
-            orderJpaRepository.save(savedOrder);
-
-            // 결제 성공 후 이벤트 발행
-            List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(savedOrder.getId());
-            publishOrderCompletedEvents(savedOrder, orderItems, request.userCode());
-
-        } catch (Exception e) {
-            // 결제 실패 시
-            savedOrder.changeStatus(OrderStatus.FAILED);
-            orderJpaRepository.save(savedOrder);
-            log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getOrderCode(), e.getMessage(), e);
-            throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
+            case TOSS_PAYMENT -> {
+                // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
+                // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
+                log.info("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)", 
+                        savedOrder.getId(), savedOrder.getCode());
+            }
+            default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
         }
 
         return convertToOrderCreateResponse(savedOrder);
@@ -282,8 +302,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request) {
-        Order order = Optional.ofNullable(orderJpaRepository.findByOrderCode(orderCode))
+    public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request, String userCode) {
+        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
         OrderStatus current = order.getOrderStatus();
@@ -302,10 +322,55 @@ public class OrderServiceImpl implements OrderService {
         orderJpaRepository.save(order);
 
         return new OrderStatusUpdateResponse(
-                order.getOrderCode(),
+                order.getCode(),
                 order.getOrderStatus(),
                 order.getUpdatedAt()
         );
+    }
+
+    @Override
+    @Transactional
+    public void completePaymentWithKey(String orderCode, String paymentKey) {
+        // 주문 조회
+        Order order = orderJpaRepository.findByCode(orderCode);
+
+        // 주문 상태 확인
+        if (order.getOrderStatus() != OrderStatus.CREATED) {
+            throw new IllegalStateException("이미 처리된 주문입니다. 현재 상태: " + order.getOrderStatus());
+        }
+
+        // 사용자 정보 조회 (buyerCode 필요)
+        UserResponse userInfo = getUserInfoById(order.getBuyerId());
+
+        // 결제 처리
+        OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
+                order.getId(),
+                order.getCode(),
+                order.getBuyerId(),
+                userInfo.code(),
+                order.getTotalPrice(),
+                com.ll.payment.model.enums.PaidType.TOSS_PAYMENT,
+                paymentKey
+        );
+
+        try {
+            paymentApiClient.requestTossPayment(orderPaymentRequest);
+
+            // 결제 성공 후
+            order.changeStatus(OrderStatus.COMPLETED);
+            orderJpaRepository.save(order);
+
+            // 결제 성공 후 이벤트 발행
+            List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+            publishOrderCompletedEvents(order, orderItems, userInfo.code());
+
+        } catch (Exception e) {
+            // 결제 실패 시
+            order.changeStatus(OrderStatus.FAILED);
+            orderJpaRepository.save(order);
+            log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderCode, paymentKey, e.getMessage(), e);
+            throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -366,7 +431,7 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
-    /**
+    /*
      * 주문 취소 처리
      * - 환불 이벤트 발행
      * - 재고 복구 요청
@@ -378,7 +443,7 @@ public class OrderServiceImpl implements OrderService {
         String buyerCode = buyerInfo != null ? buyerInfo.code() : null;
         if (buyerCode == null) {
             log.warn("주문 취소 시 buyerCode를 찾을 수 없습니다. orderCode: {}, buyerId: {}",
-                    order.getOrderCode(), order.getBuyerId());
+                    order.getCode(), order.getBuyerId());
         }
 
         for (OrderItem orderItem : orderItems) {
@@ -386,13 +451,13 @@ public class OrderServiceImpl implements OrderService {
             if (buyerCode != null) {
                 RefundEvent refundEvent = new RefundEvent(
                     buyerCode,
-                    orderItem.getOrderItemCode(),
-                    order.getOrderCode(),
+                    orderItem.getCode(),
+                    order.getCode(),
                     (long) orderItem.getPrice() * orderItem.getQuantity()
                 );
                 orderEventProducer.sendRefund(refundEvent);
                 log.info("Refund event sent - orderCode: {}, orderItemCode: {}, amount: {}",
-                        order.getOrderCode(), orderItem.getOrderItemCode(), refundEvent.amount());
+                        order.getCode(), orderItem.getCode(), refundEvent.amount());
             }
 
             try {
@@ -437,7 +502,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderCreateResponse.OrderItemInfo> orderItemInfoList = orderItemJpaRepository.findByOrderId(order.getId()).stream()
                 .map(item -> new OrderCreateResponse.OrderItemInfo(
                         item.getId(),
-                        item.getOrderItemCode(),
+                        item.getCode(),
                         item.getProductId(),
                         item.getSellerCode(),
                         item.getProductName(),
@@ -448,7 +513,7 @@ public class OrderServiceImpl implements OrderService {
 
         return new OrderCreateResponse(
                 order.getId(),
-                order.getOrderCode(),
+                order.getCode(),
                 order.getOrderStatus(),
                 order.getTotalPrice(),
                 order.getOrderType(),
@@ -476,15 +541,16 @@ public class OrderServiceImpl implements OrderService {
     private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             // 정산을 위한 주문 이벤트 발행
+            // OrderEvent.of(buyerCode, sellerCode, orderItemCode, referenceCode, amount)
             OrderEvent orderEvent = OrderEvent.of(
                     buyerCode,
+                    orderItem.getSellerCode(),
                     orderItem.getCode(),
-                    orderItem.getOrderItemCode(),
-                    order.getOrderCode(),
+                    order.getCode(),
                     (long) orderItem.getPrice() * orderItem.getQuantity()
             );
             orderEventProducer.sendOrder(orderEvent);
-            log.info("주문 이벤트 send - orderCode: {}, orderItemCode: {}", order.getOrderCode(), orderItem.getOrderItemCode());
+            log.info("주문 이벤트 send - orderCode: {}, orderItemCode: {}", order.getCode(), orderItem.getCode());
 
             // 재고 감소 이벤트 발행
 //            orderEventProducer.sendInventoryDecrease(
@@ -493,6 +559,14 @@ public class OrderServiceImpl implements OrderService {
 //            );
 //            log.info("Inventory decrease event sent - productId: {}, quantity: {}", orderItem.getProductId(), orderItem.getQuantity());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getOrderCodeById(Long orderId) {
+        Order order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderId));
+        return order.getCode();
     }
 
     // 도메인 별 규칙에 맞는 검증 로직이 필요하면 추가 작성할 것.
