@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>결제하기</title>
+    <script src="https://js.tosspayments.com/v2/standard"></script>
+</head>
+<body>
+    <div>
+        <h2>결제하기</h2>
+        <p>주문번호: <span th:text="${orderId}"></span></p>
+        <p>상품명: <span th:text="${orderName}"></span></p>
+        <p>결제금액: ₩ <span th:text="${#numbers.formatInteger(amount, 0, 'COMMA')}"></span></p>
+        
+        <div id="payment-method"></div>
+        <div id="agreement"></div>
+        
+        <button id="payment-button">결제하기</button>
+    </div>
+
+    <script th:inline="javascript">
+        async function main() {
+            const button = document.getElementById("payment-button");
+            
+            const orderId = /*[[${orderId}]]*/ '';
+            const orderName = /*[[${orderName}]]*/ '';
+            const amountValue = /*[[${amount}]]*/ 0;
+            const clientKeyValue = /*[[${clientKey}]]*/ '';
+            const successUrlValue = /*[[${successUrl}]]*/ '';
+            const failUrlValue = /*[[${failUrl}]]*/ '';
+            const customerNameValue = /*[[${customerName}]]*/ '고객';
+            
+            if (!clientKeyValue || clientKeyValue.trim() === '') {
+                alert("클라이언트 키가 설정되지 않았습니다.");
+                return;
+            }
+            
+            const amount = {
+                currency: "KRW",
+                value: amountValue,
+            };
+
+            try {
+                const tossPayments = TossPayments(clientKeyValue);
+                const widgets = tossPayments.widgets({customerKey: TossPayments.ANONYMOUS});
+                await widgets.setAmount(amount);
+
+                await widgets.renderPaymentMethods({
+                    selector: "#payment-method",
+                    variantKey: "DEFAULT",
+                });
+
+                await widgets.renderAgreement({selector: "#agreement", variantKey: "AGREEMENT"});
+
+                button.addEventListener("click", async function () {
+                    try {
+                        await widgets.requestPayment({
+                            orderId: "ORDER-" + orderId,
+                            orderName: orderName,
+                            successUrl: successUrlValue,
+                            failUrl: failUrlValue,
+                            customerEmail: "customer@example.com",
+                            customerName: customerNameValue,
+                        });
+                    } catch (error) {
+                        console.error("결제 요청 실패:", error);
+                        alert("결제 요청 중 오류가 발생했습니다: " + error.message);
+                    }
+                });
+            } catch (error) {
+                console.error("위젯 초기화 실패:", error);
+                alert("결제 위젯 초기화 중 오류가 발생했습니다: " + error.message);
+            }
+        }
+
+        main();
+    </script>
+</body>
+</html>
+

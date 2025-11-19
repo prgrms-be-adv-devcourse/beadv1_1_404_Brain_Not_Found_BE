@@ -14,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.RedirectView;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -34,6 +35,121 @@ public class OrderController {
     → 결제 처리 : 주문의 요청을 받아 처리. 외부 API 연동
     → 주문 상태 업데이트 : 결제 결과에 따라 주문 상태 변경 (created → paid / failed)
     * */
+    
+    /*
+    ====================================================================================
+    [토스 결제를 사용한 주문 생성 및 결제 프로세스]
+    ====================================================================================
+
+    [전체 흐름]
+    1. 주문 생성 (POST) → JSON 응답 반환
+    2. 프론트엔드에서 응답 받은 후 결제 페이지로 이동 (GET)
+    3. 결제 페이지에서 토스 결제 위젯 사용
+    4. 토스 결제 완료 후 콜백 처리
+    
+    [사용 방법]
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │ 1단계: 주문 생성 (POST 요청)                                                │
+    └─────────────────────────────────────────────────────────────────────────────┘
+    
+    POST /api/orders/direct
+    Content-Type: application/json
+    
+    {
+      "userCode": "USER-001",
+      "productCode": "PROD-001",
+      "quantity": 2,
+      "address": "서울시 강남구",
+      "orderType": "ONLINE",
+      "paidType": "TOSS_PAYMENT",  // 토스 결제인 경우
+      "paymentKey": null           // 주문 생성 시에는 null
+    }
+    
+    [응답 예시]
+    {
+      "status": 201,
+      "message": "created",
+      "data": {
+        "id": 1,// ← 이 값을 사용하여 결제 페이지로 이동
+        "orderCode": "ORDER-xxx",
+        "orderStatus": "CREATED",
+        "totalPrice": 20000,
+        "orderType": "ONLINE",
+        "address": "서울시 강남구",
+        "buyerId": 1,
+        "orderItems": [...]
+      }
+    }
+    
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │ 2단계: 프론트엔드에서 결제 페이지로 이동                                    │
+    └─────────────────────────────────────────────────────────────────────────────┘
+    
+    [방법 1: JavaScript로 자동 이동 (실제 서비스에서 사용)]
+    주문 생성 API 호출 후 응답을 받아 자동으로 결제 페이지로 이동합니다.
+    
+    fetch('/api/orders/direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.data && orderData.paidType === 'TOSS_PAYMENT') {
+            // 토스 결제인 경우 결제 페이지로 이동
+            const orderId = data.data.id;
+            const orderName = '주문번호: ' + data.data.orderCode;
+            const amount = data.data.totalPrice;
+            
+            window.location.href = `/orders/payment?orderId=${orderId}&orderName=${encodeURIComponent(orderName)}&amount=${amount}`;
+        } else {
+            // 예치금 결제 등은 완료 처리
+            alert('주문이 완료되었습니다.');
+        }
+    });
+    
+    [방법 2: 직접 URL 접근 (테스트/디버깅용)]
+    주문 ID를 알고 있는 경우 브라우저 주소창에 직접 입력하거나 링크로 접근할 수 있습니다.
+    주문 생성 후 응답에서 받은 orderId를 사용하여 접근합니다.
+    
+    GET /orders/payment?orderId=1&orderName=상품명&amount=10000&customerName=홍길동
+    
+    ※ 주의: orderId, orderName, amount는 주문 생성 API 응답에서 받은 실제 값을 사용해야 합니다.
+    
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │ 3단계: 결제 페이지에서 토스 결제                                            │
+    └─────────────────────────────────────────────────────────────────────────────┘
+    
+    - 결제 페이지(/orders/payment)에서 토스 결제 위젯이 자동으로 로드됩니다.
+    - 사용자가 결제 수단을 선택하고 결제를 진행합니다.
+    - 토스 서버에서 결제 처리가 완료되면 자동으로 콜백 URL로 리다이렉트됩니다.
+    
+    ┌─────────────────────────────────────────────────────────────────────────────┐
+    │ 4단계: 결제 완료 콜백 처리 (토스 서버에서 자동 호출)                        │
+    └─────────────────────────────────────────────────────────────────────────────┘
+    
+    토스 결제가 완료되면 토스 서버가 자동으로 아래 URL로 리다이렉트합니다.
+    (프론트엔드나 사용자가 직접 호출하지 않습니다)
+    
+    [결제 성공 시]
+    토스 서버가 자동으로 호출:
+    GET /api/orders/payment/success?paymentKey=xxx&orderId=ORDER-1&amount=10000
+    
+    [결제 실패 시]
+    토스 서버가 자동으로 호출:
+    GET /api/orders/payment/fail?errorCode=xxx&errorMessage=xxx&orderId=ORDER-1
+    
+    ※ 이 URL은 payment.html에서 토스 위젯 초기화 시 successUrl, failUrl로 설정됩니다.
+    ※ application.yml의 payment.successUrl, payment.failUrl 설정값이 사용됩니다.
+    
+    [주의사항]
+    - 주문 생성 시 paidType이 TOSS_PAYMENT인 경우, paymentKey는 null로 전달해야 합니다.
+    - paymentKey는 토스 결제 완료 후 콜백에서 자동으로 받아옵니다.
+    - 주문 생성 후 반드시 프론트엔드에서 결제 페이지로 이동해야 합니다.
+    - 예치금 결제(DEPOSIT)인 경우는 주문 생성 시 바로 결제가 처리됩니다.
+    
+    ====================================================================================
+    */
     @PostMapping("/cartItems")
     // TODO 토스 보완 결제 시 paymentKey 필수 여부와 검증 로직 추가 필요
     public ResponseEntity<BaseResponse<OrderCreateResponse>> createCartItemOrder(
@@ -44,6 +160,24 @@ public class OrderController {
         return BaseResponse.created(response);
     }
 
+    /**
+     * 직접 주문 생성 API
+     * 
+     * [사용 예시]
+     * POST /api/orders/direct
+     * 
+     * [토스 결제 사용 시]
+     * 1. 이 API로 주문 생성 (paidType: TOSS_PAYMENT, paymentKey: null)
+     * 2. 응답에서 orderId 추출
+     * 3. GET /orders/payment?orderId={id}&orderName={name}&amount={amount} 로 이동
+     * 4. 결제 페이지에서 토스 결제 진행
+     * 5. 결제 완료 후 자동으로 콜백 처리됨
+     * 
+     * [예치금 결제 사용 시]
+     * 1. 이 API로 주문 생성 (paidType: DEPOSIT)
+     * 2. 주문 생성과 동시에 결제 처리 완료
+     * 3. 응답의 orderStatus가 COMPLETED로 반환됨
+     */
     @PostMapping("/direct")
     public ResponseEntity<BaseResponse<OrderCreateResponse>> createDirectOrder(
             @Valid @RequestBody OrderDirectRequest request
@@ -92,5 +226,78 @@ public class OrderController {
         OrderValidateResponse response = orderService.validateOrder(request);
 
         return BaseResponse.ok(response);
+    }
+
+    /**
+     * 결제 성공 콜백 처리
+     * 
+     * [설명]
+     * 토스 결제가 성공적으로 완료되면 토스 서버에서 이 엔드포인트로 자동 리다이렉트됩니다.
+     * paymentKey를 받아서 주문 결제를 완료 처리합니다.
+     * 
+     * [호출 방식]
+     * 토스 서버에서 자동 호출 (프론트엔드에서 직접 호출하지 않음)
+     * 
+     * [파라미터]
+     * - paymentKey: 토스에서 발급한 결제 키 (String)
+     * - orderId: 주문 ID (String, "ORDER-1" 형식)
+     * - amount: 결제 금액 (String)
+     * 
+     * [처리 과정]
+     * 1. orderId에서 "ORDER-" 접두사 제거 후 Long 타입으로 변환
+     * 2. 주문 조회 및 상태 확인 (CREATED 상태여야 함)
+     * 3. PaymentService에 결제 승인 요청
+     * 4. 주문 상태를 COMPLETED로 변경
+     * 5. 주문 완료 이벤트 발행
+     * 6. 성공 페이지로 리다이렉트
+     * 
+     * [예시 URL]
+     * GET /api/orders/payment/success?paymentKey=tgen_test_xxx&orderId=ORDER-1&amount=10000
+     */
+    @GetMapping("/payment/success")
+    public RedirectView paymentSuccess(
+            @RequestParam String paymentKey,
+            @RequestParam String orderId,
+            @RequestParam String amount
+    ) {
+        try {
+            Long orderIdLong = Long.parseLong(orderId.replace("ORDER-", ""));
+            
+            // 주문 조회 및 결제 처리
+            orderService.completePaymentWithKey(orderIdLong, paymentKey);
+            
+            return new RedirectView("/orders/payment/success-page?orderId=" + orderId + "&amount=" + amount);
+        } catch (Exception e) {
+            return new RedirectView("/orders/payment/fail-page?error=" + e.getMessage());
+        }
+    }
+
+    /**
+     * 결제 실패 콜백 처리
+     * 
+     * [설명]
+     * 토스 결제가 실패하거나 사용자가 결제를 취소하면 토스 서버에서 이 엔드포인트로 자동 리다이렉트됩니다.
+     * 
+     * [호출 방식]
+     * 토스 서버에서 자동 호출 (프론트엔드에서 직접 호출하지 않음)
+     * 
+     * [파라미터]
+     * - errorCode: 에러 코드 (선택)
+     * - errorMessage: 에러 메시지 (선택)
+     * - orderId: 주문 ID (선택)
+     * 
+     * [예시 URL]
+     * GET /api/orders/payment/fail?errorCode=PAYMENT_FAILED&errorMessage=결제실패&orderId=ORDER-1
+     */
+    @GetMapping("/payment/fail")
+    public RedirectView paymentFail(
+            @RequestParam(required = false) String errorCode,
+            @RequestParam(required = false) String errorMessage,
+            @RequestParam(required = false) String orderId
+    ) {
+        return new RedirectView("/orders/payment/fail-page?errorCode=" + 
+               (errorCode != null ? errorCode : "") + 
+               "&errorMessage=" + (errorMessage != null ? errorMessage : "") +
+               "&orderId=" + (orderId != null ? orderId : ""));
     }
 }

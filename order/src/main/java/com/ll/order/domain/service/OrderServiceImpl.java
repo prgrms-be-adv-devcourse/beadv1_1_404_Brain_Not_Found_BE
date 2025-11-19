@@ -366,6 +366,51 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
+    @Override
+    @Transactional
+    public void completePaymentWithKey(Long orderId, String paymentKey) {
+        // 주문 조회
+        Order order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderId));
+
+        // 주문 상태 확인
+        if (order.getOrderStatus() != OrderStatus.CREATED) {
+            throw new IllegalStateException("이미 처리된 주문입니다. 현재 상태: " + order.getOrderStatus());
+        }
+
+        // 사용자 정보 조회 (buyerCode 필요)
+        UserResponse userInfo = getUserInfoById(order.getBuyerId());
+
+        // 결제 처리
+        OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
+                order.getId(),
+                order.getBuyerId(),
+                userInfo.code(),
+                order.getTotalPrice(),
+                com.ll.payment.model.enums.PaidType.TOSS_PAYMENT,
+                paymentKey
+        );
+
+        try {
+            paymentApiClient.requestTossPayment(orderPaymentRequest);
+
+            // 결제 성공 후
+            order.changeStatus(OrderStatus.COMPLETED);
+            orderJpaRepository.save(order);
+
+            // 결제 성공 후 이벤트 발행
+            List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+            publishOrderCompletedEvents(order, orderItems, userInfo.code());
+
+        } catch (Exception e) {
+            // 결제 실패 시
+            order.changeStatus(OrderStatus.FAILED);
+            orderJpaRepository.save(order);
+            log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderId, paymentKey, e.getMessage(), e);
+            throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
+        }
+    }
+
     /**
      * 주문 취소 처리
      * - 환불 이벤트 발행

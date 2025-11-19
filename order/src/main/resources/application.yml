@@ -43,3 +43,9 @@ external:
   payment-service:
     url: http://localhost:8087
 
+# Payment Configuration
+payment:
+  widgetClientKey: test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
+  successUrl: http://localhost:8082/api/orders/payment/success
+  failUrl: http://localhost:8082/api/orders/payment/fail
+

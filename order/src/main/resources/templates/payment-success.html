@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>결제 완료</title>
+</head>
+<body>
+    <div>
+        <h2>결제가 완료되었습니다</h2>
+        <p>주문번호: <span th:text="${orderId}"></span></p>
+        <p>결제금액: ₩ <span th:text="${#numbers.formatInteger(amount, 0, 'COMMA')}"></span></p>
+        <p>주문이 정상적으로 처리되었습니다.</p>
+    </div>
+</body>
+</html>
+

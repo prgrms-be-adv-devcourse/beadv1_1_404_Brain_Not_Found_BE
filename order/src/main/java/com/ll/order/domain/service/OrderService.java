@@ -25,4 +25,9 @@ public interface OrderService {
     OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request);
 
     OrderValidateResponse validateOrder(OrderValidateRequest request);
+
+    /**
+     * paymentKey를 받아서 주문 결제를 완료 처리합니다.
+     */
+    void completePaymentWithKey(Long orderId, String paymentKey);
 }
