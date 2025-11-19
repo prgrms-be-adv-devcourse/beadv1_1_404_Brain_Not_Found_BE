@@ -87,6 +87,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (shortageAmount > 0) {
             PaymentRequest tossRequest = new PaymentRequest(
                     payment.orderId(),
+                    payment.orderCode(),
                     payment.buyerId(),
                     payment.buyerCode(),
                     shortageAmount,
@@ -137,7 +138,7 @@ public class PaymentServiceImpl implements PaymentService {
         // 3) 실제 Toss 승인 요청
         TossPaymentRequest tossRequest = new TossPaymentRequest(
                 paymentKey,
-                payment.getPaymentCode(),
+                request.orderCode(),
                 request.paidAmount()
         );
         String response = confirmPayment(tossRequest);
@@ -146,7 +147,9 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment.markSuccess(
                 PaymentStatus.COMPLETED,
-                tossPaymentResponse.approvedAt()
+                tossPaymentResponse.approvedAt() != null 
+                        ? tossPaymentResponse.approvedAt().toLocalDateTime() 
+                        : java.time.LocalDateTime.now()
         );
         paymentJpaRepository.save(payment);
 
@@ -244,8 +247,8 @@ public class PaymentServiceImpl implements PaymentService {
         if (!"DONE".equalsIgnoreCase(tossPaymentResponse.status())) {
             throw new IllegalStateException("토스 결제 승인 상태가 DONE이 아닙니다. status=" + tossPaymentResponse.status());
         }
-        if (request.paidAmount() != tossPaymentResponse.approvedAmount()) {
-            throw new IllegalStateException("토스 승인 금액과 요청 금액이 일치하지 않습니다.");
+        if (request.paidAmount() != tossPaymentResponse.totalAmount()) {
+            throw new IllegalStateException("토스 승인 금액과 요청 금액이 일치하지 않습니다. 요청: " + request.paidAmount() + ", 승인: " + tossPaymentResponse.totalAmount());
         }
     }
 

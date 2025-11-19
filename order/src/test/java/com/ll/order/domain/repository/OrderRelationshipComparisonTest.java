@@ -4,7 +4,7 @@ import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.OrderItemWithBidirectional;
 import com.ll.order.domain.model.entity.OrderWithBidirectional;
-import com.ll.order.domain.model.enums.order.OrderType;
+import com.ll.order.domain.model.enums.OrderType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
@@ -60,7 +60,6 @@ class OrderRelationshipComparisonTest {
             for (int j = 0; j < ORDER_ITEM_COUNT_PER_ORDER; j++) {
                 OrderItem orderItem = savedOrder.createOrderItem(
                         100L + j,
-                        "PROD-" + (100L + j),
                         "SELLER-" + j,
                         "상품명-" + j,
                         j + 1,

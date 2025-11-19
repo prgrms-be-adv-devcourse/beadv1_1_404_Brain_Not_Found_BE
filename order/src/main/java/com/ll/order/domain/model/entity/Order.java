@@ -1,7 +1,6 @@
 package com.ll.order.domain.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
-import com.github.f4b6a3.uuid.UuidCreator;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.OrderType;
 import jakarta.persistence.*;
@@ -14,11 +13,6 @@ import lombok.NoArgsConstructor;
 @Table(name = "orders")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order extends BaseEntity {
-    private static final String ORDER_PREFIX = "ORD-";
-    private static final String ORDER_ITEM_PREFIX = "ORD-ITEM-";
-
-    @Column(nullable = false)
-    private String orderCode;
 
     @Column(nullable = false)
     private Long buyerId;
@@ -38,12 +32,7 @@ public class Order extends BaseEntity {
     private String address;
 
     public static Order create(Long buyerId, OrderType orderType, String address) {
-        return create(generateOrderCode(), buyerId, orderType, address);
-    }
-
-    public static Order create(String orderCode, Long buyerId, OrderType orderType, String address) {
         Order order = new Order();
-        order.orderCode = orderCode;
         order.buyerId = buyerId;
         order.orderType = orderType;
         order.orderStatus = OrderStatus.CREATED;
@@ -61,7 +50,6 @@ public class Order extends BaseEntity {
                 this,
                 productId,
                 sellerCode,
-                generateOrderItemCode(),
                 productName,
                 quantity,
                 pricePerUnit
@@ -78,17 +66,4 @@ public class Order extends BaseEntity {
         this.totalPrice += amount;
     }
 
-    private static String generateOrderCode() {
-        return ORDER_PREFIX + UuidCreator.getTimeOrderedEpoch()
-                .toString()
-                .substring(0, 8)
-                .toUpperCase();
-    }
-
-    private static String generateOrderItemCode() {
-        return ORDER_ITEM_PREFIX + UuidCreator.getTimeOrderedEpoch()
-                .toString()
-                .substring(0, 8)
-                .toUpperCase();
-    }
 }

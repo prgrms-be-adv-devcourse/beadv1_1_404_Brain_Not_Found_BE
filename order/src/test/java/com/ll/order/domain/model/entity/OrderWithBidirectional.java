@@ -1,8 +1,8 @@
 package com.ll.order.domain.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
-import com.ll.order.domain.model.enums.order.OrderStatus;
-import com.ll.order.domain.model.enums.order.OrderType;
+import com.ll.order.domain.model.enums.OrderStatus;
+import com.ll.order.domain.model.enums.OrderType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
