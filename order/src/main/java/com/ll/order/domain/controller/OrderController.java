@@ -143,9 +143,10 @@ public class OrderController {
     @PostMapping("/cartItems")
     // TODO 토스 보완 결제 시 paymentKey 필수 여부와 검증 로직 추가 필요
     public Object createCartItemOrder(
-            @Valid @RequestBody OrderCartItemRequest request
+            @Valid @RequestBody OrderCartItemRequest request,
+            @RequestHeader("X-User-Code") String userCode
     ) {
-        OrderCreateResponse response = orderService.createCartItemOrder(request);
+        OrderCreateResponse response = orderService.createCartItemOrder(request, userCode);
 
         // 토스 결제인 경우 결제 페이지로 자동 리다이렉트
         if (request.paidType() == PaidType.TOSS_PAYMENT) {
@@ -180,9 +181,10 @@ public class OrderController {
      */
     @PostMapping("/direct")
     public Object createDirectOrder(
-            @Valid @RequestBody OrderDirectRequest request
+            @Valid @RequestBody OrderDirectRequest request,
+                @RequestHeader("X-User-Code") String userCode
     ) {
-        OrderCreateResponse response = orderService.createDirectOrder(request);
+        OrderCreateResponse response = orderService.createDirectOrder(request, userCode);
 
         // 토스 결제인 경우 결제 페이지로 자동 리다이렉트
         if (request.paidType() == PaidType.TOSS_PAYMENT) {
@@ -200,7 +202,7 @@ public class OrderController {
 
     @GetMapping
     public ResponseEntity<BaseResponse<OrderPageResponse>> getOrderList(
-            @RequestParam String userCode,
+            @RequestHeader("X-User-Code") String userCode,
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
@@ -212,7 +214,8 @@ public class OrderController {
     @GetMapping("/{orderCode}/details")
     // TODO 상품 상세 응답에 외부 상품 정보 포함하거나 불필요 호출 제거 검토
     public ResponseEntity<BaseResponse<OrderDetailResponse>> getOrderDetails(
-            @PathVariable String orderCode
+            @PathVariable String orderCode,
+                @RequestHeader("X-User-Code") String userCode
     ) {
         OrderDetailResponse response = orderService.findOrderDetails(orderCode);
 
@@ -222,9 +225,10 @@ public class OrderController {
     @PatchMapping("/{orderCode}/status")
     public ResponseEntity<BaseResponse<OrderStatusUpdateResponse>> updateOrderStatus(
             @PathVariable String orderCode,
-            @Valid @RequestBody OrderStatusUpdateRequest request
+            @Valid @RequestBody OrderStatusUpdateRequest request,
+                @RequestHeader("X-User-Code") String userCode
     ) {
-        OrderStatusUpdateResponse response = orderService.updateOrderStatus(orderCode, request);
+        OrderStatusUpdateResponse response = orderService.updateOrderStatus(orderCode, request, userCode);
 
         return BaseResponse.ok(response);
     }
@@ -240,7 +244,8 @@ public class OrderController {
     // 주문 가능 여부 확인
     @PostMapping("/validate")
     public ResponseEntity<BaseResponse<OrderValidateResponse>> validateOrder(
-            @RequestBody OrderValidateRequest request
+            @RequestBody OrderValidateRequest request,
+                @RequestHeader("X-User-Code") String userCode
     ) {
         OrderValidateResponse response = orderService.validateOrder(request);
 
@@ -280,13 +285,8 @@ public class OrderController {
             @RequestParam String amount
     ) {
         try {
-            // orderId는 실제로는 orderCode (토스가 그대로 반환)
-            // orderCode로 주문을 조회하여 orderId를 얻음
-            OrderDetailResponse orderDetails = orderService.findOrderDetails(orderId);
-            Long orderIdLong = orderDetails.orderId();
-            
             // 주문 조회 및 결제 처리
-            orderService.completePaymentWithKey(orderIdLong, paymentKey);
+            orderService.completePaymentWithKey(orderId, paymentKey);
             
             return new RedirectView("/orders/payment/success-page?orderId=" + orderId + "&amount=" + amount);
         } catch (Exception e) {

@@ -18,18 +18,18 @@ public interface OrderService {
 
     OrderDetailResponse findOrderDetails(String orderCode);
 
-    OrderCreateResponse createCartItemOrder(OrderCartItemRequest request);
+    OrderCreateResponse createCartItemOrder(OrderCartItemRequest request, String userCode);
 
-    OrderCreateResponse createDirectOrder(OrderDirectRequest request);
+    OrderCreateResponse createDirectOrder(OrderDirectRequest request, String userCode);
 
-    OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request);
+    OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request, String userCode);
 
     OrderValidateResponse validateOrder(OrderValidateRequest request);
 
     /**
      * paymentKey를 받아서 주문 결제를 완료 처리합니다.
      */
-    void completePaymentWithKey(Long orderId, String paymentKey);
+    void completePaymentWithKey(String orderCode, String paymentKey);
 
     /**
      * orderId로 order code를 조회합니다.

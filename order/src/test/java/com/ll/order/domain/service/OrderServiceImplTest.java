@@ -118,6 +118,7 @@ class OrderServiceImplTest {
     @Test
     void createCartItemOrder_Success() {
         // given
+        String userCode = "USER-001";
         OrderCartItemRequest request = new OrderCartItemRequest(
                 "USER-001",
                 "CART-001",
@@ -144,7 +145,7 @@ class OrderServiceImplTest {
         when(orderItemJpaRepository.findByOrderId(any())).thenAnswer(invocation -> storedOrderItems);
 
         // when
-        OrderCreateResponse result = orderService.createCartItemOrder(request);
+        OrderCreateResponse result = orderService.createCartItemOrder(request, userCode);
 
         // then
         assertThat(result).isNotNull();
@@ -261,7 +262,8 @@ class OrderServiceImplTest {
         when(orderItemJpaRepository.findByOrderId(any())).thenAnswer(invocation -> storedOrderItems);
 
         // when
-        OrderCreateResponse result = orderService.createCartItemOrder(request);
+        String userCode = "USER-001";
+        OrderCreateResponse result = orderService.createCartItemOrder(request, userCode);
 
         // then
         assertThat(result).isNotNull();
@@ -327,7 +329,8 @@ class OrderServiceImplTest {
         when(paymentServiceClient.requestDepositPayment(any(OrderPaymentRequest.class))).thenReturn("OK");
 
         // when
-        OrderCreateResponse result = orderService.createDirectOrder(request);
+        String userCode = "USER-001";
+        OrderCreateResponse result = orderService.createDirectOrder(request, userCode);
 
         // then
         assertThat(result).isNotNull();
@@ -508,7 +511,8 @@ class OrderServiceImplTest {
         OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.PAID);
 
         // when
-        OrderStatusUpdateResponse response = orderService.updateOrderStatus("ORD-111", request);
+        String userCode = "USER-001";
+        OrderStatusUpdateResponse response = orderService.updateOrderStatus("ORD-111", request, userCode);
 
         // then
         assertThat(response.orderCode()).isEqualTo("ORD-111");

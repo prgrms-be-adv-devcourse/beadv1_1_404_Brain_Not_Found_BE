@@ -62,7 +62,7 @@ public class PaymentViewController {
      */
     @GetMapping("/payment/success-page")
     public String successPage(
-            @RequestParam String orderId,
+            @RequestParam String orderId, // == orderCode
             @RequestParam String amount,
             Model model
     ) {
@@ -78,7 +78,7 @@ public class PaymentViewController {
     public String failPage(
             @RequestParam(required = false) String errorCode,
             @RequestParam(required = false) String errorMessage,
-            @RequestParam(required = false) String orderId,
+            @RequestParam(required = false) String orderId, // == orderCode
             Model model
     ) {
         model.addAttribute("errorCode", errorCode);

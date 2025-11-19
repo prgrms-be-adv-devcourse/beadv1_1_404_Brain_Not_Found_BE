@@ -130,8 +130,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request) {
-        UserResponse userInfo = getUserInfo(request.buyerCode());
+    public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request, String userCode) {
+        UserResponse userInfo = getUserInfo(userCode);
 
         CartItemsResponse cartInfo = getCartInfo(request.cartCode());
 
@@ -222,8 +222,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderCreateResponse createDirectOrder(OrderDirectRequest request) {
-        UserResponse userInfo = getUserInfo(request.userCode());
+    public OrderCreateResponse createDirectOrder(OrderDirectRequest request, String userCode) {
+        UserResponse userInfo = getUserInfo(userCode);
 
         ProductResponse productInfo = getProductInfo(request.productCode());
 
@@ -302,7 +302,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request) {
+    public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request, String userCode) {
         Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
                 .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
@@ -330,11 +330,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public void completePaymentWithKey(Long orderId, String paymentKey) {
+    public void completePaymentWithKey(String orderCode, String paymentKey) {
         // 주문 조회
-        Order order = orderJpaRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderId));
-
+        Order order = orderJpaRepository.findByCode(orderCode);
+        
         // 주문 상태 확인
         if (order.getOrderStatus() != OrderStatus.CREATED) {
             throw new IllegalStateException("이미 처리된 주문입니다. 현재 상태: " + order.getOrderStatus());
