@@ -333,7 +333,7 @@ public class OrderServiceImpl implements OrderService {
     public void completePaymentWithKey(String orderCode, String paymentKey) {
         // 주문 조회
         Order order = orderJpaRepository.findByCode(orderCode);
-        
+
         // 주문 상태 확인
         if (order.getOrderStatus() != OrderStatus.CREATED) {
             throw new IllegalStateException("이미 처리된 주문입니다. 현재 상태: " + order.getOrderStatus());
@@ -368,7 +368,7 @@ public class OrderServiceImpl implements OrderService {
             // 결제 실패 시
             order.changeStatus(OrderStatus.FAILED);
             orderJpaRepository.save(order);
-            log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderId, paymentKey, e.getMessage(), e);
+            log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderCode, paymentKey, e.getMessage(), e);
             throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
         }
     }
