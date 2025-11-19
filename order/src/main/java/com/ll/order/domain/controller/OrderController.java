@@ -19,6 +19,7 @@ import org.springframework.web.servlet.view.RedirectView;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -226,6 +227,14 @@ public class OrderController {
         OrderStatusUpdateResponse response = orderService.updateOrderStatus(orderCode, request);
 
         return BaseResponse.ok(response);
+    }
+
+    @GetMapping("/{orderId}/code")
+    public ResponseEntity<BaseResponse<Map<String, String>>> getOrderCodeById(
+            @PathVariable Long orderId
+    ) {
+        String orderCode = orderService.getOrderCodeById(orderId);
+        return BaseResponse.ok(Map.of("orderCode", orderCode));
     }
 
     // 주문 가능 여부 확인

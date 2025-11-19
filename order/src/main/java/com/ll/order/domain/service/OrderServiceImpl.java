@@ -183,6 +183,7 @@ public class OrderServiceImpl implements OrderService {
                 // 예치금 결제: 주문 생성 시 바로 결제 처리
                 OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
                         savedOrder.getId(),
+                        savedOrder.getCode(),
                         savedOrder.getBuyerId(),
                         request.buyerCode(),
                         savedOrder.getTotalPrice(),
@@ -260,6 +261,7 @@ public class OrderServiceImpl implements OrderService {
                 // 예치금 결제: 주문 생성 시 바로 결제 처리
                 OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
                         savedOrder.getId(),
+                        savedOrder.getCode(),
                         savedOrder.getBuyerId(),
                         request.userCode(),
                         savedOrder.getTotalPrice(),
@@ -344,6 +346,7 @@ public class OrderServiceImpl implements OrderService {
         // 결제 처리
         OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
                 order.getId(),
+                order.getCode(),
                 order.getBuyerId(),
                 userInfo.code(),
                 order.getTotalPrice(),
@@ -557,6 +560,14 @@ public class OrderServiceImpl implements OrderService {
 //            );
 //            log.info("Inventory decrease event sent - productId: {}, quantity: {}", orderItem.getProductId(), orderItem.getQuantity());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getOrderCodeById(Long orderId) {
+        Order order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderId));
+        return order.getCode();
     }
 
     // 도메인 별 규칙에 맞는 검증 로직이 필요하면 추가 작성할 것.

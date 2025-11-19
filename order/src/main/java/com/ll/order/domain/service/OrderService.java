@@ -30,4 +30,9 @@ public interface OrderService {
      * paymentKey를 받아서 주문 결제를 완료 처리합니다.
      */
     void completePaymentWithKey(Long orderId, String paymentKey);
+
+    /**
+     * orderId로 order code를 조회합니다.
+     */
+    String getOrderCodeById(Long orderId);
 }

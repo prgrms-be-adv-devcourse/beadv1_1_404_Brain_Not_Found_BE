@@ -4,6 +4,7 @@ import com.ll.payment.model.enums.PaidType;
 
 public record OrderPaymentRequest(
         Long orderId,
+        String orderCode,
         Long buyerId,
         String buyerCode,
         int paidAmount,

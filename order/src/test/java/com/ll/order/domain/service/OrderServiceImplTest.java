@@ -492,13 +492,18 @@ class OrderServiceImplTest {
     void updateOrderStatus_Success() {
         // given
         Order mockOrder = mock(Order.class);
-        when(mockOrder.getOrderStatus()).thenReturn(OrderStatus.CREATED);
         when(mockOrder.getCode()).thenReturn("ORD-111");
         when(mockOrder.getUpdatedAt()).thenReturn(null);
         when(orderJpaRepository.findByCode("ORD-111")).thenReturn(mockOrder);
-        doNothing().when(mockOrder).changeStatus(OrderStatus.PAID);
         when(orderJpaRepository.save(mockOrder)).thenReturn(mockOrder);
-        when(mockOrder.getOrderStatus()).thenReturn(OrderStatus.PAID); // 상태 변경 후
+        
+        // 상태 변경 전에는 CREATED, changeStatus 호출 후에는 PAID 반환
+        when(mockOrder.getOrderStatus()).thenReturn(OrderStatus.CREATED);
+        doAnswer(invocation -> {
+            // changeStatus 호출 시 getOrderStatus가 PAID를 반환하도록 변경
+            when(mockOrder.getOrderStatus()).thenReturn(OrderStatus.PAID);
+            return null;
+        }).when(mockOrder).changeStatus(OrderStatus.PAID);
 
         OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.PAID);
 
