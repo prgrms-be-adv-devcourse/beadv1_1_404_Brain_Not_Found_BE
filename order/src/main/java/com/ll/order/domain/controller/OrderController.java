@@ -7,6 +7,7 @@ import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
 import com.ll.order.domain.model.vo.request.OrderValidateRequest;
 import com.ll.order.domain.model.vo.response.*;
 import com.ll.order.domain.service.OrderService;
+import com.ll.payment.model.enums.PaidType;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +16,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -42,10 +46,11 @@ public class OrderController {
     ====================================================================================
 
     [전체 흐름]
-    1. 주문 생성 (POST) → JSON 응답 반환
-    2. 프론트엔드에서 응답 받은 후 결제 페이지로 이동 (GET)
-    3. 결제 페이지에서 토스 결제 위젯 사용
-    4. 토스 결제 완료 후 콜백 처리
+    1. 주문 생성 (POST)
+       - 토스 결제: 서버에서 자동으로 결제 페이지로 리다이렉트
+       - 예치금 결제: JSON 응답 반환 (결제 완료)
+    2. 결제 페이지에서 토스 결제 위젯 사용 (토스 결제인 경우)
+    3. 토스 결제 완료 후 콜백 처리
     
     [사용 방법]
     ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -82,35 +87,19 @@ public class OrderController {
     }
     
     ┌─────────────────────────────────────────────────────────────────────────────┐
-    │ 2단계: 프론트엔드에서 결제 페이지로 이동                                    │
+    │ 2단계: 결제 페이지로 이동 (토스 결제인 경우 자동 리다이렉트)                │
     └─────────────────────────────────────────────────────────────────────────────┘
     
-    [방법 1: JavaScript로 자동 이동 (실제 서비스에서 사용)]
-    주문 생성 API 호출 후 응답을 받아 자동으로 결제 페이지로 이동합니다.
+    [토스 결제인 경우]
+    - 주문 생성 API 호출 시 서버에서 자동으로 결제 페이지로 리다이렉트됩니다.
+    - 프론트엔드에서 별도 처리 불필요 (브라우저가 자동으로 리다이렉트)
     
-    fetch('/api/orders/direct', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.data && orderData.paidType === 'TOSS_PAYMENT') {
-            // 토스 결제인 경우 결제 페이지로 이동
-            const orderId = data.data.id;
-            const orderName = '주문번호: ' + data.data.orderCode;
-            const amount = data.data.totalPrice;
-            
-            window.location.href = `/orders/payment?orderId=${orderId}&orderName=${encodeURIComponent(orderName)}&amount=${amount}`;
-        } else {
-            // 예치금 결제 등은 완료 처리
-            alert('주문이 완료되었습니다.');
-        }
-    });
+    [예치금 결제인 경우]
+    - 주문 생성과 동시에 결제가 완료되므로 JSON 응답만 반환됩니다.
+    - 프론트엔드에서 응답을 받아 완료 처리하면 됩니다.
     
-    [방법 2: 직접 URL 접근 (테스트/디버깅용)]
+    [직접 URL 접근 (테스트/디버깅용)]
     주문 ID를 알고 있는 경우 브라우저 주소창에 직접 입력하거나 링크로 접근할 수 있습니다.
-    주문 생성 후 응답에서 받은 orderId를 사용하여 접근합니다.
     
     GET /orders/payment?orderId=1&orderName=상품명&amount=10000&customerName=홍길동
     
@@ -145,22 +134,33 @@ public class OrderController {
     [주의사항]
     - 주문 생성 시 paidType이 TOSS_PAYMENT인 경우, paymentKey는 null로 전달해야 합니다.
     - paymentKey는 토스 결제 완료 후 콜백에서 자동으로 받아옵니다.
-    - 주문 생성 후 반드시 프론트엔드에서 결제 페이지로 이동해야 합니다.
-    - 예치금 결제(DEPOSIT)인 경우는 주문 생성 시 바로 결제가 처리됩니다.
+    - 토스 결제인 경우 서버에서 자동으로 결제 페이지로 리다이렉트됩니다 (프론트엔드 처리 불필요).
+    - 예치금 결제(DEPOSIT)인 경우는 주문 생성 시 바로 결제가 처리되어 JSON 응답이 반환됩니다.
     
     ====================================================================================
     */
     @PostMapping("/cartItems")
     // TODO 토스 보완 결제 시 paymentKey 필수 여부와 검증 로직 추가 필요
-    public ResponseEntity<BaseResponse<OrderCreateResponse>> createCartItemOrder(
+    public Object createCartItemOrder(
             @Valid @RequestBody OrderCartItemRequest request
     ) {
         OrderCreateResponse response = orderService.createCartItemOrder(request);
 
+        // 토스 결제인 경우 결제 페이지로 자동 리다이렉트
+        if (request.paidType() == PaidType.TOSS_PAYMENT) {
+            String orderName = "주문번호: " + response.orderCode();
+            String redirectUrl = String.format("/orders/payment?orderId=%d&orderName=%s&amount=%d",
+                    response.id(),
+                    URLEncoder.encode(orderName, StandardCharsets.UTF_8),
+                    response.totalPrice());
+            return new RedirectView(redirectUrl);
+        }
+
+        // 예치금 결제 등은 기존대로 JSON 응답
         return BaseResponse.created(response);
     }
 
-    /**
+    /*
      * 직접 주문 생성 API
      * 
      * [사용 예시]
@@ -168,22 +168,32 @@ public class OrderController {
      * 
      * [토스 결제 사용 시]
      * 1. 이 API로 주문 생성 (paidType: TOSS_PAYMENT, paymentKey: null)
-     * 2. 응답에서 orderId 추출
-     * 3. GET /orders/payment?orderId={id}&orderName={name}&amount={amount} 로 이동
-     * 4. 결제 페이지에서 토스 결제 진행
-     * 5. 결제 완료 후 자동으로 콜백 처리됨
+     * 2. 서버에서 자동으로 결제 페이지로 리다이렉트
+     * 3. 결제 페이지에서 토스 결제 진행
+     * 4. 결제 완료 후 자동으로 콜백 처리됨
      * 
      * [예치금 결제 사용 시]
      * 1. 이 API로 주문 생성 (paidType: DEPOSIT)
      * 2. 주문 생성과 동시에 결제 처리 완료
-     * 3. 응답의 orderStatus가 COMPLETED로 반환됨
+     * 3. JSON 응답 반환 (orderStatus: COMPLETED)
      */
     @PostMapping("/direct")
-    public ResponseEntity<BaseResponse<OrderCreateResponse>> createDirectOrder(
+    public Object createDirectOrder(
             @Valid @RequestBody OrderDirectRequest request
     ) {
         OrderCreateResponse response = orderService.createDirectOrder(request);
 
+        // 토스 결제인 경우 결제 페이지로 자동 리다이렉트
+        if (request.paidType() == PaidType.TOSS_PAYMENT) {
+            String orderName = "주문번호: " + response.orderCode();
+            String redirectUrl = String.format("/orders/payment?orderId=%d&orderName=%s&amount=%d",
+                    response.id(),
+                    URLEncoder.encode(orderName, StandardCharsets.UTF_8),
+                    response.totalPrice());
+            return new RedirectView(redirectUrl);
+        }
+
+        // 예치금 결제 등은 기존대로 JSON 응답
         return BaseResponse.created(response);
     }
 
@@ -228,7 +238,7 @@ public class OrderController {
         return BaseResponse.ok(response);
     }
 
-    /**
+    /*
      * 결제 성공 콜백 처리
      * 
      * [설명]
@@ -272,7 +282,7 @@ public class OrderController {
         }
     }
 
-    /**
+    /*
      * 결제 실패 콜백 처리
      * 
      * [설명]
