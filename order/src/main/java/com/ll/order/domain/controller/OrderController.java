@@ -280,7 +280,10 @@ public class OrderController {
             @RequestParam String amount
     ) {
         try {
-            Long orderIdLong = Long.parseLong(orderId.replace("ORDER-", ""));
+            // orderId는 실제로는 orderCode (토스가 그대로 반환)
+            // orderCode로 주문을 조회하여 orderId를 얻음
+            OrderDetailResponse orderDetails = orderService.findOrderDetails(orderId);
+            Long orderIdLong = orderDetails.orderId();
             
             // 주문 조회 및 결제 처리
             orderService.completePaymentWithKey(orderIdLong, paymentKey);

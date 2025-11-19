@@ -24,6 +24,7 @@
             const button = document.getElementById("payment-button");
             
             const orderId = /*[[${orderId}]]*/ '';
+            const orderCode = /*[[${orderCode}]]*/ '';
             const orderName = /*[[${orderName}]]*/ '';
             const amountValue = /*[[${amount}]]*/ 0;
             const clientKeyValue = /*[[${clientKey}]]*/ '';
@@ -56,7 +57,7 @@
                 button.addEventListener("click", async function () {
                     try {
                         await widgets.requestPayment({
-                            orderId: "ORDER-" + orderId,
+                            orderId: orderCode,
                             orderName: orderName,
                             successUrl: successUrlValue,
                             failUrl: failUrlValue,

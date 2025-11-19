@@ -1,5 +1,6 @@
 package com.ll.order.domain.controller;
 
+import com.ll.order.domain.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/orders")
 @RequiredArgsConstructor
 public class PaymentViewController {
+
+    private final OrderService orderService;
 
     @Value("${payment.widgetClientKey:test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm}")
     private String widgetClientKey;
@@ -40,7 +43,11 @@ public class PaymentViewController {
             @RequestParam(required = false, defaultValue = "고객") String customerName,
             Model model
     ) {
+        // orderId로 orderCode 조회
+        String orderCode = orderService.getOrderCodeById(orderId);
+        
         model.addAttribute("orderId", orderId);
+        model.addAttribute("orderCode", orderCode);
         model.addAttribute("orderName", orderName);
         model.addAttribute("amount", amount);
         model.addAttribute("customerName", customerName);
