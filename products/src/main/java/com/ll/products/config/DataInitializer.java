@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@Order(1)
 @Profile("!prod") // 프로덕션 환경에서는 실행되지 않도록
 public class DataInitializer implements CommandLineRunner {
 

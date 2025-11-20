@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ import java.util.List;
 @Slf4j
 @Component
 @Profile("local")
+@Order(100)
 @RequiredArgsConstructor
 public class ElasticsearchIndexInitializer implements ApplicationRunner {
 
