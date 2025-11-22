@@ -1,42 +1,20 @@
+server:
+  port: 8086
 spring:
   application:
     name: deposit
+  profiles:
+    active: local
 
-  # Database Configuration
-  datasource:
-    url: jdbc:h2:mem:deposit-db
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-
-  # H2 Console
-  h2:
-    console:
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+        exclude: beans, env, mappings
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+    info:
       enabled: true
-      path: /h2-console
-
-  # JPA Configuration
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
-
-  kafka:
-    bootstrap-servers:
-      - localhost:9092
-    consumer:
-      group-id: deposit-service
-      properties:
-        allow.auto.create.topics: false
-
-# External Service URLs
-external:
-  user-service:
-    url: http://localhost:8081
-
-server:
-  port: 8085
