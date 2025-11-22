@@ -115,7 +115,7 @@ Windows 기준:
 - 브라우저에서 http://localhost:9200 → JSON 응답 나오면 정상
 
 ### 카프카 필요한 경우 ( 토픽 초기화만 확인했습니다.)
-- core 모듈에서 docker compose -f docker-compose-es.yml up -d
+- core 모듈에서 docker compose -f docker-compose-kafka.yml up -d
 - 연결 포트: 9092
 - 아래의 명령어를 실행
 ``` terminal
@@ -124,5 +124,6 @@ Windows 기준:
  ./kafka-topics.sh --bootstrap-server localhost:9092 --list
 ```
  - 토픽 목록이 출력되면 정상 실행
+
 
 
