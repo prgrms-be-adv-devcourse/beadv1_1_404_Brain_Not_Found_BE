@@ -116,7 +116,10 @@ Windows 기준:
 ### 카프카 필요한 경우 ( 토픽 초기화만 확인했습니다.)
 - core 모듈에서 docker compose -f docker-compose-es.yml up -d
 - 연결 포트: 9092
-- docker exec -it kafka-1 /bin/bash
-- cd /opt/kafka/bin
-- ./kafka-topics.sh --bootstrap-server localhost:9092 --list
-- 토픽 목록이 출력되면 정상 실행
+- 아래의 명령어를 실행
+``` terminal
+ docker exec -it kafka-1 /bin/bash
+ cd /opt/kafka/bin
+ ./kafka-topics.sh --bootstrap-server localhost:9092 --list
+```
+ - 토픽 목록이 출력되면 정상 실행
