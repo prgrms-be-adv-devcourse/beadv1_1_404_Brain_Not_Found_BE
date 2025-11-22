@@ -1,27 +1,10 @@
-plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.5.7'
-    id 'io.spring.dependency-management' version '1.1.7'
-}
-
-group = 'com.example'
-version = '0.0.1-SNAPSHOT'
 description = 'auth'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-repositories {
-    mavenCentral()
-}
 springBoot {
     mainClass = 'com.ll.auth.AuthApplication'
 }
+
 dependencies {
-    implementation project(':core')
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
@@ -38,13 +21,9 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    runtimeOnly "mysql:mysql-connector-java:${mysqlVersion}"
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
     testImplementation 'org.assertj:assertj-core:3.26.0'
     testImplementation 'org.mockito:mockito-core:5.14.2'
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
 }
