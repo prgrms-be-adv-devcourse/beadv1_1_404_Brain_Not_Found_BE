@@ -1,0 +1,45 @@
+spring:
+  datasource:
+    url: ${ORDER_DB_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers:
+      - ${KAFKA_1_CONTAINER_NAME}:9090
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${DISCOVERY_URL}
+
+# External Service URLs
+external:
+  user-service:
+    url: http://user:8083
+  product-service:
+    url: http://product:8085
+  cart-service:
+    url: http://cart:8089
+  payment-service:
+    url: http://order:8087
+
+  # Payment Configuration
+payment:
+  widgetClientKey: ${PAYMENT_WIDGET_CLIENT_KEY}
+  successUrl: https://gooream.chlab.org/api/orders/payment/success
+  failUrl: https://gooream.chlab.org/api/orders/payment/fail
+logging:
+  level:
+    root: info
