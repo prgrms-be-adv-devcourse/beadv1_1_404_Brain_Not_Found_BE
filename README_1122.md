@@ -13,7 +13,7 @@
 
 ## 1. 로컬 환경 변수 관리 방식 변경
 - `.env` 파일을 스프링에서 읽지 못해 로컬 환경변수 적용이 불가능한 문제 → **각자 PC에 직접 환경변수를 등록하는 방식으로 전환**
-- `application.yml` 파일은 **GitHub에 공유 가능**
+- `application.yml` 파일은 민감정보를 적지않아도 되기에 **GitHub에 공유 가능**
 - `env.template`, `setup-env.bat` 두 파일을 **root 프로젝트 바로 아래** 위치시키기  
   (두 파일은 GitHub에 공유되지 않도록 주의)
 
@@ -123,3 +123,4 @@ Windows 기준:
  ./kafka-topics.sh --bootstrap-server localhost:9092 --list
 ```
  - 토픽 목록이 출력되면 정상 실행
+
