@@ -18,6 +18,7 @@
   (두 파일은 GitHub에 공유되지 않도록 주의)
 
 ### 로컬 환경 변수 설정
+env.tamplate에서 각자의 로컬환경에 맞춘 환경변수를 설정해주세요.
 - H2 사용 시  
   - `DB_USER`, `DB_PASSWORD` 부분 설정 (예: ` DB_USER=sa`)
 - MySQL 사용 시  
@@ -123,4 +124,5 @@ Windows 기준:
  ./kafka-topics.sh --bootstrap-server localhost:9092 --list
 ```
  - 토픽 목록이 출력되면 정상 실행
+
 
