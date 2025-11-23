@@ -7,9 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public record OrderDirectRequest(
-        @NotBlank(message = "사용자 코드가 필요합니다.")
-        String userCode,
-
         @NotBlank(message = "상품 코드가 필요합니다.")
         String productCode,
 

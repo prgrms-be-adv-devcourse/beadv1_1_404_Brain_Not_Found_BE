@@ -9,6 +9,7 @@ import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.OrderType;
+import com.ll.order.domain.model.enums.PaidType;
 import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.enums.user.AccountStatus;
 import com.ll.order.domain.model.enums.user.Grade;
@@ -23,8 +24,6 @@ import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.order.domain.repository.OrderJpaRepositoryImpl;
-import com.ll.payment.model.enums.PaidType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -52,9 +51,6 @@ class OrderServiceImplTest {
 
     @Mock
     private OrderJpaRepository orderJpaRepository;
-
-    @Mock
-    private OrderJpaRepositoryImpl orderJpaRepositoryImpl;
 
     @Mock
     private UserServiceClient userServiceClient;
@@ -452,7 +448,7 @@ class OrderServiceImplTest {
         when(orderItem.getQuantity()).thenReturn(2);
         when(orderItem.getPrice()).thenReturn(10000);
 
-        when(orderJpaRepositoryImpl.findByCode("ORD-999")).thenReturn(order);
+        when(orderJpaRepository.findByCode("ORD-999")).thenReturn(order);
         when(orderItemJpaRepository.findByOrderId(10L)).thenReturn(List.of(orderItem));
         List<ProductImageDto> images = List.of(
                 ProductImageDto.builder()
@@ -502,7 +498,7 @@ class OrderServiceImplTest {
         Order mockOrder = mock(Order.class);
         when(mockOrder.getCode()).thenReturn("ORD-111");
         when(mockOrder.getUpdatedAt()).thenReturn(null);
-        when(orderJpaRepositoryImpl.findByCode("ORD-111")).thenReturn(mockOrder);
+        when(orderJpaRepository.findByCode("ORD-111")).thenReturn(mockOrder);
         when(orderJpaRepository.save(mockOrder)).thenReturn(mockOrder);
         
         // 상태 변경 전에는 CREATED, changeStatus 호출 후에는 PAID 반환

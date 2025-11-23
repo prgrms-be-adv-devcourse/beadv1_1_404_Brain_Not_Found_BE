@@ -11,9 +11,6 @@ import jakarta.validation.constraints.Positive;
 import java.util.List;
 
 public record OrderCartItemRequest(
-        @NotBlank(message = "구매자 코드가 필요합니다.")
-        String buyerCode,
-
         @NotBlank(message = "장바구니 코드가 필요합니다.")
         String cartCode,
 

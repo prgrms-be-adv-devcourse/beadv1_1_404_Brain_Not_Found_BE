@@ -3,6 +3,7 @@ package com.ll.order.domain.model.entity;
 import com.ll.core.model.persistence.BaseEntity;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.OrderType;
+import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -18,6 +19,9 @@ public class Order extends BaseEntity {
     private Long buyerId;
 
     @Column(nullable = false)
+    private String buyerCode;
+
+    @Column(nullable = false)
     private Integer totalPrice = 0;
 
     @Enumerated(EnumType.STRING)
@@ -31,9 +35,10 @@ public class Order extends BaseEntity {
     @Column(nullable = false)
     private String address;
 
-    public static Order create(Long buyerId, OrderType orderType, String address) {
+    public static Order create(Long buyerId, String buyerCode, OrderType orderType, String address) {
         Order order = new Order();
         order.buyerId = buyerId;
+        order.buyerCode = buyerCode;
         order.orderType = orderType;
         order.orderStatus = OrderStatus.CREATED;
         order.address = address;
@@ -58,6 +63,17 @@ public class Order extends BaseEntity {
         );
         increaseTotalPrice(pricePerUnit * quantity);
         return orderItem;
+    }
+
+    public OrderItem createOrderItem(ProductResponse product, int quantity) {
+        return createOrderItem(
+                product.id(),
+                product.code(),
+                product.sellerCode(),
+                product.name(),
+                quantity,
+                product.price()
+        );
     }
 
     public void changeStatus(OrderStatus orderStatus) {
