@@ -1,4 +1,4 @@
-package com.ll.order.domain.model.vo.response;
+package com.ll.order.domain.model.vo.response.product;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

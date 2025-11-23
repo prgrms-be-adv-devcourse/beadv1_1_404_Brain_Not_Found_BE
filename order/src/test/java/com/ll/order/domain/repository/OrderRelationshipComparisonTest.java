@@ -60,6 +60,7 @@ class OrderRelationshipComparisonTest {
             for (int j = 0; j < ORDER_ITEM_COUNT_PER_ORDER; j++) {
                 OrderItem orderItem = savedOrder.createOrderItem(
                         100L + j,
+                        "PROD-" + (100L + j),
                         "SELLER-" + j,
                         "상품명-" + j,
                         j + 1,

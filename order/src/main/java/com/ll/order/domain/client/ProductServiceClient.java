@@ -1,7 +1,7 @@
 package com.ll.order.domain.client;
 
 import com.ll.core.model.response.BaseResponse;
-import com.ll.products.domain.product.model.dto.response.ProductResponse;
+import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,10 +30,6 @@ public class ProductServiceClient {
         }
         
         return response.getData();
-    }
-
-    public ProductResponse getProductById(Long productId) {
-        return null;
     }
 
     /**

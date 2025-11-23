@@ -1,7 +1,5 @@
 package com.ll.order.domain.service;
 
-import com.ll.cart.model.vo.response.CartItemInfo;
-import com.ll.cart.model.vo.response.CartItemsResponse;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.order.domain.client.CartServiceClient;
@@ -12,13 +10,16 @@ import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
+import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.vo.request.*;
-import com.ll.order.domain.model.vo.response.*;
+import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
+import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
+import com.ll.order.domain.model.vo.response.order.*;
+import com.ll.order.domain.model.vo.response.product.ProductResponse;
+import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.products.domain.product.model.dto.response.ProductResponse;
-import com.ll.products.domain.product.model.entity.ProductStatus;
-import com.ll.user.model.vo.response.UserResponse;
+import com.ll.order.domain.repository.OrderJpaRepositoryImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderJpaRepository orderJpaRepository;
+    private final OrderJpaRepositoryImpl orderJpaRepositoryImpl;
     private final OrderItemJpaRepository orderItemJpaRepository;
 
     private final UserServiceClient userServiceClient;
@@ -88,15 +90,13 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderDetailResponse findOrderDetails(String orderCode) {
-        // 명확한 행위 메서드인데, 예외를 던지는 것들은 전부 repo impl같은 곳에 모아두는 걸 추천
-        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
+        Order order = orderJpaRepositoryImpl.findByCode(orderCode);
 
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId()); // 쿼리 날리는지 디버깅 해보도록.
         List<OrderDetailResponse.ItemInfo> itemInfos = orderItems.stream()
                 .map(item -> {
-                    ProductResponse product = Optional.ofNullable(productServiceClient.getProductById(item.getProductId()))
-                            .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.getProductId()));
+                    ProductResponse product = Optional.ofNullable(productServiceClient.getProductByCode(item.getProductCode()))
+                            .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.getProductCode()));
                     // images가 비어있지 않으면 첫 번째 이미지의 URL 사용, 없으면 null
                     String productImage = product.images() != null && !product.images().isEmpty()
                             ? product.images().get(0).url()
@@ -142,7 +142,7 @@ public class OrderServiceImpl implements OrderService {
         //Map 보다 List<객체> 형식으로 사용하는 게 좀 더 확장성과 객체지향적이라고 생각합니다.
         List<ProductResponse> productList = new ArrayList<>();
         for (CartItemInfo item : cartInfo.items()) {
-            ProductResponse productInfo = getProductInfoById(item.productId());
+            ProductResponse productInfo = getProductInfo(item.productCode());
             productList.add(productInfo);
         }
 
@@ -162,6 +162,7 @@ public class OrderServiceImpl implements OrderService {
 
             OrderItem orderItem = savedOrder.createOrderItem(
                     productInfo.id(),
+                    productInfo.code(),
                     productInfo.sellerCode(),
                     productInfo.name(),
                     cartItem.quantity(),
@@ -248,6 +249,7 @@ public class OrderServiceImpl implements OrderService {
 
         OrderItem orderItem = savedOrder.createOrderItem(
                 productInfo.id(),
+                productInfo.code(),
                 productInfo.sellerCode(),
                 productInfo.name(),
                 request.quantity(),
@@ -303,8 +305,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request, String userCode) {
-        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
+        Order order = orderJpaRepositoryImpl.findByCode(orderCode);
 
         OrderStatus current = order.getOrderStatus();
         OrderStatus target = request.status();
@@ -332,7 +333,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public void completePaymentWithKey(String orderCode, String paymentKey) {
         // 주문 조회
-        Order order = orderJpaRepository.findByCode(orderCode);
+        Order order = orderJpaRepositoryImpl.findByCode(orderCode);
 
         // 주문 상태 확인
         if (order.getOrderStatus() != OrderStatus.CREATED) {
@@ -461,17 +462,12 @@ public class OrderServiceImpl implements OrderService {
             }
 
             try {
-                ProductResponse productInfo = getProductInfoById(orderItem.getProductId());
-                if (productInfo != null && productInfo.code() != null) {
-                    productServiceClient.restoreInventory(productInfo.code(), orderItem.getQuantity());
-                    log.info("재고 복구 요청 - productCode: {}, quantity: {}",
-                            productInfo.code(), orderItem.getQuantity());
-                } else {
-                    log.warn("재고 복구 실패 - 상품 정보를 찾을 수 없습니다. productId: {}", orderItem.getProductId());
-                }
+                productServiceClient.restoreInventory(orderItem.getProductCode(), orderItem.getQuantity());
+                log.info("재고 복구 요청 - productCode: {}, quantity: {}",
+                        orderItem.getProductCode(), orderItem.getQuantity());
             } catch (Exception e) {
-                log.error("재고 복구 요청 실패 - productId: {}, quantity: {}, error: {}",
-                        orderItem.getProductId(), orderItem.getQuantity(), e.getMessage(), e);
+                log.error("재고 복구 요청 실패 - productCode: {}, quantity: {}, error: {}",
+                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
             }
         }
     }
@@ -491,11 +487,6 @@ public class OrderServiceImpl implements OrderService {
     private ProductResponse getProductInfo(String productCode) {
         return Optional.ofNullable(productServiceClient.getProductByCode(productCode))
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productCode));
-    }
-
-    private ProductResponse getProductInfoById(Long productId) {
-        return Optional.ofNullable(productServiceClient.getProductById(productId))
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productId));
     }
 
     private OrderCreateResponse convertToOrderCreateResponse(Order order) {
