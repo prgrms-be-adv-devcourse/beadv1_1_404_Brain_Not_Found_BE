@@ -20,7 +20,6 @@ import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.order.domain.repository.OrderJpaRepositoryImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +28,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,17 +37,16 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderJpaRepository orderJpaRepository;
-    private final OrderJpaRepositoryImpl orderJpaRepositoryImpl;
     private final OrderItemJpaRepository orderItemJpaRepository;
 
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
     private final CartServiceClient cartServiceClient;
     private final PaymentServiceClient paymentApiClient;
+
     private final OrderEventProducer orderEventProducer;
 
     @Override
-    @Transactional(readOnly = true)
     public OrderPageResponse findAllOrders(String userCode, String keyword, Pageable pageable) {
         UserResponse userInfo = getUserInfo(userCode);
 
@@ -62,71 +59,24 @@ public class OrderServiceImpl implements OrderService {
             orderPage = orderJpaRepository.findByBuyerId(userInfo.id(), pageable);
         }
 
-        // Order 엔티티를 OrderInfo DTO로 변환
-        List<OrderPageResponse.OrderInfo> orderInfoList = orderPage.getContent().stream()
-                .map(order -> new OrderPageResponse.OrderInfo(
-                        order.getId(),
-                        order.getCode(),
-                        order.getOrderStatus(),
-                        order.getTotalPrice(),
-                        new OrderPageResponse.UserInfo(
-                                order.getBuyerId(),
-                                order.getAddress()
-                        )
-                ))
-                .collect(Collectors.toList());
-
-        OrderPageResponse.PageInfo pageInfo = new OrderPageResponse.PageInfo(
-                orderPage.getNumber(),
-                orderPage.getSize(),
-                orderPage.getTotalElements(),
-                orderPage.getTotalPages(),
-                orderPage.hasNext(),
-                orderPage.hasPrevious()
-        );
-
-        return new OrderPageResponse(orderInfoList, pageInfo);
+        return OrderPageResponse.from(orderPage);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public OrderDetailResponse findOrderDetails(String orderCode) {
-        Order order = orderJpaRepositoryImpl.findByCode(orderCode);
+        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId()); // 쿼리 날리는지 디버깅 해보도록.
         List<OrderDetailResponse.ItemInfo> itemInfos = orderItems.stream()
                 .map(item -> {
                     ProductResponse product = Optional.ofNullable(productServiceClient.getProductByCode(item.getProductCode()))
                             .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.getProductCode()));
-                    // images가 비어있지 않으면 첫 번째 이미지의 URL 사용, 없으면 null
-                    String productImage = product.images() != null && !product.images().isEmpty()
-                            ? product.images().get(0).url()
-                            : null;
-                    return new OrderDetailResponse.ItemInfo(
-                            item.getCode(),
-                            item.getProductId(),
-                            item.getSellerCode(),
-                            item.getProductName(),
-                            item.getQuantity(),
-                            item.getPrice(),
-                            productImage
-                    );
+                    return OrderDetailResponse.ItemInfo.from(item, product);
                 })
                 .collect(Collectors.toList());
 
-        // 생성자 파라미터안에 생성자가 있는 구조는 가독성 측면에서 생각해봐야한다고 봅니다! 인스턴스화해서 변수로 활용하는 게 어떨까요? 넵.
-        OrderDetailResponse.UserInfo userInfo = new OrderDetailResponse.UserInfo(
-                order.getBuyerId(),
-                order.getAddress()
-        );
-
-        return new OrderDetailResponse(
-                order.getId(),
-                order.getOrderStatus(),
-                order.getTotalPrice(),
-                userInfo,
-                itemInfos
-        );
+        return OrderDetailResponse.from(order, itemInfos);
     }
 
     @Override
@@ -136,7 +86,7 @@ public class OrderServiceImpl implements OrderService {
 
         CartItemsResponse cartInfo = getCartInfo(request.cartCode());
 
-        if (cartInfo.items() == null || cartInfo.items().isEmpty()) { // 이것도 response 안에 행위로 둘 것 같음.
+        if (cartInfo.isEmpty()) {
             throw new IllegalArgumentException("장바구니가 비어있습니다: " + request.cartCode());
         }
 
@@ -149,6 +99,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = Order.create(
                 userInfo.id(),
+                userInfo.code(),
                 request.orderType(),
                 request.address()
         );
@@ -183,12 +134,9 @@ public class OrderServiceImpl implements OrderService {
         switch (request.paidType()) {
             case DEPOSIT -> {
                 // 예치금 결제: 주문 생성 시 바로 결제 처리
-                OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
-                        savedOrder.getId(),
-                        savedOrder.getCode(),
-                        savedOrder.getBuyerId(),
-                        request.buyerCode(),
-                        savedOrder.getTotalPrice(),
+                OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
+                        savedOrder,
+                        savedOrder.getBuyerCode(),
                         request.paidType(),
                         request.paymentKey()
                 );
@@ -200,8 +148,7 @@ public class OrderServiceImpl implements OrderService {
                     savedOrder.changeStatus(OrderStatus.COMPLETED);
                     orderJpaRepository.save(savedOrder);
 
-                    publishOrderCompletedEvents(savedOrder, orderItems, request.buyerCode());
-
+                    publishOrderCompletedEvents(savedOrder, orderItems, savedOrder.getBuyerCode());
                 } catch (Exception e) {
                     // 결제 실패 시 주문 상태를 FAILED로 변경
                     savedOrder.changeStatus(OrderStatus.FAILED);
@@ -241,8 +188,8 @@ public class OrderServiceImpl implements OrderService {
                 productInfo.images());
 
         Order order = Order.create(
-//                1L,
                 userInfo.id(),
+                userInfo.code(),
                 request.orderType(),
                 request.address()
         );
@@ -262,12 +209,9 @@ public class OrderServiceImpl implements OrderService {
         switch (request.paidType()) {
             case DEPOSIT -> {
                 // 예치금 결제: 주문 생성 시 바로 결제 처리
-                OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
-                        savedOrder.getId(),
-                        savedOrder.getCode(),
-                        savedOrder.getBuyerId(),
-                        request.userCode(),
-                        savedOrder.getTotalPrice(),
+                OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
+                        savedOrder,
+                        savedOrder.getBuyerCode(),
                         request.paidType(),
                         request.paymentKey()
                 );
@@ -281,7 +225,7 @@ public class OrderServiceImpl implements OrderService {
 
                     // 결제 성공 후 이벤트 발행
                     List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(savedOrder.getId());
-                    publishOrderCompletedEvents(savedOrder, orderItems, request.userCode());
+                    publishOrderCompletedEvents(savedOrder, orderItems, savedOrder.getBuyerCode());
 
                 } catch (Exception e) {
                     // 결제 실패 시
@@ -306,7 +250,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request, String userCode) {
-        Order order = orderJpaRepositoryImpl.findByCode(orderCode);
+        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
         OrderStatus current = order.getOrderStatus();
         OrderStatus target = request.status();
@@ -333,24 +278,19 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void completePaymentWithKey(String orderCode, String paymentKey) {
-        // 주문 조회
-        Order order = orderJpaRepositoryImpl.findByCode(orderCode);
+        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
 
-        // 주문 상태 확인
         if (order.getOrderStatus() != OrderStatus.CREATED) {
             throw new IllegalStateException("이미 처리된 주문입니다. 현재 상태: " + order.getOrderStatus());
         }
 
-        // 사용자 정보 조회 (buyerCode 필요)
-        UserResponse userInfo = getUserInfoById(order.getBuyerId());
+        // buyerCode는 Order 엔티티에 저장되어 있으므로 별도 조회 불필요
 
         // 결제 처리
-        OrderPaymentRequest orderPaymentRequest = new OrderPaymentRequest(
-                order.getId(),
-                order.getCode(),
-                order.getBuyerId(),
-                userInfo.code(),
-                order.getTotalPrice(),
+        OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
+                order,
+                order.getBuyerCode(),
                 PaidType.TOSS_PAYMENT,
                 paymentKey
         );
@@ -364,7 +304,7 @@ public class OrderServiceImpl implements OrderService {
 
             // 결제 성공 후 이벤트 발행
             List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
-            publishOrderCompletedEvents(order, orderItems, userInfo.code());
+            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
         } catch (Exception e) {
             // 결제 실패 시
@@ -376,9 +316,15 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderValidateResponse validateOrder(OrderValidateRequest request) {
-//        UserResponse userInfo = getUserInfo(request.buyerCode());
+    @Transactional(readOnly = true)
+    public String getOrderCodeById(Long orderId) {
+        Order order = orderJpaRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderId));
+        return order.getCode();
+    }
 
+    @Override
+    public OrderValidateResponse validateOrder(OrderValidateRequest request) {
         Set<String> duplicatedCheck = new HashSet<>();
         int totalQuantity = 0;
         long totalAmount = 0L;
@@ -395,10 +341,6 @@ public class OrderServiceImpl implements OrderService {
                 throw new IllegalStateException("재고가 부족합니다. 상품 코드: " + productRequest.productCode());
             }
 
-            if (productInfo.price() <= 0) {
-                throw new IllegalStateException("유효하지 않은 상품 가격입니다. 상품 코드: " + productRequest.productCode());
-            }
-
             if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
                 throw new IllegalStateException("판매 중이 아닌 상품입니다. 상품 코드: " + productRequest.productCode());
             }
@@ -410,46 +352,31 @@ public class OrderServiceImpl implements OrderService {
             totalQuantity += productRequest.quantity();
             totalAmount += (long) productInfo.price() * productRequest.quantity();
 
-            itemInfos.add(new OrderValidateResponse.ItemInfo(
+            itemInfos.add(OrderValidateResponse.ItemInfo.from(
                     productRequest.productCode(),
                     productRequest.quantity(),
                     productInfo.price()
             ));
         }
 
-        if (totalQuantity <= 0) {
-            throw new IllegalArgumentException("주문 수량이 0 이하입니다.");
-        }
-
-        if (totalAmount <= 0) {
-            throw new IllegalArgumentException("주문 금액이 0 이하입니다.");
-        }
-
-        return new OrderValidateResponse(
+        return OrderValidateResponse.from(
                 request.buyerCode(),
                 totalQuantity,
-                BigDecimal.valueOf(totalAmount),
+                totalAmount,
                 itemInfos
         );
     }
-
-    /*
+    /**
      * 주문 취소 처리
      * - 환불 이벤트 발행
      * - 재고 복구 요청
      */
     private void handleOrderCancellation(Order order) {
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+        String buyerCode = order.getBuyerCode();
 
-        UserResponse buyerInfo = getUserInfoById(order.getBuyerId());
-        String buyerCode = buyerInfo != null ? buyerInfo.code() : null;
-        if (buyerCode == null) {
-            log.warn("주문 취소 시 buyerCode를 찾을 수 없습니다. orderCode: {}, buyerId: {}",
-                    order.getCode(), order.getBuyerId());
-        }
-
+        // 환불 이벤트 발행
         for (OrderItem orderItem : orderItems) {
-            // 환불 이벤트 발행
             if (buyerCode != null) {
                 RefundEvent refundEvent = new RefundEvent(
                     buyerCode,
@@ -473,46 +400,14 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    /**
-     * 사용자 ID로 사용자 정보 조회
-     */
-    private UserResponse getUserInfoById(Long userId) {
-        try {
-            return userServiceClient.getUserById(userId);
-        } catch (Exception e) {
-            log.warn("사용자 정보 조회 실패 - userId: {}, error: {}", userId, e.getMessage());
-            return null;
-        }
-    }
-
     private ProductResponse getProductInfo(String productCode) {
         return Optional.ofNullable(productServiceClient.getProductByCode(productCode))
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productCode));
     }
 
     private OrderCreateResponse convertToOrderCreateResponse(Order order) {
-        List<OrderCreateResponse.OrderItemInfo> orderItemInfoList = orderItemJpaRepository.findByOrderId(order.getId()).stream()
-                .map(item -> new OrderCreateResponse.OrderItemInfo(
-                        item.getId(),
-                        item.getCode(),
-                        item.getProductId(),
-                        item.getSellerCode(),
-                        item.getProductName(),
-                        item.getQuantity(),
-                        item.getPrice()
-                ))
-                .collect(Collectors.toList());
-
-        return new OrderCreateResponse(
-                order.getId(),
-                order.getCode(),
-                order.getOrderStatus(),
-                order.getTotalPrice(),
-                order.getOrderType(),
-                order.getAddress(),
-                order.getBuyerId(),
-                orderItemInfoList
-        );
+        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+        return OrderCreateResponse.from(order, orderItems);
     }
 
     private UserResponse getUserInfo(String userCode) {
@@ -545,20 +440,12 @@ public class OrderServiceImpl implements OrderService {
             log.info("주문 이벤트 send - orderCode: {}, orderItemCode: {}", order.getCode(), orderItem.getCode());
 
             // 재고 감소 이벤트 발행
-//            orderEventProducer.sendInventoryDecrease(
-//                    String.valueOf(orderItem.getCode()),
-//                    orderItem.getQuantity()
-//            );
-//            log.info("Inventory decrease event sent - productId: {}, quantity: {}", orderItem.getProductId(), orderItem.getQuantity());
+            orderEventProducer.sendInventoryDecrease(
+                    String.valueOf(orderItem.getCode()),
+                    orderItem.getQuantity()
+            );
+            log.info("Inventory decrease event sent - productId: {}, quantity: {}", orderItem.getProductId(), orderItem.getQuantity());
         }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public String getOrderCodeById(Long orderId) {
-        Order order = orderJpaRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderId));
-        return order.getCode();
     }
 
     // 도메인 별 규칙에 맞는 검증 로직이 필요하면 추가 작성할 것.

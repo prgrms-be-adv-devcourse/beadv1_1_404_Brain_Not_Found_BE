@@ -244,8 +244,7 @@ public class OrderController {
     // 주문 가능 여부 확인
     @PostMapping("/validate")
     public ResponseEntity<BaseResponse<OrderValidateResponse>> validateOrder(
-            @RequestBody OrderValidateRequest request,
-                @RequestHeader("X-User-Code") String userCode
+            @Valid @RequestBody OrderValidateRequest request
     ) {
         OrderValidateResponse response = orderService.validateOrder(request);
 

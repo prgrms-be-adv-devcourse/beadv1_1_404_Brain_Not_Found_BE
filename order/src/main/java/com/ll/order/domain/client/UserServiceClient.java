@@ -34,21 +34,21 @@ public class UserServiceClient {
         return response.getData();
     }
 
-    public UserResponse getUserById(Long userId) {
-        log.info("userServiceUrl = {}, userId = {}", userServiceUrl, userId);
-        BaseResponse<UserResponse> response = restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(userServiceUrl + "/api/users/info")
-                        .queryParam("id", userId)
-                        .build())
-                .retrieve()
-                .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
-        
-        if (response == null || response.getData() == null) {
-            return null;
-        }
-        
-        return response.getData();
-    }
+//    public UserResponse getUserById(Long userId) {
+//        log.info("userServiceUrl = {}, userId = {}", userServiceUrl, userId);
+//        BaseResponse<UserResponse> response = restClient.get()
+//                .uri(uriBuilder -> uriBuilder
+//                        .path(userServiceUrl + "/api/users/info")
+//                        .queryParam("id", userId)
+//                        .build())
+//                .retrieve()
+//                .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
+//
+//        if (response == null || response.getData() == null) {
+//            return null;
+//        }
+//
+//        return response.getData();
+//    }
 }
 
