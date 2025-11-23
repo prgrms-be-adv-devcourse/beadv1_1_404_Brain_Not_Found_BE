@@ -1,13 +1,13 @@
 package com.ll.order.domain.controller;
 
 import com.ll.core.model.response.BaseResponse;
+import com.ll.order.domain.model.enums.PaidType;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
 import com.ll.order.domain.model.vo.request.OrderValidateRequest;
 import com.ll.order.domain.model.vo.response.order.*;
 import com.ll.order.domain.service.OrderService;
-import com.ll.payment.model.enums.PaidType;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;

@@ -1,6 +1,6 @@
 package com.ll.order.domain.model.vo.request;
 
-import com.ll.payment.model.enums.PaidType;
+import com.ll.order.domain.model.enums.PaidType;
 
 public record OrderPaymentRequest(
         Long orderId,

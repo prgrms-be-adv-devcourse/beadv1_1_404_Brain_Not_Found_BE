@@ -28,7 +28,6 @@ springBoot {
     mainClass = 'com.ll.payment.PaymentApplication'  // 실제 존재하는 main class
 }
 dependencies {
-    implementation project(":core")
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'

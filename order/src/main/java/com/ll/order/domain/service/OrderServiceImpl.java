@@ -10,6 +10,7 @@ import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
+import com.ll.order.domain.model.enums.PaidType;
 import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
@@ -350,7 +351,7 @@ public class OrderServiceImpl implements OrderService {
                 order.getBuyerId(),
                 userInfo.code(),
                 order.getTotalPrice(),
-                com.ll.payment.model.enums.PaidType.TOSS_PAYMENT,
+                PaidType.TOSS_PAYMENT,
                 paymentKey
         );
 
