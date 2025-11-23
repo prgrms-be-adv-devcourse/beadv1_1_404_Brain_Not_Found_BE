@@ -42,6 +42,7 @@ public class Order extends BaseEntity {
     }
 
     public OrderItem createOrderItem(Long productId,
+                                     String productCode,
                                      String sellerCode,
                                      String productName,
                                      int quantity,
@@ -49,6 +50,7 @@ public class Order extends BaseEntity {
         OrderItem orderItem = OrderItem.create(
                 this,
                 productId,
+                productCode,
                 sellerCode,
                 productName,
                 quantity,
