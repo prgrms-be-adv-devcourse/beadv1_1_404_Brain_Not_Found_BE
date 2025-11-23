@@ -1,7 +1,8 @@
 package com.ll.cart.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ll.cart.model.vo.response.user.UserResponse;
 import com.ll.core.model.response.BaseResponse;
-import com.ll.user.model.vo.response.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -15,6 +16,7 @@ import java.util.Map;
 public class UserServiceClient {
 
     private final RestClient restClient;
+    private final ObjectMapper objectMapper;
 
     @Value("${external.user-service.url:http://localhost:8083}")
     private String userServiceUrl;
@@ -30,6 +32,6 @@ public class UserServiceClient {
             return null;
         }
         
-        return UserResponse.from(response.getData());
+        return objectMapper.convertValue(response.getData(), UserResponse.class);
     }
 }
