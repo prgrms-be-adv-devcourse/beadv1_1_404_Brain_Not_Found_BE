@@ -1,6 +1,5 @@
 package com.ll.deposit.service;
 
-import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.deposit.model.vo.request.DepositDeleteRequest;
 import com.ll.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.deposit.model.vo.response.*;
@@ -15,6 +14,6 @@ public interface DepositService {
     DepositDeleteResponse deleteDepositByUserCode(String userCode, DepositDeleteRequest request);
     DepositTransactionResponse chargeDeposit(String userCode, DepositTransactionRequest request);
     DepositTransactionResponse withdrawDeposit(String userCode, DepositTransactionRequest request);
-    DepositTransactionResponse paymentDeposit(OrderEvent event);
+    DepositTransactionResponse paymentDeposit(String userCode, DepositTransactionRequest request);
     DepositHistoryPageResponse getDepositHistoryByUserCode(String userCode, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable);
 }

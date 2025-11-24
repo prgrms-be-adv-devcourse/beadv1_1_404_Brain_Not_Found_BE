@@ -6,10 +6,10 @@ import com.ll.core.model.exception.ErrorCode;
 public class DuplicateDepositTransactionException extends BaseException {
 
     public DuplicateDepositTransactionException() {
-        super(ErrorCode.CONFLICT);
+        super(ErrorCode.TRANSACTION_ALREADY_EXISTS);
     }
 
     public DuplicateDepositTransactionException(String customMessage) {
-        super(ErrorCode.CONFLICT, customMessage);
+        super(ErrorCode.TRANSACTION_ALREADY_EXISTS, customMessage);
     }
 }
