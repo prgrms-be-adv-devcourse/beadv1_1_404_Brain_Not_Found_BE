@@ -14,8 +14,8 @@ spring:
   datasource:
     url: jdbc:h2:mem:settlement-db
     driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
 
   # H2 Console
   h2:
@@ -46,8 +46,7 @@ custom:
   batch:
     chunk:
       size: 500
-    skip:
-      limit: 10
+
 
 eureka:
   client:

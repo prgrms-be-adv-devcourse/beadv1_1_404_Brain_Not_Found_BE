@@ -1,46 +1,20 @@
 server:
   port: 8087
-
 spring:
   application:
     name: payment
-  datasource:
-    url: jdbc:h2:mem:paymentdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+  profiles:
+    active: local
 
-  # H2 Console
-  h2:
-    console:
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus   # 노출할 엔드포인트
+        exclude: beans, env, mappings                # 노출하지 않을 엔드포인트
+      base-path: /actuator                            # 엔드포인트 기본 경로
+  endpoint:
+    health:
+      show-details: always                           # 헬스체크 상세 정보
+    info:
       enabled: true
-      path: /h2-console
-
-  # JPA Configuration
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
-
-payment:
-  targetUrl: https://api.tosspayments.com/v1/payments/confirm
-  createUrl: https://api.tosspayments.com/v1/payments
-  # 위젯용 클라이언트 키 (Toss Payments 개발자 센터에서 발급받은 위젯용 키를 사용하세요)
-  widgetClientKey: test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
-  # API용 시크릿 키 (서버에서 API 호출 시 사용)
-  secretKey: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
-  successUrl: http://localhost:8082/api/orders/payment/success
-  failUrl: http://localhost:8082/api/orders/payment/fail
-  # 테스트 환경에서 Toss Payments API 호출 실패 시 더미 paymentKey 사용 여부
-  useMockPaymentKey: true
-
-# External Service URLs
-external:
-  order-service:
-    url: http://localhost:8082
-  deposit-service:
-    url: http://localhost:8086

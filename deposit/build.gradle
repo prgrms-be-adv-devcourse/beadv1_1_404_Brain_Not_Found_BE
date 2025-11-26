@@ -1,11 +1,7 @@
 plugins {
     id "io.freefair.lombok" version "9.1.0"
 }
-
-group = 'com.ll'
-//version = '0.0.1-SNAPSHOT'
 description = 'deposit'
-
 
 springBoot {
     mainClass = 'com.ll.deposit.DepositApplication'
