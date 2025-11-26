@@ -1,0 +1,45 @@
+# 도커 컨테이너 내부에서 실행될 때 사용
+spring:
+  # MySQL 데이터베이스 설정
+  datasource:
+    url: ${PRODUCT_DB_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    open-in-view: false
+
+  # Elasticsearch 설정
+  elasticsearch:
+    uris: http://elasticsearch-1:9200
+
+  kafka:
+    bootstrap-servers:
+      - ${KAFKA_1_CONTAINER_NAME}:9090
+    consumer:
+      group-id: product-service
+      properties:
+        allow.auto.create.topics: false
+
+
+
+api:
+  user:
+    base-url: http://user:8083
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${DISCOVERY_URL}
+logging:
+  level:
+    root: info

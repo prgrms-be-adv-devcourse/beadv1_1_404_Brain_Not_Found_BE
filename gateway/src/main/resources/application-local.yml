@@ -1,0 +1,140 @@
+spring:
+  eureka:
+    client:
+      enabled: false     # Eureka 서버에 등록하지 않음
+  cloud:
+    discovery:
+      enabled: false   # Eureka 클라이언트 비활성화
+    gateway:
+      server:
+        webflux:
+          routes:
+            # Deposit
+            - id: deposit-route-protected
+              uri: http://localhost:8086
+              predicates:
+                - Path=/api/deposits, /api/deposits/**    #deposit은 모두 인증
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            # Category (PRODUCTS)         #카테고리 CUD 인증
+            - id: category-route-protected
+              uri: http://localhost:8085
+              predicates:
+                - Path=/api/categories, /api/categories/**
+                - Method=PUT, POST, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            - id: category-route-public     #카테고리들 조회
+              uri: http://localhost:8085
+              predicates:
+                - Path=/api/categories, /api/categories/**
+                - Method=GET
+
+            # Product (PRODUCTS)
+            - id: product-route-getAll-protected  # 상품 목록 조회 R 관리자용 인증
+              uri: http://localhost:8085
+              predicates:
+                - Path=/api/products
+                - Method=GET
+              order: 1
+              filters:
+                - name: TokenAuthenticationFilter
+
+            - id: product-route-public          #상품 조회
+              uri: http://localhost:8085
+              predicates:
+                - Path=/api/products/**
+                - Method=GET
+              order: 2
+
+
+            - id: product-route-protected     #상품 수정 및 삭제 인증
+              uri: http://localhost:8085
+              predicates:
+                - Path=/api/products, /api/products/**
+                - Method=PATCH, PUT, POST, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            - id: product-es-route-public   #상품 es 검색
+              uri: http://localhost:8085
+              predicates:
+                - Path=/api/search/**
+                - Method=GET
+
+            - id: product-images-route-protected   #이미지 업로드 인증
+              uri: http://localhost:8085
+              predicates:
+                - Path=/api/images/**
+                - Method=POST
+              filters:
+                - name: TokenAuthenticationFilter
+
+            # Order
+            - id: order-route-pg
+              uri: http://localhost:8082
+              predicates:
+                - Path=/api/orders/payment/**, /api/orders/payment, /orders/payment /orders/payment/**
+                - Method=GET
+              order: 1
+            - id: order-route-protected
+              uri: http://localhost:8082
+              predicates:
+                - Path=/api/orders/**, /api/orders
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+              order: 2
+            - id: payment-route-protected
+              uri: http://localhost:8087
+              predicates:
+                - Path=/api/payments/**, /api/payments
+                - Method=POST
+              filters:
+                - name: TokenAuthenticationFilter
+            # User
+            - id: user-route-protected
+              uri: http://localhost:8083
+              predicates:
+                - Path=/api/users/**
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+              order: 2
+
+            - id: user-route-public
+              uri: http://localhost:8083
+              predicates:
+                - Path=/api/users
+                - Method=GET
+              order: 1
+            # Auth
+            - id: auth-route-public
+              uri: http://localhost:8084
+              predicates:
+                - Path=/api/auth
+                - Method=POST
+            # Login
+            - id: auth-route-login
+              uri: http://localhost:8084
+              predicates:
+                - Path=/api/login, /api/login/**, /login/**, /oauth2/**
+                - Method=GET
+
+
+
+
+# JWT 설정
+custom:
+  jwt:
+    secrets:
+      app-key: ${JWT_SECRET}
+
+logging:
+  level:
+    root: debug
+
+

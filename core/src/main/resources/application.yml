@@ -8,15 +8,3 @@ custom:
       acks: all
       enable-idempotence: true
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health, info, metrics, prometheus   # 노출할 엔드포인트
-        exclude: beans, env, mappings                # 노출하지 않을 엔드포인트
-      base-path: /actuator                            # 엔드포인트 기본 경로
-  endpoint:
-    health:
-      show-details: always                           # 헬스체크 상세 정보
-    info:
-      enabled: true

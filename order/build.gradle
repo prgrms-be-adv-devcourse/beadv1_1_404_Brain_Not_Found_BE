@@ -1,32 +1,9 @@
-plugins {
-//    id 'java'
-//    id 'org.springframework.boot' version '3.5.7'
-//    id 'io.spring.dependency-management' version '1.1.7'
-}
-
-group = 'com.ll'
-//version = '0.0.1-SNAPSHOT'
 description = 'order'
-
-//java {
-//    toolchain {
-//        languageVersion = JavaLanguageVersion.of(21)
-//    }
-//}
-//
-//configurations {
-//    compileOnly {
-//        extendsFrom annotationProcessor
-//    }
-//}
-//
-//repositories {
-//    mavenCentral()
-//}
 
 springBoot {
     mainClass = 'com.ll.order.OrderApplication'
 }
+
 dependencies {
     implementation project(":payment")
     implementation project(":products")
@@ -55,8 +32,5 @@ dependencies {
     runtimeOnly 'com.h2database:h2'
 }
 
-tasks.named('test') {
-    useJUnitPlatform()
-}
 bootJar.enabled = true
 jar.enabled = false

@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: ${ORDER_DB_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    open-in-view: false
+
+payment:
+  targetUrl: https://api.tosspayments.com/v1/payments/confirm
+  createUrl: https://api.tosspayments.com/v1/payments
+  # 위젯용 클라이언트 키 (Toss Payments 개발자 센터에서 발급받은 위젯용 키를 사용하세요)
+  widgetClientKey: ${PAYMENT_WIDGET_CLIENT_KEY}
+  # API용 시크릿 키 (서버에서 API 호출 시 사용)
+  secretKey: ${PAYMENT_SECRET_KEY}
+  successUrl: http://localhost/api/orders/payment/success
+  failUrl: http://localhost/api/orders/payment/fail
+  # 테스트 환경에서 Toss Payments API 호출 실패 시 더미 paymentKey 사용 여부
+  useMockPaymentKey: true
+
+# External Service URLs
+external:
+  order-service:
+    url: http://order:8082
+  deposit-service:
+    url: http://deposit:8086
+logging:
+  level:
+    root: info
