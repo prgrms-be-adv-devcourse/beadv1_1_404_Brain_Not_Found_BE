@@ -28,6 +28,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -64,8 +66,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderDetailResponse findOrderDetails(String orderCode) {
-        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
+        Order order = findOrderByCode(orderCode);
 
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId()); // 쿼리 날리는지 디버깅 해보도록.
         List<OrderDetailResponse.ItemInfo> itemInfos = orderItems.stream()
@@ -129,11 +130,8 @@ public class OrderServiceImpl implements OrderService {
         2) OrderServiceImpl에서 PaidType 유효성 검사
         3) OrderPaymentRequest에 PaidType 포함 → 결제 도메인 전달
         */
-        
-        // 결제 방식에 따라 처리 분기
         switch (request.paidType()) {
             case DEPOSIT -> {
-                // 예치금 결제: 주문 생성 시 바로 결제 처리
                 OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
                         savedOrder,
                         savedOrder.getBuyerCode(),
@@ -205,10 +203,8 @@ public class OrderServiceImpl implements OrderService {
         );
         orderItemJpaRepository.save(orderItem);
 
-        // 결제 방식에 따라 처리 분기
         switch (request.paidType()) {
             case DEPOSIT -> {
-                // 예치금 결제: 주문 생성 시 바로 결제 처리
                 OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
                         savedOrder,
                         savedOrder.getBuyerCode(),
@@ -250,8 +246,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderStatusUpdateResponse updateOrderStatus(String orderCode, @Valid OrderStatusUpdateRequest request, String userCode) {
-        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
+        Order order = findOrderByCode(orderCode);
 
         OrderStatus current = order.getOrderStatus();
         OrderStatus target = request.status();
@@ -260,7 +255,6 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalStateException("해당 상태로 전환할 수 없습니다: " + current + " -> " + target);
         }
 
-        // 주문 취소 시 추가 로직 처리
         if (target == OrderStatus.CANCELLED) {
             handleOrderCancellation(order);
         }
@@ -278,16 +272,12 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void completePaymentWithKey(String orderCode, String paymentKey) {
-        Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
+        Order order = findOrderByCode(orderCode);
 
         if (order.getOrderStatus() != OrderStatus.CREATED) {
             throw new IllegalStateException("이미 처리된 주문입니다. 현재 상태: " + order.getOrderStatus());
         }
 
-        // buyerCode는 Order 엔티티에 저장되어 있으므로 별도 조회 불필요
-
-        // 결제 처리
         OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
                 order,
                 order.getBuyerCode(),
@@ -323,6 +313,19 @@ public class OrderServiceImpl implements OrderService {
         return order.getCode();
     }
 
+    @Override
+    public Optional<String> buildPaymentRedirectUrl(OrderCreateResponse response, PaidType paidType) {
+        if (paidType != PaidType.TOSS_PAYMENT) {
+            return Optional.empty();
+        }
+
+        String orderName = "주문번호: " + response.orderCode();
+        String redirectUrl = String.format("/orders/payment?orderId=%d&orderName=%s&amount=%d",
+                response.id(),
+                URLEncoder.encode(orderName, StandardCharsets.UTF_8),
+                response.totalPrice());
+        return Optional.of(redirectUrl);
+    }
     @Override
     public OrderValidateResponse validateOrder(OrderValidateRequest request) {
         Set<String> duplicatedCheck = new HashSet<>();
@@ -366,16 +369,12 @@ public class OrderServiceImpl implements OrderService {
                 itemInfos
         );
     }
-    /**
-     * 주문 취소 처리
-     * - 환불 이벤트 발행
-     * - 재고 복구 요청
-     */
+    // 주문 취소 처리 -> 환불 이벤트 발행 + 재고 복구 요청
+
     private void handleOrderCancellation(Order order) {
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
         String buyerCode = order.getBuyerCode();
 
-        // 환불 이벤트 발행
         for (OrderItem orderItem : orderItems) {
             if (buyerCode != null) {
                 RefundEvent refundEvent = new RefundEvent(
@@ -420,15 +419,14 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다: " + cartCode));
     }
 
-    /**
-     * 주문 완료 후 이벤트 발행
-     * - 정산 이벤트 (order-event)
-     * - 재고 감소 이벤트 (inventory-event)
-     */
+    private Order findOrderByCode(String orderCode) {
+        return Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
+                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
+    }
+
+     // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 이벤트 (inventory-event)
     private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
-            // 정산을 위한 주문 이벤트 발행
-            // OrderEvent.of(buyerCode, sellerCode, orderItemCode, referenceCode, amount)
             OrderEvent orderEvent = OrderEvent.of(
                     buyerCode,
                     orderItem.getSellerCode(),

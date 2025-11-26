@@ -1,4 +1,4 @@
-package com.ll.order.global.config;
+package com.ll.order.domain.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
