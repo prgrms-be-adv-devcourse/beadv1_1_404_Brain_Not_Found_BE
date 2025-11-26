@@ -3,8 +3,8 @@ spring:
   datasource:
     url: jdbc:h2:mem:userdb
     driver-class-name: org.h2.Driver
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    username: sa
+    password:
   eureka:
     client:
       enabled: false     # Eureka 서버에 등록하지 않음
