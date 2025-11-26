@@ -2,8 +2,8 @@ package com.ll.order.domain.model.vo.response.order;
 
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
-import com.ll.order.domain.model.enums.order.OrderStatus;
-import com.ll.order.domain.model.enums.order.OrderType;
+import com.ll.order.domain.model.enums.OrderStatus;
+import com.ll.order.domain.model.enums.OrderType;
 
 import java.util.List;
 

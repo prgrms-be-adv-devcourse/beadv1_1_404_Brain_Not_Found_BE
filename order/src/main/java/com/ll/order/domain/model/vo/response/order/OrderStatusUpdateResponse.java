@@ -1,6 +1,6 @@
 package com.ll.order.domain.model.vo.response.order;
 
-import com.ll.order.domain.model.enums.order.OrderStatus;
+import com.ll.order.domain.model.enums.OrderStatus;
 
 import java.time.LocalDateTime;
 

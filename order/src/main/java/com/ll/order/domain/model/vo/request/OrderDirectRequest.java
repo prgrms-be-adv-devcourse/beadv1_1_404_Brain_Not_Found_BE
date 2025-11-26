@@ -1,15 +1,12 @@
 package com.ll.order.domain.model.vo.request;
 
 import com.ll.order.domain.model.enums.OrderType;
-import com.ll.payment.model.enums.PaidType;
+import com.ll.order.domain.model.enums.PaidType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public record OrderDirectRequest(
-        @NotBlank(message = "사용자 코드가 필요합니다.")
-        String userCode,
-
         @NotBlank(message = "상품 코드가 필요합니다.")
         String productCode,
 
