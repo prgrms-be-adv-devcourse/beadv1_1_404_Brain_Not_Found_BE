@@ -1,7 +1,7 @@
 package com.ll.order.domain.model.vo.request;
 
 import com.ll.order.domain.model.enums.OrderType;
-import com.ll.payment.model.enums.PaidType;
+import com.ll.order.domain.model.enums.PaidType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -11,9 +11,6 @@ import jakarta.validation.constraints.Positive;
 import java.util.List;
 
 public record OrderCartItemRequest(
-        @NotBlank(message = "구매자 코드가 필요합니다.")
-        String buyerCode,
-
         @NotBlank(message = "장바구니 코드가 필요합니다.")
         String cartCode,
 

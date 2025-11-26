@@ -1,4 +1,4 @@
-package com.ll.order.domain.model.vo.response;
+package com.ll.order.domain.model.vo.response.order;
 
 import com.ll.order.domain.model.enums.OrderStatus;
 

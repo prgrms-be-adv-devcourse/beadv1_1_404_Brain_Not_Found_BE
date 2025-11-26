@@ -1,4 +1,4 @@
-package com.ll.order.domain.model.enums;
+package com.ll.order.domain.model.enums.product;
 
 public enum ProductSaleStatus {
     ON_SALE,

@@ -1,7 +1,7 @@
 package com.ll.order.domain.client;
 
 import com.ll.core.model.response.BaseResponse;
-import com.ll.user.model.vo.response.UserResponse;
+import com.ll.order.domain.model.vo.response.user.UserResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,21 +34,21 @@ public class UserServiceClient {
         return response.getData();
     }
 
-    public UserResponse getUserById(Long userId) {
-        log.info("userServiceUrl = {}, userId = {}", userServiceUrl, userId);
-        BaseResponse<UserResponse> response = restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(userServiceUrl + "/api/users/info")
-                        .queryParam("id", userId)
-                        .build())
-                .retrieve()
-                .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
-        
-        if (response == null || response.getData() == null) {
-            return null;
-        }
-        
-        return response.getData();
-    }
+//    public UserResponse getUserById(Long userId) {
+//        log.info("userServiceUrl = {}, userId = {}", userServiceUrl, userId);
+//        BaseResponse<UserResponse> response = restClient.get()
+//                .uri(uriBuilder -> uriBuilder
+//                        .path(userServiceUrl + "/api/users/info")
+//                        .queryParam("id", userId)
+//                        .build())
+//                .retrieve()
+//                .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
+//
+//        if (response == null || response.getData() == null) {
+//            return null;
+//        }
+//
+//        return response.getData();
+//    }
 }
 

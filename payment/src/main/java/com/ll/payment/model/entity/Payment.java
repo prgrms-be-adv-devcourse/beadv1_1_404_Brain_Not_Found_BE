@@ -1,6 +1,6 @@
 package com.ll.payment.model.entity;
 
-import com.github.f4b6a3.uuid.UuidCreator;
+import com.ll.core.model.persistence.BaseEntity;
 import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Payment {
+public class Payment extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,9 +27,6 @@ public class Payment {
 
     @Column(nullable = false)
     private Long orderId;
-
-    @Column(nullable = false, unique = true)
-    private String paymentCode;
 
     @Column(nullable = false)
     private Long depositHistoryId;
@@ -48,7 +45,6 @@ public class Payment {
     private Payment(int paidAmount,
                     Long buyerId,
                     Long orderId,
-                    String paymentCode,
                     PaymentStatus paymentStatus,
                     PaidType paidType,
                     Long depositHistoryId,
@@ -56,7 +52,6 @@ public class Payment {
         this.paidAmount = paidAmount;
         this.buyerId = buyerId;
         this.orderId = orderId;
-        this.paymentCode = paymentCode;
         this.paymentStatus = paymentStatus;
         this.paidType = paidType;
         this.depositHistoryId = depositHistoryId;
@@ -68,7 +63,6 @@ public class Payment {
                 paidAmount,
                 buyerId,
                 orderId,
-                generatePaymentCode(),
                 PaymentStatus.PENDING,
                 PaidType.TOSS_PAYMENT,
                 0L,
@@ -84,7 +78,6 @@ public class Payment {
                 paidAmount,
                 buyerId,
                 orderId,
-                generatePaymentCode(),
                 PaymentStatus.COMPLETED,
                 PaidType.DEPOSIT,
                 depositHistoryId,
@@ -100,12 +93,5 @@ public class Payment {
     public void markRefund(LocalDateTime refundedAt) {
         this.paymentStatus = PaymentStatus.REFUNDED;
         this.paidAt = refundedAt;
-    }
-
-    private static String generatePaymentCode() {
-        return "PAY-" + UuidCreator.getTimeOrderedEpoch()
-                .toString()
-                .toUpperCase()
-                .replace("-", "");
     }
 }

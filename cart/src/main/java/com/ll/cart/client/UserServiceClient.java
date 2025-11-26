@@ -1,14 +1,12 @@
 package com.ll.cart.client;
 
+import com.ll.cart.model.vo.response.user.UserResponse;
 import com.ll.core.model.response.BaseResponse;
-import com.ll.user.model.vo.response.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-
-import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -20,16 +18,16 @@ public class UserServiceClient {
     private String userServiceUrl;
 
     public UserResponse getUserByCode(String userCode) {
-        BaseResponse<Map<String, Object>> response = restClient.get()
+        BaseResponse<UserResponse> response = restClient.get()
                 .uri(userServiceUrl + "/api/users/info")
                 .header("X-User-Code", userCode)
                 .retrieve()
-                .body(new ParameterizedTypeReference<>() {});
+                .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
         
         if (response == null || response.getData() == null) {
             return null;
         }
         
-        return UserResponse.from(response.getData());
+        return response.getData();
     }
 }
