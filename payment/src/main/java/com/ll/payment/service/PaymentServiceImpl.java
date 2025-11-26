@@ -1,8 +1,10 @@
 package com.ll.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ll.core.model.exception.BaseException;
 import com.ll.payment.client.DepositServiceClient;
 import com.ll.payment.client.OrderServiceClient;
+import com.ll.payment.exception.PaymentErrorCode;
 import com.ll.payment.model.vo.response.DepositInfoResponse;
 import com.ll.payment.model.vo.PaymentProcessResult;
 import com.ll.payment.model.vo.response.TossPaymentResponse;
@@ -38,9 +40,10 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentJpaRepository paymentJpaRepository;
 
     private final RestClient restClient;
-    private final ObjectMapper om;
+    private final ObjectMapper objectMapper;
     private final DepositServiceClient depositServiceClient;
     private final OrderServiceClient orderServiceClient;
+    private final PaymentValidator paymentValidator;
 
     @Value("${payment.secretKey}")
     private String secretKey;
@@ -85,15 +88,7 @@ public class PaymentServiceImpl implements PaymentService {
         int shortageAmount = requestedAmount - currentBalance;
         Payment tossPayment = null;
         if (shortageAmount > 0) {
-            PaymentRequest tossRequest = new PaymentRequest(
-                    payment.orderId(),
-                    payment.orderCode(),
-                    payment.buyerId(),
-                    payment.buyerCode(),
-                    shortageAmount,
-                    PaidType.TOSS_PAYMENT,
-                    payment.paymentKey()
-            );
+            PaymentRequest tossRequest = payment.withAmountAndType(shortageAmount, PaidType.TOSS_PAYMENT);
             tossPayment = tossPayment(tossRequest);
         }
 
@@ -108,7 +103,7 @@ public class PaymentServiceImpl implements PaymentService {
             paymentKey = createPayment(
                     request.orderId(),
                     "주문번호: " + request.orderId(),
-                    "고객",
+                    "고객 이름",
                     request.paidAmount()
             );
         }
@@ -136,7 +131,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         // 3) 실제 Toss 승인 요청
-        TossPaymentRequest tossRequest = new TossPaymentRequest(
+        TossPaymentRequest tossRequest = TossPaymentRequest.from(
                 paymentKey,
                 request.orderCode(),
                 request.paidAmount()
@@ -158,13 +153,13 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public String createPayment(Long orderId, String orderName, String customerName, Integer amount) {
-        // 테스트 환경에서 더미 paymentKey 사용
         if (useMockPaymentKey) {
             String mockPaymentKey = "tgen_test_" + System.currentTimeMillis() + "_" + orderId;
             log.info("테스트용 더미 paymentKey 생성: {}", mockPaymentKey);
             return mockPaymentKey;
         }
 
+        // 결제 생성 요청(POST /v1/payments) 시 Request Body 에 사용할 수 있는 주요 필드 <- TossPaymentCreateRequest
         TossPaymentCreateRequest createRequest = new TossPaymentCreateRequest(
                 amount,
                 "ORDER-" + orderId,
@@ -188,19 +183,19 @@ public class PaymentServiceImpl implements PaymentService {
                         try {
                             String errorBody = res.getBody() != null ? new String(res.getBody().readAllBytes()) : "No error body";
                             log.error("Toss 결제 생성 API 에러 - Status: {}, Body: {}", res.getStatusCode(), errorBody);
-                            throw new IllegalStateException("Toss 결제 생성 API 호출 실패: " + res.getStatusCode() + " - " + errorBody);
+                            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_CREATE_FAILED);
                         } catch (Exception e) {
-                            if (e instanceof IllegalStateException) {
-                                throw (IllegalStateException) e;
+                            if (e instanceof BaseException) {
+                                throw (BaseException) e;
                             }
-                            log.error("에러 응답 읽기 실패", e);
-                            throw new IllegalStateException("Toss 결제 생성 API 호출 실패: " + res.getStatusCode());
+                            log.error("에러 응답 읽기 실패 - Status: {}", res.getStatusCode(), e);
+                            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_CREATE_FAILED);
                         }
                     })
                     .body(String.class);
 
             log.info("Toss 결제 생성 응답: {}", response);
-            TossPaymentCreateResponse createResponse = om.readValue(response, TossPaymentCreateResponse.class);
+            TossPaymentCreateResponse createResponse = objectMapper.readValue(response, TossPaymentCreateResponse.class);
             return createResponse.paymentKey();
         } catch (Exception e) {
             log.error("토스 결제 생성 중 예외 발생: {}", e.getMessage());
@@ -221,12 +216,15 @@ public class PaymentServiceImpl implements PaymentService {
         // 4) 환불 결과에 맞춰 주문 상태도 업데이트하거나 후속 도메인 이벤트를 발행한다.
         // TODO(toss-integration): 실제 토스 취소 API 스펙에 맞춰 요청/응답 필드와 예외 처리를 구체화하세요.
         Payment payment = findPaymentForRefund(request);
-        int refundAmount = validateRefundEligibility(payment, request);
+        int refundAmount = paymentValidator.validateRefundEligibility(payment, request);
 
         switch (payment.getPaidType()) {
             case DEPOSIT -> processDepositRefund(payment, request, refundAmount);
             case TOSS_PAYMENT -> processTossRefund(payment, request, refundAmount);
-            default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + payment.getPaidType());
+            default -> {
+                log.warn("지원하지 않는 결제 수단입니다. paidType: {}", payment.getPaidType());
+                throw new BaseException(PaymentErrorCode.UNSUPPORTED_PAYMENT_TYPE);
+            }
         }
 
         payment.markRefund(LocalDateTime.now());
@@ -237,18 +235,22 @@ public class PaymentServiceImpl implements PaymentService {
 
     private TossPaymentResponse parseTossResponse(String response) {
         try {
-            return om.readValue(response, TossPaymentResponse.class);
+            return objectMapper.readValue(response, TossPaymentResponse.class);
         } catch (Exception e) {
-            throw new IllegalStateException("토스 결제 응답 파싱에 실패했습니다.", e);
+            log.error("토스 결제 응답 파싱에 실패했습니다.", e);
+            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_RESPONSE_PARSE_FAILED);
         }
     }
 
     private void validateTossResponse(PaymentRequest request, TossPaymentResponse tossPaymentResponse) {
         if (!"DONE".equalsIgnoreCase(tossPaymentResponse.status())) {
-            throw new IllegalStateException("토스 결제 승인 상태가 DONE이 아닙니다. status=" + tossPaymentResponse.status());
+            log.warn("토스 결제 승인 상태가 DONE이 아닙니다. status: {}", tossPaymentResponse.status());
+            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_STATUS_INVALID);
         }
         if (request.paidAmount() != tossPaymentResponse.totalAmount()) {
-            throw new IllegalStateException("토스 승인 금액과 요청 금액이 일치하지 않습니다. 요청: " + request.paidAmount() + ", 승인: " + tossPaymentResponse.totalAmount());
+            log.warn("토스 승인 금액과 요청 금액이 일치하지 않습니다. 요청: {}, 승인: {}", 
+                    request.paidAmount(), tossPaymentResponse.totalAmount());
+            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_AMOUNT_MISMATCH);
         }
     }
 
@@ -267,49 +269,27 @@ public class PaymentServiceImpl implements PaymentService {
     private Payment findPaymentForRefund(PaymentRefundRequest request) {
         if (request.paymentId() != null) {
             return paymentJpaRepository.findById(request.paymentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + request.paymentId()));
+                    .orElseThrow(() -> {
+                        log.warn("결제 정보를 찾을 수 없습니다. paymentId: {}", request.paymentId());
+                        return new BaseException(PaymentErrorCode.PAYMENT_NOT_FOUND);
+                    });
         }
         if (request.paymentCode() != null && !request.paymentCode().isBlank()) {
             return paymentJpaRepository.findByPaymentCode(request.paymentCode())
-                    .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + request.paymentCode()));
+                    .orElseThrow(() -> {
+                        log.warn("결제 정보를 찾을 수 없습니다. paymentCode: {}", request.paymentCode());
+                        return new BaseException(PaymentErrorCode.PAYMENT_NOT_FOUND);
+                    });
         }
-        throw new IllegalArgumentException("환불 대상 결제 정보를 찾을 수 없습니다.");
-    }
-
-    private int validateRefundEligibility(Payment payment, PaymentRefundRequest request) {
-        if (payment.getPaymentStatus() != PaymentStatus.COMPLETED) {
-            throw new IllegalStateException("환불은 완료된 결제만 가능합니다. status=" + payment.getPaymentStatus());
-        }
-
-        if (request.orderId() != null && !request.orderId().equals(payment.getOrderId())) {
-            throw new IllegalArgumentException("주문 번호가 결제 정보와 일치하지 않습니다.");
-        }
-        if (request.orderCode() == null || request.orderCode().isBlank()) {
-            throw new IllegalArgumentException("환불에는 orderCode가 필요합니다.");
-        }
-
-        if (request.paidType() != null && request.paidType() != payment.getPaidType()) {
-            throw new IllegalArgumentException("요청한 결제 수단이 실제 결제 수단과 다릅니다.");
-        }
-
-        int refundAmount = request.refundAmount() != null ? request.refundAmount() : payment.getPaidAmount();
-        if (refundAmount <= 0) {
-            throw new IllegalArgumentException("환불 금액이 0 이하입니다.");
-        }
-        if (refundAmount > payment.getPaidAmount()) {
-            throw new IllegalArgumentException("환불 금액이 결제 금액을 초과합니다.");
-        }
-        if (refundAmount != payment.getPaidAmount()) {
-            throw new IllegalArgumentException("부분 환불은 현재 지원되지 않습니다.");
-        }
-
-        return refundAmount;
+        log.warn("환불 대상 결제 정보를 찾을 수 없습니다.");
+        throw new BaseException(PaymentErrorCode.REFUND_TARGET_NOT_FOUND);
     }
 
     private void processDepositRefund(Payment payment, PaymentRefundRequest request, int refundAmount) {
         String buyerCode = request.buyerCode();
         if (buyerCode == null || buyerCode.isBlank()) {
-            throw new IllegalArgumentException("예치금 환불에는 buyerCode가 필요합니다.");
+            log.warn("예치금 환불에는 buyerCode가 필요합니다.");
+            throw new BaseException(PaymentErrorCode.BUYER_CODE_REQUIRED);
         }
         depositServiceClient.deposit(buyerCode, refundAmount, createReferenceCode(payment.getOrderId()));
     }
@@ -317,7 +297,8 @@ public class PaymentServiceImpl implements PaymentService {
     private void processTossRefund(Payment payment, PaymentRefundRequest request, int refundAmount) {
         String paymentKey = request.paymentKey();
         if (paymentKey == null || paymentKey.isBlank()) {
-            throw new IllegalArgumentException("토스 환불에는 paymentKey가 필요합니다.");
+            log.warn("토스 환불에는 paymentKey가 필요합니다.");
+            throw new BaseException(PaymentErrorCode.PAYMENT_KEY_REQUIRED);
         }
 
         Map<String, Object> cancelRequest = new HashMap<>();
@@ -336,7 +317,9 @@ public class PaymentServiceImpl implements PaymentService {
                     .retrieve()
                     .toBodilessEntity();
         } catch (Exception e) {
-            throw new IllegalStateException("토스 결제 환불 요청에 실패했습니다.", e);
+            log.error("토스 결제 환불 요청에 실패했습니다. paymentKey: {}, refundAmount: {}", 
+                    paymentKey, refundAmount, e);
+            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_REFUND_FAILED);
         }
     }
 
@@ -344,7 +327,8 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             orderServiceClient.updateOrderStatus(orderCode, "REFUNDED");
         } catch (Exception e) {
-            throw new IllegalStateException("주문 서비스에 환불 상태를 전달하는 데 실패했습니다.", e);
+            log.error("주문 서비스에 환불 상태를 전달하는 데 실패했습니다. orderCode: {}", orderCode, e);
+            throw new BaseException(PaymentErrorCode.ORDER_SERVICE_NOTIFICATION_FAILED);
         }
     }
 

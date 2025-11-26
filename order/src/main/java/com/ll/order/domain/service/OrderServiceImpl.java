@@ -170,7 +170,7 @@ public class OrderServiceImpl implements OrderService {
 
         ProductResponse productInfo = getProductInfo(request.productCode());
 
-        log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerCode: {}, sellerName: {}, quantity: {}, price: {}, status: {}, images: {}",
+        log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerCode: {}, sellerName: {}, quantity: {}, price: {}, status: {}",
                 productInfo.id(),
                 productInfo.code(),
                 productInfo.name(),
@@ -178,8 +178,7 @@ public class OrderServiceImpl implements OrderService {
                 productInfo.sellerName(),
                 productInfo.quantity(),
                 productInfo.price(),
-                productInfo.status(),
-                productInfo.images());
+                productInfo.status());
 
         Order order = Order.create(
                 userInfo.id(),
@@ -247,10 +246,7 @@ public class OrderServiceImpl implements OrderService {
         OrderStatus current = order.getOrderStatus();
         OrderStatus target = request.status();
 
-        if (!current.canTransitionTo(target)) {
-            log.warn("해당 상태로 전환할 수 없습니다. current: {}, target: {}", current, target);
-            throw new BaseException(OrderErrorCode.INVALID_ORDER_STATUS_TRANSITION);
-        }
+        orderValidator.validateOrderStatusTransition(current, target);
 
         if (target == OrderStatus.CANCELLED) {
             handleOrderCancellation(order);
@@ -402,12 +398,12 @@ public class OrderServiceImpl implements OrderService {
                     log.warn("장바구니를 찾을 수 없습니다. cartCode: {}", cartCode);
                     return new BaseException(OrderErrorCode.CART_NOT_FOUND);
                 });
-        
+
         if (cartInfo.isEmpty()) {
             log.warn("장바구니가 비어있습니다. cartCode: {}", cartCode);
             throw new BaseException(OrderErrorCode.CART_EMPTY);
         }
-        
+
         return cartInfo;
     }
 

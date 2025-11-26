@@ -11,4 +11,15 @@ public record PaymentRequest(
         PaidType paidType,
         String paymentKey // 토스 승인용
 ) {
+    public PaymentRequest withAmountAndType(int paidAmount, PaidType paidType) {
+        return new PaymentRequest(
+                orderId(),
+                orderCode(),
+                buyerId(),
+                buyerCode(),
+                paidAmount,
+                paidType,
+                paymentKey()
+        );
+    }
 }

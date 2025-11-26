@@ -3,6 +3,8 @@ package com.ll.order.domain.service;
 import com.ll.core.model.exception.BaseException;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
+import com.ll.order.domain.model.entity.Order;
+import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.vo.request.ProductRequest;
 import com.ll.order.domain.model.vo.response.order.OrderValidateResponse;
@@ -58,6 +60,21 @@ public class OrderValidator {
         }
 
         return itemInfos;
+    }
+
+    public void validateOrderStatusTransition(OrderStatus current, OrderStatus target) {
+        if (!current.canTransitionTo(target)) {
+            log.warn("해당 상태로 전환할 수 없습니다. current: {}, target: {}", current, target);
+            throw new BaseException(OrderErrorCode.INVALID_ORDER_STATUS_TRANSITION);
+        }
+    }
+
+    public void validateOrderForPayment(Order order) {
+        if (order.getOrderStatus() != OrderStatus.CREATED) {
+            log.warn("이미 처리된 주문입니다. orderCode: {}, 현재 상태: {}",
+                    order.getCode(), order.getOrderStatus());
+            throw new BaseException(OrderErrorCode.ORDER_ALREADY_PROCESSED);
+        }
     }
 
     private ProductResponse getProductInfo(String productCode) {
