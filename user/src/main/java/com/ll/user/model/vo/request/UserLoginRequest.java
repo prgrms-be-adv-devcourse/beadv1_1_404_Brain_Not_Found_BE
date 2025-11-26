@@ -6,13 +6,13 @@ import jakarta.validation.constraints.NotNull;
 
 
 public record UserLoginRequest(
-        @NotNull
+        @NotNull(message = "socialId 는 필수입니다.")
         String socialId,
-        @NotNull
+        @NotNull(message = "socialProvider 는 필수입니다.")
         SocialProvider socialProvider,
-        @NotNull
+        @NotNull(message = "email은 필수입니다.")
         String email,
-        @NotNull
+        @NotNull(message = "name은 필수입니다.")
         String name
 ) {
 
