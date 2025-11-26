@@ -1,7 +1,5 @@
 package com.ll.order.domain.service;
 
-import com.ll.cart.model.vo.response.CartItemInfo;
-import com.ll.cart.model.vo.response.CartItemsResponse;
 import com.ll.order.domain.client.CartServiceClient;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
@@ -11,19 +9,21 @@ import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.OrderType;
+import com.ll.order.domain.model.enums.PaidType;
+import com.ll.order.domain.model.enums.product.ProductStatus;
+import com.ll.order.domain.model.enums.user.AccountStatus;
+import com.ll.order.domain.model.enums.user.Grade;
+import com.ll.order.domain.model.enums.user.Role;
+import com.ll.order.domain.model.enums.user.SocialProvider;
 import com.ll.order.domain.model.vo.request.*;
-import com.ll.order.domain.model.vo.response.*;
+import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
+import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
+import com.ll.order.domain.model.vo.response.order.*;
+import com.ll.order.domain.model.vo.response.product.ProductImageDto;
+import com.ll.order.domain.model.vo.response.product.ProductResponse;
+import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.payment.model.enums.PaidType;
-import com.ll.products.domain.product.model.dto.ProductImageDto;
-import com.ll.products.domain.product.model.dto.response.ProductResponse;
-import com.ll.products.domain.product.model.entity.ProductStatus;
-import com.ll.user.model.enums.AccountStatus;
-import com.ll.user.model.enums.Grade;
-import com.ll.user.model.enums.Role;
-import com.ll.user.model.enums.SocialProvider;
-import com.ll.user.model.vo.response.UserResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -110,7 +110,7 @@ class OrderServiceImplTest {
                 .build();
 
         List<CartItemInfo> cartItems = new ArrayList<>();
-        cartItems.add(new CartItemInfo("CART-ITEM-001", 1L, 2, 20000));
+        cartItems.add(new CartItemInfo("CART-ITEM-001", 1L, "PROD-001", 2, 20000));
         testCartInfo = new CartItemsResponse("CART-001", 20000, cartItems);
     }
 
@@ -133,7 +133,7 @@ class OrderServiceImplTest {
 
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUserInfo);
         when(cartServiceClient.getCartByCode("CART-001")).thenReturn(testCartInfo);
-        when(productServiceClient.getProductById(1L)).thenReturn(testProductInfo);
+        when(productServiceClient.getProductByCode("PROD-001")).thenReturn(testProductInfo);
         when(orderJpaRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         List<OrderItem> storedOrderItems = new ArrayList<>();
         doAnswer(invocation -> {
@@ -184,10 +184,10 @@ class OrderServiceImplTest {
         assertThat(cartCodeCaptor.getAllValues()).hasSize(1);
         assertThat(cartCodeCaptor.getValue()).isEqualTo("CART-001");
         
-        ArgumentCaptor<Long> productIdCaptor = ArgumentCaptor.forClass(Long.class);
-        verify(productServiceClient).getProductById(productIdCaptor.capture());
-        assertThat(productIdCaptor.getAllValues()).hasSize(1);
-        assertThat(productIdCaptor.getValue()).isEqualTo(1L);
+        ArgumentCaptor<String> productCodeCaptor = ArgumentCaptor.forClass(String.class);
+        verify(productServiceClient).getProductByCode(productCodeCaptor.capture());
+        assertThat(productCodeCaptor.getAllValues()).hasSize(1);
+        assertThat(productCodeCaptor.getValue()).isEqualTo("PROD-001");
     }
 
     @DisplayName("장바구니 주문 생성 - 여러 상품")
@@ -195,9 +195,9 @@ class OrderServiceImplTest {
     void createCartItemOrder_WithMultipleProducts_Success() {
         // given
         List<CartItemInfo> multipleCartItems = new ArrayList<>();
-        multipleCartItems.add(new CartItemInfo("CART-ITEM-001", 1L, 2, 20000)); // quantity 2, totalPrice 20000
-        multipleCartItems.add(new CartItemInfo("CART-ITEM-002", 2L, 1, 15000)); // quantity 1, totalPrice 15000
-        multipleCartItems.add(new CartItemInfo("CART-ITEM-003", 3L, 3, 15000)); // quantity 3, totalPrice 15000
+        multipleCartItems.add(new CartItemInfo("CART-ITEM-001", 1L, "PROD-001", 2, 20000)); // quantity 2, totalPrice 20000
+        multipleCartItems.add(new CartItemInfo("CART-ITEM-002", 2L, "PROD-002", 1, 15000)); // quantity 1, totalPrice 15000
+        multipleCartItems.add(new CartItemInfo("CART-ITEM-003", 3L, "PROD-003", 3, 15000)); // quantity 3, totalPrice 15000
         CartItemsResponse multipleItemCart = new CartItemsResponse("CART-002", 50000, multipleCartItems);
 
         ProductResponse product1 = ProductResponse.builder()
@@ -248,9 +248,9 @@ class OrderServiceImplTest {
 
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUserInfo);
         when(cartServiceClient.getCartByCode("CART-002")).thenReturn(multipleItemCart);
-        when(productServiceClient.getProductById(1L)).thenReturn(product1);
-        when(productServiceClient.getProductById(2L)).thenReturn(product2);
-        when(productServiceClient.getProductById(3L)).thenReturn(product3);
+        when(productServiceClient.getProductByCode("PROD-001")).thenReturn(product1);
+        when(productServiceClient.getProductByCode("PROD-002")).thenReturn(product2);
+        when(productServiceClient.getProductByCode("PROD-003")).thenReturn(product3);
         when(orderJpaRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         List<OrderItem> storedOrderItems = new ArrayList<>();
         doAnswer(invocation -> {
@@ -285,12 +285,12 @@ class OrderServiceImplTest {
         assertThat(capturedOrder.getOrderStatus()).isEqualTo(OrderStatus.COMPLETED);
 
         // ProductService가 3번 호출되었는지
-        ArgumentCaptor<Long> productIdCaptor = ArgumentCaptor.forClass(Long.class);
-        verify(productServiceClient, times(3)).getProductById(productIdCaptor.capture());
-        List<Long> capturedProductIds = productIdCaptor.getAllValues();
+        ArgumentCaptor<String> productCodeCaptor = ArgumentCaptor.forClass(String.class);
+        verify(productServiceClient, times(3)).getProductByCode(productCodeCaptor.capture());
+        List<String> capturedProductCodes = productCodeCaptor.getAllValues();
 
-        assertThat(capturedProductIds).hasSize(3);
-        assertThat(capturedProductIds).containsExactlyInAnyOrder(1L, 2L, 3L);
+        assertThat(capturedProductCodes).hasSize(3);
+        assertThat(capturedProductCodes).containsExactlyInAnyOrder("PROD-001", "PROD-002", "PROD-003");
         
         // OrderItems 검증
         assertThat(result.orderItems().get(0).productId()).isEqualTo(1L);
@@ -457,7 +457,8 @@ class OrderServiceImplTest {
                         .isMain(true)
                         .build()
         );
-        when(productServiceClient.getProductById(1L))
+        when(orderItem.getProductCode()).thenReturn("PROD-001");
+        when(productServiceClient.getProductByCode("PROD-001"))
                 .thenReturn(ProductResponse.builder()
                         .id(1L)
                         .code("PROD-001")

@@ -1,4 +1,4 @@
-package com.ll.order.domain.model.enums;
+package com.ll.order.domain.model.enums.product;
 
 public enum ProductStatus {
     ON_SALE,    // 판매중

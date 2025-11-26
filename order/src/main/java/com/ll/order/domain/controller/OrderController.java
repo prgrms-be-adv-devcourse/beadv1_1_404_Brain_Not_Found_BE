@@ -5,9 +5,8 @@ import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
 import com.ll.order.domain.model.vo.request.OrderValidateRequest;
-import com.ll.order.domain.model.vo.response.*;
+import com.ll.order.domain.model.vo.response.order.*;
 import com.ll.order.domain.service.OrderService;
-import com.ll.payment.model.enums.PaidType;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -17,8 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
@@ -148,18 +145,10 @@ public class OrderController {
     ) {
         OrderCreateResponse response = orderService.createCartItemOrder(request, userCode);
 
-        // 토스 결제인 경우 결제 페이지로 자동 리다이렉트
-        if (request.paidType() == PaidType.TOSS_PAYMENT) {
-            String orderName = "주문번호: " + response.orderCode();
-            String redirectUrl = String.format("/orders/payment?orderId=%d&orderName=%s&amount=%d",
-                    response.id(),
-                    URLEncoder.encode(orderName, StandardCharsets.UTF_8),
-                    response.totalPrice());
-            return new RedirectView(redirectUrl);
-        }
-
-        // 예치금 결제 등은 기존대로 JSON 응답
-        return BaseResponse.created(response);
+        return orderService.buildPaymentRedirectUrl(response, request.paidType())
+                .map(RedirectView::new)
+                .map(Object.class::cast)
+                .orElse(BaseResponse.created(response));
     }
 
     /*
@@ -186,18 +175,10 @@ public class OrderController {
     ) {
         OrderCreateResponse response = orderService.createDirectOrder(request, userCode);
 
-        // 토스 결제인 경우 결제 페이지로 자동 리다이렉트
-        if (request.paidType() == PaidType.TOSS_PAYMENT) {
-            String orderName = "주문번호: " + response.orderCode();
-            String redirectUrl = String.format("/orders/payment?orderId=%d&orderName=%s&amount=%d",
-                    response.id(),
-                    URLEncoder.encode(orderName, StandardCharsets.UTF_8),
-                    response.totalPrice());
-            return new RedirectView(redirectUrl);
-        }
-
-        // 예치금 결제 등은 기존대로 JSON 응답
-        return BaseResponse.created(response);
+        return orderService.buildPaymentRedirectUrl(response, request.paidType())
+                .map(RedirectView::new)
+                .map(Object.class::cast)
+                .orElse(BaseResponse.created(response));
     }
 
     @GetMapping
@@ -244,11 +225,9 @@ public class OrderController {
     // 주문 가능 여부 확인
     @PostMapping("/validate")
     public ResponseEntity<BaseResponse<OrderValidateResponse>> validateOrder(
-            @RequestBody OrderValidateRequest request,
-                @RequestHeader("X-User-Code") String userCode
+            @Valid @RequestBody OrderValidateRequest request
     ) {
         OrderValidateResponse response = orderService.validateOrder(request);
-
         return BaseResponse.ok(response);
     }
 
@@ -285,9 +264,7 @@ public class OrderController {
             @RequestParam String amount
     ) {
         try {
-            // 주문 조회 및 결제 처리
             orderService.completePaymentWithKey(orderId, paymentKey);
-            
             return new RedirectView("/orders/payment/success-page?orderId=" + orderId + "&amount=" + amount);
         } catch (Exception e) {
             return new RedirectView("/orders/payment/fail-page?error=" + e.getMessage());
