@@ -1,7 +1,6 @@
 package com.ll.settlement.model.exception;
 
 import com.ll.core.model.exception.BaseException;
-import com.ll.core.model.exception.ErrorCode;
 
 public class SettlementStateTransitionException extends BaseException {
 

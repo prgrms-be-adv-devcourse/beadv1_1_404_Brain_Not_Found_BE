@@ -1,11 +1,9 @@
 package com.ll.deposit.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
+import com.ll.deposit.model.enums.DepositHistoryType;
 import com.ll.deposit.model.enums.DepositStatus;
-import com.ll.deposit.model.exception.DepositAlreadyExistsException;
-import com.ll.deposit.model.exception.DepositBalanceNotEmptyException;
-import com.ll.deposit.model.exception.InsufficientDepositBalanceException;
-import com.ll.deposit.model.exception.InvalidDepositStatusTransitionException;
+import com.ll.deposit.model.exception.*;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -43,23 +41,29 @@ public class Deposit extends BaseEntity {
                 .build();
     }
 
-    public Deposit charge(Long amount) {
-        if (this.depositStatus != DepositStatus.ACTIVE) {
-            throw new InvalidDepositStatusTransitionException("비활성 또는 종료된 입금 계좌에는 충전할 수 없습니다.");
-        }
+    public void charge(Long amount) {
+        validateActive();
         this.balance += amount;
-        return  this;
     }
 
-    public Deposit withdraw(Long amount) {
-        if (this.depositStatus != DepositStatus.ACTIVE) {
-            throw new InvalidDepositStatusTransitionException("비활성 계좌는 출금할 수 없습니다.");
-        }
+    public void withdraw(Long amount) {
+        validateActive();
         if (this.balance < amount) {
-            throw new InsufficientDepositBalanceException("잔액이 부족합니다.");
+            throw new InsufficientDepositBalanceException();
         }
         this.balance -= amount;
-        return this;
+    }
+
+    public DepositHistory applyTransaction(Long amount, String referenceCode, DepositHistoryType type) {
+        Long before = this.balance;
+
+        switch (type) {
+            case CHARGE -> this.charge(amount);
+            case WITHDRAW, PAYMENT -> this.withdraw(amount);
+            default -> throw new InvalidDepositHistoryTypeException();
+        }
+
+        return DepositHistory.create(this.getId(), amount, before, this.balance, referenceCode, type);
     }
 
     public Deposit setClosed() {
@@ -77,8 +81,13 @@ public class Deposit extends BaseEntity {
         if (this.depositStatus == DepositStatus.ACTIVE) {
             throw new DepositAlreadyExistsException();
         }
-        System.out.printf("Closed deposit found for user %s. Reactivating...\n", userCode);
         this.depositStatus = DepositStatus.ACTIVE;
         return this;
+    }
+
+    private void validateActive() {
+        if (this.depositStatus != DepositStatus.ACTIVE) {
+            throw new InvalidDepositStatusTransitionException();
+        }
     }
 }

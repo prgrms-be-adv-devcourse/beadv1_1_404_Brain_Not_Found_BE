@@ -9,8 +9,8 @@ spring:
   datasource:
     url: jdbc:h2:mem:deposit-db
     driver-class-name: org.h2.Driver
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    username: sa
+    password:
 
   # H2 Console
   h2:
