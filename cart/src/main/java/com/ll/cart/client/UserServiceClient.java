@@ -1,6 +1,5 @@
 package com.ll.cart.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.cart.model.vo.response.user.UserResponse;
 import com.ll.core.model.response.BaseResponse;
 import lombok.RequiredArgsConstructor;
@@ -9,29 +8,26 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import java.util.Map;
-
 @Component
 @RequiredArgsConstructor
 public class UserServiceClient {
 
     private final RestClient restClient;
-    private final ObjectMapper objectMapper;
 
     @Value("${external.user-service.url:http://localhost:8083}")
     private String userServiceUrl;
 
     public UserResponse getUserByCode(String userCode) {
-        BaseResponse<Map<String, Object>> response = restClient.get()
+        BaseResponse<UserResponse> response = restClient.get()
                 .uri(userServiceUrl + "/api/users/info")
                 .header("X-User-Code", userCode)
                 .retrieve()
-                .body(new ParameterizedTypeReference<>() {});
+                .body(new ParameterizedTypeReference<BaseResponse<UserResponse>>() {});
         
         if (response == null || response.getData() == null) {
             return null;
         }
         
-        return objectMapper.convertValue(response.getData(), UserResponse.class);
+        return response.getData();
     }
 }
