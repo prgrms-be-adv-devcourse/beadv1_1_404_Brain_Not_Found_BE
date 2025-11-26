@@ -9,6 +9,7 @@ import com.ll.user.service.UserService;
 import com.ll.core.model.response.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -34,7 +35,7 @@ public class UserController {
 
     // 소셜로그인
     @PostMapping
-    public ResponseEntity<BaseResponse<UserLoginResponse>> socialLogin(@RequestBody UserLoginRequest request) {
+    public ResponseEntity<BaseResponse<UserLoginResponse>> socialLogin(@RequestBody @Validated UserLoginRequest request) {
         UserLoginResponse response = userService.createOrUpdateUser(request);
         return BaseResponse.ok(response);
     }
@@ -42,7 +43,7 @@ public class UserController {
     // 회원 정보 수정
     @PatchMapping
     public ResponseEntity<BaseResponse<UserResponse>> updateUser(
-            @RequestBody UserPatchRequest request,
+            @RequestBody @Validated UserPatchRequest request,
             @RequestHeader(value = "X-User-Code") String userCode
     ){
             return BaseResponse.ok(userService.updateUser(request, userCode));

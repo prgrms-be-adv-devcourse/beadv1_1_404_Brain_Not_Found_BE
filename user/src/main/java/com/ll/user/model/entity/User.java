@@ -6,6 +6,7 @@ import com.ll.user.model.enums.Grade;
 import com.ll.user.model.enums.Role;
 import com.ll.user.model.enums.SocialProvider;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
 import lombok.*;
 
 
@@ -22,6 +23,7 @@ public class User extends BaseEntity {
     private String socialId;
 
     @Column(nullable = false)
+    @Email
     private String email;
 
     @Column(nullable = false)
@@ -57,9 +59,7 @@ public class User extends BaseEntity {
     private String accountNumber;
     private String address;
 
-    public void updateSocialInfo(String socialId, SocialProvider socialProvider, String email, String name) {
-        this.socialId = socialId;
-        this.socialProvider = socialProvider;
+    public void updateSocialInfo(String email, String name) {
         this.email = email;
         this.name = name;
     }
