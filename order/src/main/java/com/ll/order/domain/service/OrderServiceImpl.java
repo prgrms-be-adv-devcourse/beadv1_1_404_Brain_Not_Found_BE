@@ -1,17 +1,18 @@
 package com.ll.order.domain.service;
 
+import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.order.domain.client.CartServiceClient;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.client.UserServiceClient;
+import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.enums.OrderStatus;
 import com.ll.order.domain.model.enums.PaidType;
-import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
@@ -47,6 +48,7 @@ public class OrderServiceImpl implements OrderService {
     private final PaymentServiceClient paymentApiClient;
 
     private final OrderEventProducer orderEventProducer;
+    private final OrderValidator orderValidator;
 
     @Override
     public OrderPageResponse findAllOrders(String userCode, String keyword, Pageable pageable) {
@@ -102,7 +104,10 @@ public class OrderServiceImpl implements OrderService {
             ProductResponse productInfo = productList.stream()
                     .filter(p -> p.id().equals(cartItem.productId()))
                     .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + cartItem.productId()));
+                    .orElseThrow(() -> {
+                        log.warn("상품을 찾을 수 없습니다. productId: {}", cartItem.productId());
+                        return new BaseException(OrderErrorCode.PRODUCT_NOT_FOUND);
+                    });
 
             OrderItem orderItem = savedOrder.createOrderItem(
                     productInfo.id(),
@@ -140,7 +145,7 @@ public class OrderServiceImpl implements OrderService {
                     savedOrder.changeStatus(OrderStatus.FAILED);
                     orderJpaRepository.save(savedOrder);
                     log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
-                    throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
+                    throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
                 }
             }
             case TOSS_PAYMENT -> {
@@ -149,7 +154,10 @@ public class OrderServiceImpl implements OrderService {
                 log.info("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)", 
                         savedOrder.getId(), savedOrder.getCode());
             }
-            default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+            default -> {
+                log.warn("지원하지 않는 결제 수단입니다. paidType: {}", request.paidType());
+                throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
+            }
         }
 
         return convertToOrderCreateResponse(savedOrder);
@@ -162,7 +170,7 @@ public class OrderServiceImpl implements OrderService {
 
         ProductResponse productInfo = getProductInfo(request.productCode());
 
-        log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerCode: {}, sellerName: {}, quantity: {}, price: {}, status: {}, images: {}",
+        log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerCode: {}, sellerName: {}, quantity: {}, price: {}, status: {}",
                 productInfo.id(),
                 productInfo.code(),
                 productInfo.name(),
@@ -170,8 +178,7 @@ public class OrderServiceImpl implements OrderService {
                 productInfo.sellerName(),
                 productInfo.quantity(),
                 productInfo.price(),
-                productInfo.status(),
-                productInfo.images());
+                productInfo.status());
 
         Order order = Order.create(
                 userInfo.id(),
@@ -213,7 +220,7 @@ public class OrderServiceImpl implements OrderService {
                     savedOrder.changeStatus(OrderStatus.FAILED);
                     orderJpaRepository.save(savedOrder);
                     log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
-                    throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
+                    throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
                 }
             }
             case TOSS_PAYMENT -> {
@@ -222,7 +229,10 @@ public class OrderServiceImpl implements OrderService {
                 log.info("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)", 
                         savedOrder.getId(), savedOrder.getCode());
             }
-            default -> throw new IllegalArgumentException("지원하지 않는 결제 수단입니다: " + request.paidType());
+            default -> {
+                log.warn("지원하지 않는 결제 수단입니다. paidType: {}", request.paidType());
+                throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
+            }
         }
 
         return convertToOrderCreateResponse(savedOrder);
@@ -236,9 +246,7 @@ public class OrderServiceImpl implements OrderService {
         OrderStatus current = order.getOrderStatus();
         OrderStatus target = request.status();
 
-        if (!current.canTransitionTo(target)) {
-            throw new IllegalStateException("해당 상태로 전환할 수 없습니다: " + current + " -> " + target);
-        }
+        orderValidator.validateOrderStatusTransition(current, target);
 
         if (target == OrderStatus.CANCELLED) {
             handleOrderCancellation(order);
@@ -260,7 +268,8 @@ public class OrderServiceImpl implements OrderService {
         Order order = findOrderByCode(orderCode);
 
         if (order.getOrderStatus() != OrderStatus.CREATED) {
-            throw new IllegalStateException("이미 처리된 주문입니다. 현재 상태: " + order.getOrderStatus());
+            log.warn("이미 처리된 주문입니다. orderCode: {}, 현재 상태: {}", orderCode, order.getOrderStatus());
+            throw new BaseException(OrderErrorCode.ORDER_ALREADY_PROCESSED);
         }
 
         OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
@@ -284,7 +293,7 @@ public class OrderServiceImpl implements OrderService {
             order.changeStatus(OrderStatus.FAILED);
             orderJpaRepository.save(order);
             log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderCode, paymentKey, e.getMessage(), e);
-            throw new IllegalStateException("결제 처리에 실패했습니다: " + e.getMessage(), e);
+            throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
         }
     }
 
@@ -292,7 +301,10 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public String getOrderCodeById(Long orderId) {
         Order order = orderJpaRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderId));
+                .orElseThrow(() -> {
+                    log.warn("주문을 찾을 수 없습니다. orderId: {}", orderId);
+                    return new BaseException(OrderErrorCode.ORDER_NOT_FOUND);
+                });
         return order.getCode();
     }
 
@@ -309,41 +321,18 @@ public class OrderServiceImpl implements OrderService {
                 response.totalPrice());
         return Optional.of(redirectUrl);
     }
+
     @Override
     public OrderValidateResponse validateOrder(OrderValidateRequest request) {
-        Set<String> duplicatedCheck = new HashSet<>();
-        int totalQuantity = 0;
-        long totalAmount = 0L;
-        List<OrderValidateResponse.ItemInfo> itemInfos = new ArrayList<>();
+        List<OrderValidateResponse.ItemInfo> itemInfos = orderValidator.validateProducts(request.products());
 
-        for (ProductRequest productRequest : request.products()) {
-            if (!duplicatedCheck.add(productRequest.productCode())) { // 이미 들어있는 코드면 false 반환
-                throw new IllegalArgumentException("중복된 상품 코드가 포함되어 있습니다: " + productRequest.productCode());
-            }
+        int totalQuantity = itemInfos.stream()
+                .mapToInt(OrderValidateResponse.ItemInfo::requestedQuantity)
+                .sum();
 
-            ProductResponse productInfo = getProductInfo(productRequest.productCode());
-
-            if (productInfo.quantity() < productRequest.quantity()) {
-                throw new IllegalStateException("재고가 부족합니다. 상품 코드: " + productRequest.productCode());
-            }
-
-            if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
-                throw new IllegalStateException("판매 중이 아닌 상품입니다. 상품 코드: " + productRequest.productCode());
-            }
-
-            if (productRequest.price() != productInfo.price()) {
-                throw new IllegalStateException("요청한 상품 가격이 실제 가격과 일치하지 않습니다. 상품 코드: " + productRequest.productCode());
-            }
-
-            totalQuantity += productRequest.quantity();
-            totalAmount += (long) productInfo.price() * productRequest.quantity();
-
-            itemInfos.add(OrderValidateResponse.ItemInfo.from(
-                    productRequest.productCode(),
-                    productRequest.quantity(),
-                    productInfo.price()
-            ));
-        }
+        long totalAmount = itemInfos.stream()
+                .mapToLong(item -> (long) item.price() * item.requestedQuantity())
+                .sum();
 
         return OrderValidateResponse.from(
                 request.buyerCode(),
@@ -360,7 +349,7 @@ public class OrderServiceImpl implements OrderService {
 
         for (OrderItem orderItem : orderItems) {
             if (buyerCode != null) {
-                RefundEvent refundEvent = new RefundEvent(
+                RefundEvent refundEvent = RefundEvent.from(
                     buyerCode,
                     orderItem.getCode(),
                     order.getCode(),
@@ -384,7 +373,10 @@ public class OrderServiceImpl implements OrderService {
 
     private ProductResponse getProductInfo(String productCode) {
         return Optional.ofNullable(productServiceClient.getProductByCode(productCode))
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productCode));
+                .orElseThrow(() -> {
+                    log.warn("상품을 찾을 수 없습니다. productCode: {}", productCode);
+                    return new BaseException(OrderErrorCode.PRODUCT_NOT_FOUND);
+                });
     }
 
     private OrderCreateResponse convertToOrderCreateResponse(Order order) {
@@ -394,23 +386,33 @@ public class OrderServiceImpl implements OrderService {
 
     private UserResponse getUserInfo(String userCode) {
         return Optional.ofNullable(userServiceClient.getUserByCode(userCode))
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userCode));
+                .orElseThrow(() -> {
+                    log.warn("사용자를 찾을 수 없습니다. userCode: {}", userCode);
+                    return new BaseException(OrderErrorCode.USER_NOT_FOUND);
+                });
     }
 
     private CartItemsResponse getCartInfo(String cartCode) {
         CartItemsResponse cartInfo = Optional.ofNullable(cartServiceClient.getCartByCode(cartCode))
-                .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다: " + cartCode));
-        
+                .orElseThrow(() -> {
+                    log.warn("장바구니를 찾을 수 없습니다. cartCode: {}", cartCode);
+                    return new BaseException(OrderErrorCode.CART_NOT_FOUND);
+                });
+
         if (cartInfo.isEmpty()) {
-            throw new IllegalArgumentException("장바구니가 비어있습니다: " + cartCode);
+            log.warn("장바구니가 비어있습니다. cartCode: {}", cartCode);
+            throw new BaseException(OrderErrorCode.CART_EMPTY);
         }
-        
+
         return cartInfo;
     }
 
     private Order findOrderByCode(String orderCode) {
         return Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다: " + orderCode));
+                .orElseThrow(() -> {
+                    log.warn("주문을 찾을 수 없습니다. orderCode: {}", orderCode);
+                    return new BaseException(OrderErrorCode.ORDER_NOT_FOUND);
+                });
     }
 
      // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 이벤트 (inventory-event)

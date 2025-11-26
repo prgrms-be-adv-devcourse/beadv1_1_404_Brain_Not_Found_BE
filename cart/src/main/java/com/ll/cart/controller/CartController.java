@@ -1,9 +1,9 @@
 package com.ll.cart.controller;
 
 import com.ll.cart.model.vo.request.CartItemAddRequest;
-import com.ll.cart.model.vo.response.CartItemAddResponse;
-import com.ll.cart.model.vo.response.CartItemRemoveResponse;
-import com.ll.cart.model.vo.response.CartItemsResponse;
+import com.ll.cart.model.vo.response.cart.CartItemAddResponse;
+import com.ll.cart.model.vo.response.cart.CartItemRemoveResponse;
+import com.ll.cart.model.vo.response.cart.CartItemsResponse;
 import com.ll.cart.service.CartService;
 import com.ll.core.model.response.BaseResponse;
 import jakarta.validation.Valid;
