@@ -1,6 +1,7 @@
 package com.ll.user;
 
 import com.ll.user.exception.UserNotFoundException;
+import com.ll.user.messaging.producer.UserEventProducer;
 import com.ll.user.model.entity.User;
 import com.ll.user.model.enums.SocialProvider;
 import com.ll.user.model.vo.request.UserLoginRequest;
@@ -32,6 +33,9 @@ class UserServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private UserEventProducer userEventProducer;
 
     @Mock
     private ModelMapper modelMapper;

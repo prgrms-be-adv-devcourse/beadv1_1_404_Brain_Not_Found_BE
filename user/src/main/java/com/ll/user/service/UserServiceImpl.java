@@ -59,8 +59,6 @@ public class UserServiceImpl implements UserService {
                 .findBySocialIdAndSocialProvider(request.socialId(), request.socialProvider())
                 .map(existing -> updateExistingUser(existing,request))
                 .orElseGet(() -> createUser(request));
-            userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
-            userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
 
         return UserLoginResponse.from(savedUser);
     }
@@ -83,12 +81,15 @@ public class UserServiceImpl implements UserService {
     }
 
     private User createUser(UserLoginRequest request){
-        User user = User.builder()
+        User savedUser = userRepository.save(User.builder()
                 .socialId(request.socialId())
                 .socialProvider(request.socialProvider())
                 .email(request.email())
                 .name(request.name())
-                .build();
-        return userRepository.save(user);
+                .build());
+
+        userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
+        userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
+        return savedUser;
     }
 }
