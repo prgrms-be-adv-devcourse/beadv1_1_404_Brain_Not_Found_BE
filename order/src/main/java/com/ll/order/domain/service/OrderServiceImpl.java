@@ -349,7 +349,7 @@ public class OrderServiceImpl implements OrderService {
 
         for (OrderItem orderItem : orderItems) {
             if (buyerCode != null) {
-                RefundEvent refundEvent = new RefundEvent(
+                RefundEvent refundEvent = RefundEvent.from(
                     buyerCode,
                     orderItem.getCode(),
                     order.getCode(),
