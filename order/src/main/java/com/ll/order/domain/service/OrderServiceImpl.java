@@ -341,11 +341,29 @@ public class OrderServiceImpl implements OrderService {
                 itemInfos
         );
     }
-    // 주문 취소 처리 -> 환불 이벤트 발행 + 재고 복구 요청
+    // 주문 취소 처리 -> 환불 처리(동기) + 환불 이벤트 발행(비동기) + 재고 복구 요청
     private void handleOrderCancellation(Order order) {
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
         String buyerCode = order.getBuyerCode();
 
+        // 1. 환불 처리 (동기) - 결제가 완료된 주문만 환불 처리
+        if (order.getOrderStatus() == OrderStatus.COMPLETED) {
+            try {
+                paymentApiClient.requestRefund(
+                        order.getId(),
+                        order.getCode(),
+                        buyerCode,
+                        order.getTotalPrice(),
+                        "주문 취소"
+                );
+                log.info("환불 처리 완료 - orderCode: {}, amount: {}", order.getCode(), order.getTotalPrice());
+            } catch (Exception e) {
+                log.error("환불 처리 실패 - orderCode: {}, error: {}", order.getCode(), e.getMessage(), e);
+                throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
+            }
+        }
+
+        // 2. 환불 이벤트 발행 (비동기) + 재고 복구 요청
         for (OrderItem orderItem : orderItems) {
             if (buyerCode != null) {
                 RefundEvent refundEvent = RefundEvent.from(
