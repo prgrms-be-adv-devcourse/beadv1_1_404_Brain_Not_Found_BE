@@ -342,7 +342,6 @@ public class OrderServiceImpl implements OrderService {
         );
     }
     // 주문 취소 처리 -> 환불 이벤트 발행 + 재고 복구 요청
-
     private void handleOrderCancellation(Order order) {
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
         String buyerCode = order.getBuyerCode();
