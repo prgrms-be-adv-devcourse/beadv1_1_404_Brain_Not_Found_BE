@@ -1,9 +1,3 @@
-plugins {
-
-}
-
-group = 'com.ll'
-//version = '0.0.1-SNAPSHOT'
 description = 'products'
 
 
@@ -35,9 +29,4 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 }
-
-tasks.named('test') {
-    useJUnitPlatform()
-}
-
 tasks.register("prepareKotlinBuildScriptModel"){}

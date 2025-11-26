@@ -3,13 +3,6 @@ networks:
     name: ${NETWORK_NAME}
     driver: ${NETWORK_DRIVER}
 
-
-x-healthcheck: &default-healthcheck
-  test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-  interval: 10s
-  timeout: 10s
-  retries: 10
-
 services:
   #module <--
 
@@ -108,7 +101,6 @@ services:
     depends_on:
       order-db:
         condition: service_healthy
-    healthcheck: *default-healthcheck
 
   user-module:
     container_name: ${USER_CONTAINER_NAME}
@@ -125,7 +117,6 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
-    healthcheck: *default-healthcheck
 
   auth-module:
     container_name: ${AUTH_CONTAINER_NAME}
@@ -158,9 +149,6 @@ services:
     depends_on:
       product-db:
         condition: service_healthy
-      kibana:
-        condition: service_healthy
-    healthcheck: *default-healthcheck
 
   deposit-module:
     container_name: ${DEPOSIT_CONTAINER_NAME}
@@ -177,7 +165,6 @@ services:
     depends_on:
       deposit-db:
         condition: service_healthy
-    healthcheck: *default-healthcheck
   settlement-module:
     container_name: ${SETTLEMENT_CONTAINER_NAME}
     build:
@@ -193,7 +180,6 @@ services:
     depends_on:
       settlement-db:
         condition: service_healthy
-    healthcheck: *default-healthcheck
   #  mysql <--
   auth-db:
     ports:
@@ -210,15 +196,6 @@ services:
 #      - ./data/${AUTH_DB_NAME}:/var/lib/mysql
     networks:
       - ${NETWORK_NAME}
-    depends_on:
-      gateway-module:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h ${AUTH_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
 
   user-db:
     ports:
@@ -233,17 +210,6 @@ services:
       - TZ=${TZ}
     networks:
       - ${NETWORK_NAME}
-    #    volumes:
-    #      - ./data/${USER_DB_NAME}:/var/lib/mysql
-    depends_on:
-      gateway-module:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h ${USER_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
 
   settlement-db:
     ports:
@@ -258,18 +224,7 @@ services:
       - TZ=${TZ}
     networks:
       - ${NETWORK_NAME}
-    #    volumes:
-    #      - ./data/${USER_DB_NAME}:/var/lib/mysql
-    depends_on:
-      gateway-module:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h ${SETTLEMENT_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 5s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-  #
+
   order-db:
     ports:
       - ${ORDER_DB_PORTS}
@@ -281,20 +236,9 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - TZ=${TZ}
-    #    volumes:
-    #      - ./data/${ORDER_DB_NAME}:/var/lib/mysql
     networks:
       - ${NETWORK_NAME}
-    depends_on:
-      gateway-module:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h ${ORDER_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-  #
+
   product-db:
     ports:
       - ${PRODUCT_DB_PORTS}
@@ -306,19 +250,8 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - TZ=${TZ}
-    #    volumes:
-    #      - ./data/${PRODUCT_DB_NAME}:/var/lib/mysql
     networks:
       - ${NETWORK_NAME}
-    depends_on:
-      gateway-module:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h ${PRODUCT_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 5s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
 
 
   deposit-db:
@@ -332,19 +265,8 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - TZ=${TZ}
-    #    volumes:
-    #      - ./data/${DEPOSIT_DB_NAME}:/var/lib/mysql
     networks:
       - ${NETWORK_NAME}
-    depends_on:
-      gateway-module:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h ${DEPOSIT_DB_CONTAINER_NAME} -u ${MYSQL_USER} -p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
 
   #mysql -->
 
@@ -377,9 +299,6 @@ services:
     volumes:
       - ./scripts:/scripts
       - ./kafka-data-1:/var/lib/kafka/data
-    depends_on:
-      gateway-module:
-        condition: service_healthy
     healthcheck:
       test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server ${KAFKA_1_CONTAINER_NAME}:9090 --list" ]
       interval: 5s
@@ -465,15 +384,6 @@ services:
       - ${NETWORK_NAME}
     command: >
       sh -c "elasticsearch-plugin install analysis-nori --batch && elasticsearch"
-    depends_on:
-      gateway-module:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1" ]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
   #  elasticsearch-2:
   #    image: ${ES_IMAGE}
   #    container_name: ${ES_2_CONTAINER_NAME}
@@ -533,8 +443,6 @@ services:
       elasticsearch_hosts: "${ES_1_CONTAINER_NAME}:9200"
     #      ,elasticsearch-02:9200,elasticsearch-03:9200"
     depends_on:
-      gateway-module:
-        condition: service_healthy
       elasticsearch-1:
         condition: service_healthy
     networks:

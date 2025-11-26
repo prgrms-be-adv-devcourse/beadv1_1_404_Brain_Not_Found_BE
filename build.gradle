@@ -14,6 +14,7 @@ ext {
 }
 
 
+description = 'Gooream'
 
 subprojects {subproject ->
     apply plugin: 'java'
@@ -22,7 +23,6 @@ subprojects {subproject ->
 
     group = 'com.ll'
     version = '0.0.1-SNAPSHOT'
-    description = 'Gooream'
 
     java {
         toolchain {
