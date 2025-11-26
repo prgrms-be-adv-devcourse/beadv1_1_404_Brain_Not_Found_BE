@@ -70,11 +70,7 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId()); // 쿼리 날리는지 디버깅 해보도록.
         List<OrderDetailResponse.ItemInfo> itemInfos = orderItems.stream()
-                .map(item -> {
-                    ProductResponse product = Optional.ofNullable(productServiceClient.getProductByCode(item.getProductCode()))
-                            .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + item.getProductCode()));
-                    return OrderDetailResponse.ItemInfo.from(item, product);
-                })
+                .map(item -> OrderDetailResponse.ItemInfo.from(item, getProductInfo(item.getProductCode())))
                 .collect(Collectors.toList());
 
         return OrderDetailResponse.from(order, itemInfos);
@@ -87,11 +83,6 @@ public class OrderServiceImpl implements OrderService {
 
         CartItemsResponse cartInfo = getCartInfo(request.cartCode());
 
-        if (cartInfo.isEmpty()) {
-            throw new IllegalArgumentException("장바구니가 비어있습니다: " + request.cartCode());
-        }
-
-        //Map 보다 List<객체> 형식으로 사용하는 게 좀 더 확장성과 객체지향적이라고 생각합니다.
         List<ProductResponse> productList = new ArrayList<>();
         for (CartItemInfo item : cartInfo.items()) {
             ProductResponse productInfo = getProductInfo(item.productCode());
@@ -138,17 +129,14 @@ public class OrderServiceImpl implements OrderService {
                         request.paidType(),
                         request.paymentKey()
                 );
-
                 try {
                     paymentApiClient.requestDepositPayment(orderPaymentRequest);
 
-                    // 결제 성공 후
                     savedOrder.changeStatus(OrderStatus.COMPLETED);
                     orderJpaRepository.save(savedOrder);
 
                     publishOrderCompletedEvents(savedOrder, orderItems, savedOrder.getBuyerCode());
                 } catch (Exception e) {
-                    // 결제 실패 시 주문 상태를 FAILED로 변경
                     savedOrder.changeStatus(OrderStatus.FAILED);
                     orderJpaRepository.save(savedOrder);
                     log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
@@ -211,11 +199,9 @@ public class OrderServiceImpl implements OrderService {
                         request.paidType(),
                         request.paymentKey()
                 );
-
                 try {
                     paymentApiClient.requestDepositPayment(orderPaymentRequest);
 
-                    // 결제 성공 후
                     savedOrder.changeStatus(OrderStatus.COMPLETED);
                     orderJpaRepository.save(savedOrder);
 
@@ -224,7 +210,6 @@ public class OrderServiceImpl implements OrderService {
                     publishOrderCompletedEvents(savedOrder, orderItems, savedOrder.getBuyerCode());
 
                 } catch (Exception e) {
-                    // 결제 실패 시
                     savedOrder.changeStatus(OrderStatus.FAILED);
                     orderJpaRepository.save(savedOrder);
                     log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
@@ -288,7 +273,6 @@ public class OrderServiceImpl implements OrderService {
         try {
             paymentApiClient.requestTossPayment(orderPaymentRequest);
 
-            // 결제 성공 후
             order.changeStatus(OrderStatus.COMPLETED);
             orderJpaRepository.save(order);
 
@@ -297,7 +281,6 @@ public class OrderServiceImpl implements OrderService {
             publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
         } catch (Exception e) {
-            // 결제 실패 시
             order.changeStatus(OrderStatus.FAILED);
             orderJpaRepository.save(order);
             log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderCode, paymentKey, e.getMessage(), e);
@@ -415,8 +398,14 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private CartItemsResponse getCartInfo(String cartCode) {
-        return Optional.ofNullable(cartServiceClient.getCartByCode(cartCode))
+        CartItemsResponse cartInfo = Optional.ofNullable(cartServiceClient.getCartByCode(cartCode))
                 .orElseThrow(() -> new IllegalArgumentException("장바구니를 찾을 수 없습니다: " + cartCode));
+        
+        if (cartInfo.isEmpty()) {
+            throw new IllegalArgumentException("장바구니가 비어있습니다: " + cartCode);
+        }
+        
+        return cartInfo;
     }
 
     private Order findOrderByCode(String orderCode) {
