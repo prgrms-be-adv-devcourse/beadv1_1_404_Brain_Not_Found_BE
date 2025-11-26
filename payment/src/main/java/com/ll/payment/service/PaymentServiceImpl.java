@@ -59,17 +59,6 @@ public class PaymentServiceImpl implements PaymentService {
     private boolean useMockPaymentKey;
 
     @Override
-    public String confirmPayment(TossPaymentRequest request) {
-        return restClient.post()
-                .uri(targetUrl)
-                .headers(headers -> headers.set("Authorization", createAuthorizationHeader()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
-                .retrieve()
-                .body(String.class);
-    }
-
-    @Override
     public PaymentProcessResult depositPayment(PaymentRequest payment) {
         int currentBalance = Optional.ofNullable(depositServiceClient.getDepositInfo(payment.buyerCode()))
                 .map(DepositInfoResponse::balance)
@@ -118,7 +107,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 2) 더미 paymentKey인 경우 Toss 승인 API 호출 건너뛰기
         boolean isMockPaymentKey = paymentKey != null && paymentKey.startsWith("tgen_test_");
-        
+
         if (isMockPaymentKey) {
             log.info("더미 paymentKey 사용 중. Toss 승인 API 호출을 건너뜁니다. paymentKey: {}", paymentKey);
             // 더미 키인 경우 바로 결제 완료 처리
@@ -142,8 +131,8 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment.markSuccess(
                 PaymentStatus.COMPLETED,
-                tossPaymentResponse.approvedAt() != null 
-                        ? tossPaymentResponse.approvedAt().toLocalDateTime() 
+                tossPaymentResponse.approvedAt() != null
+                        ? tossPaymentResponse.approvedAt().toLocalDateTime()
                         : java.time.LocalDateTime.now()
         );
         paymentJpaRepository.save(payment);
@@ -151,8 +140,7 @@ public class PaymentServiceImpl implements PaymentService {
         return payment;
     }
 
-    @Override
-    public String createPayment(Long orderId, String orderName, String customerName, Integer amount) {
+    private String createPayment(Long orderId, String orderName, String customerName, Integer amount) {
         if (useMockPaymentKey) {
             String mockPaymentKey = "tgen_test_" + System.currentTimeMillis() + "_" + orderId;
             log.info("테스트용 더미 paymentKey 생성: {}", mockPaymentKey);
@@ -170,9 +158,9 @@ public class PaymentServiceImpl implements PaymentService {
         );
 
         try {
-            log.info("Toss 결제 생성 요청 - orderId: {}, orderName: {}, amount: {}, successUrl: {}, failUrl: {}", 
+            log.info("Toss 결제 생성 요청 - orderId: {}, orderName: {}, amount: {}, successUrl: {}, failUrl: {}",
                     "ORDER-" + orderId, orderName, amount, successUrl, failUrl);
-            
+
             String response = restClient.post()
                     .uri(createUrl)
                     .headers(headers -> headers.set("Authorization", createAuthorizationHeader()))
@@ -213,6 +201,7 @@ public class PaymentServiceImpl implements PaymentService {
     // 3) 환불 성공 시 Payment 상태를 REFUNDED로 갱신하고 환불 일시·금액·외부 환불 키 등을 저장한다.
     // 4) 환불 결과에 맞춰 주문 상태도 업데이트하거나 후속 도메인 이벤트를 발행한다.
     // TODO(toss-integration): 실제 토스 취소 API 스펙에 맞춰 요청/응답 필드와 예외 처리를 구체화하세요.
+
     @Override
     public Payment refundPayment(PaymentRefundRequest request) {
         Payment payment = findPaymentForRefund(request);
@@ -232,7 +221,6 @@ public class PaymentServiceImpl implements PaymentService {
         notifyOrderRefund(request.orderCode());
         return payment;
     }
-
     private TossPaymentResponse parseTossResponse(String response) {
         try {
             return objectMapper.readValue(response, TossPaymentResponse.class);
@@ -240,6 +228,16 @@ public class PaymentServiceImpl implements PaymentService {
             log.error("토스 결제 응답 파싱에 실패했습니다.", e);
             throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_RESPONSE_PARSE_FAILED);
         }
+    }
+
+    private String confirmPayment(TossPaymentRequest request) {
+        return restClient.post()
+                .uri(targetUrl)
+                .headers(headers -> headers.set("Authorization", createAuthorizationHeader()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(String.class);
     }
 
     private void validateTossResponse(PaymentRequest request, TossPaymentResponse tossPaymentResponse) {

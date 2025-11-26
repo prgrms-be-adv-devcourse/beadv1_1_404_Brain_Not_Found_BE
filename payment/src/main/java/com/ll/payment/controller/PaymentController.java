@@ -3,7 +3,6 @@ package com.ll.payment.controller;
 import com.ll.core.model.response.BaseResponse;
 import com.ll.payment.model.entity.Payment;
 import com.ll.payment.model.vo.PaymentProcessResult;
-import com.ll.payment.model.vo.request.PaymentCreateRequest;
 import com.ll.payment.model.vo.request.PaymentRefundRequest;
 import com.ll.payment.model.vo.request.PaymentRequest;
 import com.ll.payment.service.PaymentService;
@@ -98,8 +97,6 @@ public class PaymentController { // TODO : 결제 실패 시 주문 상태 갱�
         return BaseResponse.ok("Ok");
     }
 
-
-
     @PostMapping("/toss")
     public ResponseEntity<BaseResponse<Payment>> tossPayment(
             @RequestBody PaymentRequest request
@@ -123,19 +120,6 @@ public class PaymentController { // TODO : 결제 실패 시 주문 상태 갱�
     ) {
         Payment result = paymentService.refundPayment(request);
         return BaseResponse.ok(result);
-    }
-
-    @PostMapping("/create")
-    public ResponseEntity<BaseResponse<String>> createPayment(
-            @RequestBody PaymentCreateRequest request
-    ) {
-        String paymentKey = paymentService.createPayment(
-                request.orderId(),
-                request.orderName(),
-                request.customerName(),
-                request.amount()
-        );
-        return BaseResponse.ok(paymentKey);
     }
 
 }
