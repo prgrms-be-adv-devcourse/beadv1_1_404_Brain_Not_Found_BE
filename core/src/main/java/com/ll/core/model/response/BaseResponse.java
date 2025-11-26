@@ -1,5 +1,6 @@
 package com.ll.core.model.response;
 
+import com.ll.core.model.exception.BaseErrorCode;
 import com.ll.core.model.exception.ErrorCode;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
@@ -21,7 +22,7 @@ public class BaseResponse<T> {
     @Builder.Default
     private String message = "success";
 
-    private ErrorCode errorCode;
+    private BaseErrorCode errorCode;
     private T data;
 
     // 200 OK — 일반 성공
@@ -45,7 +46,7 @@ public class BaseResponse<T> {
     }
 
     // Error Response — 에러 공통 처리
-    public static <T> ResponseEntity<BaseResponse<T>> error(ErrorCode errorCode) {
+    public static <T> ResponseEntity<BaseResponse<T>> error(BaseErrorCode errorCode) {
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(BaseResponse.<T>builder()
@@ -55,7 +56,7 @@ public class BaseResponse<T> {
                         .build());
     }
 
-    public static <T> ResponseEntity<BaseResponse<T>> error(ErrorCode errorCode, String message) {
+    public static <T> ResponseEntity<BaseResponse<T>> error(BaseErrorCode errorCode, String message) {
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(BaseResponse.<T>builder()
