@@ -64,6 +64,16 @@ public class DepositController {
         return BaseResponse.created(depositService.withdrawDeposit(userCode, request));
     }
 
+    @PostMapping("/payment")
+    public ResponseEntity<BaseResponse<DepositTransactionResponse>> paymentDeposit(
+            @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
+            @RequestHeader(value = "X-User-Code")
+            String userCode,
+            @Valid @RequestBody DepositTransactionRequest request
+    ) {
+        return BaseResponse.created(depositService.paymentDeposit(userCode, request));
+    }
+
     @PatchMapping("/close")
     public ResponseEntity<BaseResponse<DepositDeleteResponse>> deleteDeposit(
             @NotBlank(message = "userCode 는 공백이거나 null일 수 없습니다.")
