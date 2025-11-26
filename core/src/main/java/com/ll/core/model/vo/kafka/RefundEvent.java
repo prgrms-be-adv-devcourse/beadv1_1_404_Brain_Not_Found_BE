@@ -13,4 +13,7 @@ public record RefundEvent (
         @PositiveOrZero(message = "amount 는 0 이상이어야 합니다.")
         Long amount
 ) {
+    public static RefundEvent from(String buyerCode, String orderItemCode, String orderCode, Long amount) {
+        return new RefundEvent(buyerCode, orderItemCode, orderCode, amount);
+    }
 }

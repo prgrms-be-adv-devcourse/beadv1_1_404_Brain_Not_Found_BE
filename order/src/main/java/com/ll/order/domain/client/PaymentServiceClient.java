@@ -41,22 +41,5 @@ public class PaymentServiceClient {
                 .body(String.class);
     }
 
-    public String createPayment(Long orderId, String orderName, String customerName, Integer amount) {
-        String url = paymentServiceUrl + "/api/payments/create";
-        Map<String, Object> request = new HashMap<>();
-        request.put("orderId", orderId);
-        request.put("orderName", orderName);
-        request.put("customerName", customerName);
-        request.put("amount", amount);
-        
-        BaseResponse<String> response = restClient.post()
-                .uri(url)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(request)
-                .retrieve()
-                .body(new ParameterizedTypeReference<BaseResponse<String>>() {});
-        
-        return response != null ? response.getData() : null;
-    }
 }
 

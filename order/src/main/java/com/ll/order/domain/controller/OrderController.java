@@ -21,7 +21,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
-public class OrderController {
+public class OrderController { // TODO : 주문 취소와 환불 절차가 연결돼있지 않음. 동기 or 비동기 통신으로 처리 필요
 
     private final OrderService orderService;
 

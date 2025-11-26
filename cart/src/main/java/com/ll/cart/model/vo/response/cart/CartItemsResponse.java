@@ -1,4 +1,4 @@
-package com.ll.cart.model.vo.response;
+package com.ll.cart.model.vo.response.cart;
 
 import com.ll.cart.model.entity.Cart;
 import com.ll.cart.model.entity.CartItem;

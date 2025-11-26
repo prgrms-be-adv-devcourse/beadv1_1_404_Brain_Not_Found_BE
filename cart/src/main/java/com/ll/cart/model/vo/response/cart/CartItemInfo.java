@@ -1,15 +1,15 @@
-package com.ll.cart.model.vo.response;
+package com.ll.cart.model.vo.response.cart;
 
 import com.ll.cart.model.entity.CartItem;
 
-public record CartItemRemoveResponse(
+public record CartItemInfo(
         String cartItemCode,
         Long productId,
         Integer quantity,
         Integer totalPrice
 ) {
-    public static CartItemRemoveResponse from(CartItem cartItem) {
-        return new CartItemRemoveResponse(
+    public static CartItemInfo from(CartItem cartItem) {
+        return new CartItemInfo(
                 cartItem.getCode(),
                 cartItem.getProductId(),
                 cartItem.getQuantity(),
@@ -17,4 +17,5 @@ public record CartItemRemoveResponse(
         );
     }
 }
+
 
