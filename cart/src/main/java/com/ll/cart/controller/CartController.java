@@ -46,10 +46,4 @@ public class CartController {
         return BaseResponse.ok(response);
     }
 
-    // 장바구니 주문 완료 처리 - 주문 생성 api에서 주문 완료까지 처라하는걸로 현재는 구현돼있고, 장바구니에 넣어야 할 지는 고민중.
-//    @PostMapping("/{cartCode}/complete")
-//    public ResponseEntity<BaseResponse<Void>> completeCart(@PathVariable String cartCode) {
-//        return BaseResponse.ok(null);
-//    }
-
 }
