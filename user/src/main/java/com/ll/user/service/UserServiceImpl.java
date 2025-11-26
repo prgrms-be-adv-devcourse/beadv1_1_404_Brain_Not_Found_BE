@@ -29,59 +29,66 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse getUserById(Long id) {
-        User user = userRepository.findById(id).orElseThrow(UserNotFoundException::new);
-        return UserResponse.from(user);
+        return UserResponse.from(findUserByIdOrThrow(id));
     }
 
     @Override
     public UserResponse getUserByUserCode(String userCode) {
-        User user = userRepository.findByCode(userCode).orElseThrow(UserNotFoundException::new);
-        return UserResponse.from(user);
+        return UserResponse.from(findUserByCodeOrThrow(userCode));
     }
 
     @Override
     @Transactional
     public UserResponse updateUser(UserPatchRequest request, String userCode) {
-        User user = userRepository.findByCode(userCode)
-                .orElseThrow(UserNotFoundException::new);
+        User user = findUserByCodeOrThrow(userCode);
         modelMapper.map(request,user);
-        User savedUser = userRepository.save(user);
-        return UserResponse.from(savedUser);
+        return UserResponse.from(userRepository.save(user));
     }
 
     @Override
     public List<UserResponse> getUserList() {
         return userRepository.findAll().stream()
                 .map(UserResponse::from)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
     @Transactional
     public UserLoginResponse createOrUpdateUser(UserLoginRequest request) {
-        Optional<User> existing = userRepository.findBySocialIdAndSocialProvider(request.socialId(), request.socialProvider());
-        User savedUser;
-        if(existing.isPresent()) {
-            User user = existing.get();
-            user.updateSocialInfo(
-                    request.socialId(),
-                    request.socialProvider(),
-                    request.email(),
-                    request.name()
-            );
-            savedUser = userRepository.save(user);
-        }
-        else {
-            User user = User.builder()
-                    .socialId(request.socialId())
-                    .socialProvider(request.socialProvider())
-                    .email(request.email())
-                    .name(request.name())
-                    .build();
-            savedUser = userRepository.save(user);
+        User savedUser = userRepository
+                .findBySocialIdAndSocialProvider(request.socialId(), request.socialProvider())
+                .map(existing -> updateExistingUser(existing,request))
+                .orElseGet(() -> createUser(request));
             userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
             userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
-        }
+
         return UserLoginResponse.from(savedUser);
+    }
+
+    private User findUserByIdOrThrow(Long id){
+        return userRepository.findById(id).orElseThrow(UserNotFoundException::new);
+    }
+
+    private User findUserByCodeOrThrow(String code){
+        return userRepository.findByCode(code).orElseThrow(UserNotFoundException::new);
+    }
+
+    private User updateExistingUser(User existingUser,UserLoginRequest request){
+        existingUser.updateSocialInfo(
+                request.email(),
+                request.name()
+        );
+
+        return userRepository.save(existingUser);
+    }
+
+    private User createUser(UserLoginRequest request){
+        User user = User.builder()
+                .socialId(request.socialId())
+                .socialProvider(request.socialProvider())
+                .email(request.email())
+                .name(request.name())
+                .build();
+        return userRepository.save(user);
     }
 }

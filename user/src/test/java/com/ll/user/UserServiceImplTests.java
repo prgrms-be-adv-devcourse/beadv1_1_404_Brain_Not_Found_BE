@@ -142,7 +142,7 @@ class UserServiceImplTest {
             User user = createTestUser();
 
             UserPatchRequest request = new UserPatchRequest(
-                    "New Name", null, "new@example.com", null, null, null, null, null
+                    "New Name", null, "new@example.com", null, null, null, null, null,null
             );
 
             when(userRepository.findByCode(TEST_USER_CODE)).thenReturn(Optional.of(user));
@@ -167,7 +167,7 @@ class UserServiceImplTest {
         @Test
         @DisplayName("실패: 존재하지 않음")
         void notFound() {
-            UserPatchRequest request = new UserPatchRequest("New name",null,"new@example.com",null,null,null,null,null);
+            UserPatchRequest request = new UserPatchRequest("New name",null,"new@example.com",null,null,null,null,null,null);
             when(userRepository.findByCode(TEST_USER_CODE)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> userService.updateUser(request, TEST_USER_CODE))
@@ -249,7 +249,7 @@ class UserServiceImplTest {
 
             UserLoginResponse response = userService.createOrUpdateUser(request);
 
-            verify(existing).updateSocialInfo(SOCIAL_ID, SOCIAL_PROVIDER, "updated@example.com", "Updated Name");
+            verify(existing).updateSocialInfo("updated@example.com", "Updated Name");
             verify(userRepository).save(existing);
 
             assertThat(response.email()).isEqualTo("updated@example.com");
