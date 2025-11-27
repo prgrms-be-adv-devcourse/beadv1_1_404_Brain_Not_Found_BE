@@ -16,6 +16,7 @@ import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
 import com.ll.order.domain.model.vo.response.order.*;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
+import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import jakarta.validation.Valid;
@@ -39,6 +40,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
+    private final OrderHistoryJpaRepository orderHistoryJpaRepository;
 
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
@@ -85,6 +87,8 @@ public class OrderServiceImpl implements OrderService {
         OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
         Order savedOrder = creationResult.order();
         List<OrderItem> orderItems = creationResult.orderItems();
+
+        
 
         // 결제 처리 (별도 트랜잭션)
         if (request.paidType() == PaidType.DEPOSIT) {

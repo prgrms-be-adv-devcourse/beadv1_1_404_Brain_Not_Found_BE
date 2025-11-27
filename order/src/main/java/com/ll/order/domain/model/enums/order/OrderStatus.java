@@ -11,7 +11,7 @@ public enum OrderStatus {
 
     public boolean canTransitionTo(OrderStatus target) {
         return switch (this) {
-            case CREATED -> target == PAID || target == CANCELLED;
+            case CREATED -> target == PAID || target == CANCELLED || target == FAILED;
             case PAID -> target == DELIVERY || target == CANCELLED || target == REFUNDED;
             case DELIVERY -> target == COMPLETED || target == REFUNDED;
             case COMPLETED -> target == REFUNDED;

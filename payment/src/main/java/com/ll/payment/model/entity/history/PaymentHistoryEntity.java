@@ -1,7 +1,6 @@
 package com.ll.payment.model.entity.history;
 
 import com.ll.core.model.persistence.BaseEntity;
-import com.ll.payment.model.enums.PaidType;
 import com.ll.payment.model.enums.PaymentHistoryActionType;
 import com.ll.payment.model.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -17,11 +16,9 @@ import java.time.LocalDateTime;
 @Table(name = "payment_histories")
 public class PaymentHistoryEntity extends BaseEntity {
 
-    @Column(nullable = false)
+    // 기본 식별자
+    @Column(nullable = true)
     private Long paymentId;
-
-    @Column(nullable = false)
-    private String paymentCode;
 
     @Column(nullable = false)
     private Long orderId;
@@ -29,61 +26,84 @@ public class PaymentHistoryEntity extends BaseEntity {
     @Column(nullable = false)
     private String orderCode;
 
+    // 이벤트 정보
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Long buyerId;
-
-    @Column(nullable = false)
-    private String buyerCode;
-
-    @Column(nullable = false)
-    private Integer paidAmount;
+    private PaymentHistoryActionType eventType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PaidType paidType;
+    private PaymentStatus paymentStatus;
 
     @Column(nullable = true)
-    private String paymentKey; // 토스 결제용 paymentKey
-
-    // 상태 및 이력
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = true)
-    private PaymentStatus previousStatus;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PaymentStatus currentStatus;
-
-    @Column(nullable = false)
-    private LocalDateTime statusChangedAt;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PaymentHistoryActionType actionType;
-
-    // 외부 연동 정보
-//    @Column(nullable = true)
-//    private Long depositHistoryId;
+    private String pgName; // toss, kakaopay 등
 
     @Column(nullable = true)
-    private String externalPaymentId;
+    private String paymentKey; // Toss 결제 식별자
 
     @Column(nullable = true)
-    private String externalRefundId;
+    private String transactionId; // PG 내부 트랜잭션 ID (토스: mId / paymentKey / transactionKey 등)
 
-    // 메타데이터
-    @Column(columnDefinition = "TEXT", nullable = true)
-    private String reason;
+    @Column(nullable = true) // 실패 시에는 null일 수 있음
+    private Integer amount; // 이벤트 당시 결제 금액
+
+    @Column(nullable = true)
+    private String currency; // KRW, USD 등
+
+    @Column(nullable = true)
+    private String failCode; // 실패 코드
 
     @Column(columnDefinition = "TEXT", nullable = true)
-    private String errorMessage;
+    private String failMessage; // 실패 메시지
 
     @Column(columnDefinition = "TEXT", nullable = true)
-    private String requestData; // JSON 형태로 저장
-
-    @Column(columnDefinition = "TEXT", nullable = true)
-    private String responseData; // JSON 형태로 저장
+    private String metadata; // 기타 PG 응답 데이터 (JSON 형태)
 
     @Column(nullable = true)
-    private String createdBy; // 생성자 (시스템 또는 사용자)
+    private LocalDateTime requestedAt; // PG에 결제 요청 시각
+
+    @Column(nullable = true)
+    private LocalDateTime approvedAt; // 결제 승인 시각
+
+    @Column(nullable = true)
+    private LocalDateTime refundedAt; // 환불 완료 시각
+
+    public static PaymentHistoryEntity create(
+            Long paymentId,
+            Long orderId,
+            String orderCode,
+            PaymentHistoryActionType eventType,
+            PaymentStatus paymentStatus,
+            String pgName,
+            String paymentKey,
+            String transactionId,
+            Integer amount,
+            String currency,
+            String failCode,
+            String failMessage,
+            String metadata,
+            LocalDateTime requestedAt,
+            LocalDateTime approvedAt,
+            LocalDateTime refundedAt
+    ) {
+        PaymentHistoryEntity paymentHistory = new PaymentHistoryEntity();
+        paymentHistory.paymentId = paymentId;
+        paymentHistory.orderId = orderId;
+        paymentHistory.orderCode = orderCode;
+        paymentHistory.eventType = eventType;
+        paymentHistory.paymentStatus = paymentStatus;
+        paymentHistory.pgName = pgName;
+        paymentHistory.paymentKey = paymentKey;
+        paymentHistory.transactionId = transactionId;
+        paymentHistory.amount = amount;
+        paymentHistory.currency = currency;
+        paymentHistory.failCode = failCode;
+        paymentHistory.failMessage = failMessage;
+        paymentHistory.metadata = metadata;
+        paymentHistory.requestedAt = requestedAt;
+        paymentHistory.approvedAt = approvedAt;
+        paymentHistory.refundedAt = refundedAt;
+        
+        return paymentHistory;
+    }
 }

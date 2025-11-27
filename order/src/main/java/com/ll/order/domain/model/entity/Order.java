@@ -65,16 +65,16 @@ public class Order extends BaseEntity {
         return orderItem;
     }
 
-    public OrderItem createOrderItem(ProductResponse product, int quantity) {
-        return createOrderItem(
-                product.id(),
-                product.code(),
-                product.sellerCode(),
-                product.name(),
-                quantity,
-                product.price()
-        );
-    }
+//    public OrderItem createOrderItem(ProductResponse product, int quantity) {
+//        return createOrderItem(
+//                product.id(),
+//                product.code(),
+//                product.sellerCode(),
+//                product.name(),
+//                quantity,
+//                product.price()
+//        );
+//    }
 
     public void changeStatus(OrderStatus orderStatus) {
         this.orderStatus = orderStatus;

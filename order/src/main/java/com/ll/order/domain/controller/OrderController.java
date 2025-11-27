@@ -23,7 +23,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OrderController implements OrderControllerSwagger {
     /*
-    1. 결제가 실패해도 주문은 남아있음 -> 결제 실패 시 주문 상태를 fail로 변경하는 별도 트랜잭션 필요
+    1. 결제가 실패하면 주문 상태를 fail로 변경하는 별도 트랜잭션 필요 ( DONE )
     2. 결제 성공/실패 이력 테이블 저장 필요
     3. 예치금 부족 → 충전 → 결제까지 흐름이 너무 길다 << @Transactional tossPayment  ← 여기서 트랜잭션 유지된 채 외부 API 호출됨 (위험)
         tossPayment()는 트랜잭션 없이 수행해야 함.
