@@ -2,6 +2,7 @@ package com.ll.payment.controller;
 
 import com.ll.core.model.response.BaseResponse;
 import com.ll.payment.model.entity.Payment;
+import com.ll.payment.model.enums.PaymentStatus;
 import com.ll.payment.model.vo.PaymentProcessResult;
 import com.ll.payment.model.vo.request.PaymentRefundRequest;
 import com.ll.payment.model.vo.request.PaymentRequest;
@@ -101,7 +102,7 @@ public class PaymentController { // TODO : 결제 실패 시 주문 상태 갱�
     public ResponseEntity<BaseResponse<Payment>> tossPayment(
             @RequestBody PaymentRequest request
     ) {
-        Payment payment = paymentService.tossPayment(request);
+        Payment payment = paymentService.tossPayment(request, PaymentStatus.COMPLETED);
         return BaseResponse.ok(payment);
     }
 

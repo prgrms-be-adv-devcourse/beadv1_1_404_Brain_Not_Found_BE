@@ -42,13 +42,17 @@ public class Payment extends BaseEntity {
     @Column(nullable = false)
     private PaidType paidType;
 
+    @Column(nullable = true)
+    private String paymentKey; // 토스 결제용 paymentKey
+
     private Payment(int paidAmount,
                     Long buyerId,
                     Long orderId,
                     PaymentStatus paymentStatus,
                     PaidType paidType,
                     Long depositHistoryId,
-                    LocalDateTime paidAt) {
+                    LocalDateTime paidAt,
+                    String paymentKey) {
         this.paidAmount = paidAmount;
         this.buyerId = buyerId;
         this.orderId = orderId;
@@ -56,9 +60,10 @@ public class Payment extends BaseEntity {
         this.paidType = paidType;
         this.depositHistoryId = depositHistoryId;
         this.paidAt = paidAt;
+        this.paymentKey = paymentKey;
     }
 
-    public static Payment createTossPayment(Long orderId, Long buyerId, int paidAmount) {
+    public static Payment createTossPayment(Long orderId, Long buyerId, int paidAmount, String paymentKey) {
         return new Payment(
                 paidAmount,
                 buyerId,
@@ -66,7 +71,8 @@ public class Payment extends BaseEntity {
                 PaymentStatus.PENDING,
                 PaidType.TOSS_PAYMENT,
                 0L,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                paymentKey
         );
     }
 
@@ -81,7 +87,8 @@ public class Payment extends BaseEntity {
                 PaymentStatus.COMPLETED,
                 PaidType.DEPOSIT,
                 depositHistoryId,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                null // 예치금 결제는 paymentKey 없음
         );
     }
 
