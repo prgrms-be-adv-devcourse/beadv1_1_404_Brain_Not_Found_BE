@@ -84,7 +84,7 @@ class PaymentServiceImplTest {
         PaymentProcessResult result = service.depositPayment(paymentRequest);
         assertThat(result).isNotNull();
 
-        verify(depositServiceClient).withdraw(eq("USER-001"), eq(5_000), referenceCaptor.capture());
+        verify(depositServiceClient).withdraw(eq("USER-001"), eq(5_000L), referenceCaptor.capture());
         assertThat(referenceCaptor.getValue()).startsWith("ORDER-1-");
 
         verify(service, never()).tossPayment(any(PaymentRequest.class));
@@ -130,7 +130,7 @@ class PaymentServiceImplTest {
         PaymentProcessResult result = service.depositPayment(paymentRequest);
         assertThat(result).isNotNull();
 
-        verify(depositServiceClient).withdraw(eq("USER-001"), eq(3_000), referenceCaptor.capture());
+        verify(depositServiceClient).withdraw(eq("USER-001"), eq(3_000L), referenceCaptor.capture());
         assertThat(referenceCaptor.getValue()).startsWith("ORDER-1-");
 
         verify(paymentJpaRepository, times(1)).save(paymentCaptor.capture());
@@ -175,7 +175,7 @@ class PaymentServiceImplTest {
         PaymentProcessResult result = service.depositPayment(paymentRequest);
         assertThat(result).isNotNull();
 
-        verify(depositServiceClient, never()).withdraw(anyString(), anyInt(), anyString());
+        verify(depositServiceClient, never()).withdraw(anyString(), anyLong(), anyString());
         verify(paymentJpaRepository, never()).save(any(Payment.class));
 
         verify(service).tossPayment(tossRequestCaptor.capture());
@@ -237,7 +237,7 @@ class PaymentServiceImplTest {
 
         Payment result = service.refundPayment(request);
 
-        verify(depositServiceClient).deposit(eq("USER-001"), eq(5_000), startsWith("ORDER-1-"));
+        verify(depositServiceClient).chargeDeposit(eq("USER-001"), eq(5_000L), startsWith("ORDER-1-"));
         verify(payment).markRefund(any(LocalDateTime.class));
         verify(paymentJpaRepository).save(payment);
         verify(orderServiceClient).updateOrderStatus("ORD-1", "REFUNDED");

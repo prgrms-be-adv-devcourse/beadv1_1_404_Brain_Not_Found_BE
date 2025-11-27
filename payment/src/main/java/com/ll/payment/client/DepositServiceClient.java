@@ -1,7 +1,7 @@
 package com.ll.payment.client;
 
 import com.ll.core.model.response.BaseResponse;
-import com.ll.payment.model.vo.request.DepositWithdrawRequest;
+import com.ll.payment.model.vo.request.DepositTransactionRequest;
 import com.ll.payment.model.vo.response.DepositInfoResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,24 +44,48 @@ public class DepositServiceClient {
         }
     }
 
-    public void deposit(String userCode, int amount, String referenceCode) {
-        String url = depositServiceUrl + "/api/deposits/deposit?userCode=" + userCode;
-        restClient.post()
-                .uri(url)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new DepositWithdrawRequest(amount, referenceCode))
-                .retrieve()
-                .toBodilessEntity();
+    public void chargeDeposit(String userCode, Long amount, String referenceCode) {
+        String url = depositServiceUrl + "/api/deposits/charge";
+        log.info("예치금 충전 요청 - userCode: {}, amount: {}, referenceCode: {}", userCode, amount, referenceCode);
+        
+        try {
+            restClient.post()
+                    .uri(url)
+                    .header("X-User-Code", userCode)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new DepositTransactionRequest(amount, referenceCode))
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("예치금 충전 성공 - userCode: {}, amount: {}", userCode, amount);
+        } catch (Exception e) {
+            log.error("예치금 충전 실패 - userCode: {}, amount: {}, error: {}", userCode, amount, e.getMessage(), e);
+            throw e;
+        }
     }
 
-    public void withdraw(String userCode, int amount, String referenceCode) {
-        String url = depositServiceUrl + "/api/deposits/withdraw?userCode=" + userCode;
-        restClient.post()
-                .uri(url)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new DepositWithdrawRequest(amount, referenceCode))
-                .retrieve()
-                .toBodilessEntity();
+    @Deprecated
+    public void deposit(String userCode, int amount, String referenceCode) {
+        chargeDeposit(userCode, (long) amount, referenceCode);
+    }
+
+    // 출금
+    public void withdraw(String userCode, Long amount, String referenceCode) {
+        String url = depositServiceUrl + "/api/deposits/withdraw";
+        log.info("예치금 출금 요청 - userCode: {}, amount: {}, referenceCode: {}", userCode, amount, referenceCode);
+        
+        try {
+            restClient.post()
+                    .uri(url)
+                    .header("X-User-Code", userCode)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new DepositTransactionRequest(amount, referenceCode))
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("예치금 출금 성공 - userCode: {}, amount: {}", userCode, amount);
+        } catch (Exception e) {
+            log.error("예치금 출금 실패 - userCode: {}, amount: {}, error: {}", userCode, amount, e.getMessage(), e);
+            throw e;
+        }
     }
 }
 

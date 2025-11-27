@@ -42,3 +42,5 @@ out/
 gradle/wrapper
 gradlew
 gradlew.bat
+
+troubleshooting.md
