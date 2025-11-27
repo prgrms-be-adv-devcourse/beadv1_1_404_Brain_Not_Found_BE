@@ -1,6 +1,6 @@
 package com.ll.order.domain.model.vo.request;
 
-import com.ll.order.domain.model.enums.OrderStatus;
+import com.ll.order.domain.model.enums.order.OrderStatus;
 import jakarta.validation.constraints.NotNull;
 
 public record OrderStatusUpdateRequest(

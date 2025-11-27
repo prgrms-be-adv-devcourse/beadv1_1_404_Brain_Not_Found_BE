@@ -4,7 +4,7 @@ import com.ll.core.model.exception.BaseException;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
-import com.ll.order.domain.model.enums.OrderStatus;
+import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.vo.request.ProductRequest;
 import com.ll.order.domain.model.vo.response.order.OrderValidateResponse;

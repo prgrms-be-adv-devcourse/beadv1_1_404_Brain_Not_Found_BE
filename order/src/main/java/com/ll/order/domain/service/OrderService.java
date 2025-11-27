@@ -1,6 +1,6 @@
 package com.ll.order.domain.service;
 
-import com.ll.order.domain.model.enums.PaidType;
+import com.ll.order.domain.model.enums.payment.PaidType;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
