@@ -110,14 +110,10 @@ public class JWTProvider {
 
         String userCode = claims.get("userCode",String.class);
         String role = claims.get("role", String.class);
-
-        // 권한 설정 (예: ROLE_USER, ROLE_ADMIN)
         Collection<GrantedAuthority> authorities = Collections.singletonList(
                 new SimpleGrantedAuthority("ROLE_" + role)
         );
 
-        // Principal: userCode 또는 UserDetails 객체
-        // 여기서는 간단히 userCode 사용
         return new UsernamePasswordAuthenticationToken(userCode, token, authorities);
     }
 }

@@ -7,10 +7,14 @@ import com.ll.auth.model.vo.request.UserLoginRequest;
 import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.response.UserLoginResponse;
 import com.ll.auth.service.AuthService;
+import com.ll.auth.util.CookieUtil;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -60,9 +64,16 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         // Refresh Token 저장 (Redis 등)
         authService.save(auth);
 
+        int accessTokenMaxAge = 60 * 15; // 15분
+        int refreshTokenMaxAge = 60 * 60 * 24 * 7; // 7일
+
+        ResponseCookie accessTokenCookie = CookieUtil.generateCookie("accessToken",accessToken,accessTokenMaxAge);
+        ResponseCookie refreshTokenCookie = CookieUtil.generateCookie("refreshToken",refreshToken,refreshTokenMaxAge);
+
+        response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
+
         Map<String, Object> body = Map.of(
-                "accessToken", accessToken,
-                "refreshToken", refreshToken,
                 "user", Map.of(
                         "userCode", user.code(),
                         "email", user.email(),
@@ -72,9 +83,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 )
         );
 
-        response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType("application/json;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
+        response.setStatus(HttpServletResponse.SC_OK);
 
         String json = objectMapper.writeValueAsString(body);
         response.getWriter().write(json);
