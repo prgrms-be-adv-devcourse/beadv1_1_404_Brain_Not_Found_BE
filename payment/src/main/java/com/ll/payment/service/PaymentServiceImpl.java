@@ -101,7 +101,8 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = Payment.createTossPayment(
                 request.orderId(),
                 request.buyerId(),
-                request.paidAmount()
+                request.paidAmount(),
+                paymentKey
         );
         paymentJpaRepository.save(payment);
 
@@ -265,6 +266,19 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private Payment findPaymentForRefund(PaymentRefundRequest request) {
+        // request에 orderId 외에는 들어가질 않음
+        if (request.orderId() != null) {
+            return paymentJpaRepository.findByOrderIdAndPaymentStatus(
+                            request.orderId(), 
+                            PaymentStatus.COMPLETED
+                    )
+                    .orElseThrow(() -> {
+                        log.warn("환불 대상 결제 정보를 찾을 수 없습니다. orderId: {}, status: COMPLETED", request.orderId());
+                        return new BaseException(PaymentErrorCode.PAYMENT_NOT_FOUND);
+                    });
+        }
+
+        // payment id code 조회는 별도로 사용될 수 있으니 유지중
         if (request.paymentId() != null) {
             return paymentJpaRepository.findById(request.paymentId())
                     .orElseThrow(() -> {
@@ -279,7 +293,8 @@ public class PaymentServiceImpl implements PaymentService {
                         return new BaseException(PaymentErrorCode.PAYMENT_NOT_FOUND);
                     });
         }
-        log.warn("환불 대상 결제 정보를 찾을 수 없습니다.");
+        
+        log.warn("환불 대상 결제 정보를 찾을 수 없습니다. orderId, paymentId, paymentCode 모두 없습니다.");
         throw new BaseException(PaymentErrorCode.REFUND_TARGET_NOT_FOUND);
     }
 
@@ -293,9 +308,11 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private void processTossRefund(Payment payment, PaymentRefundRequest request, int refundAmount) {
-        String paymentKey = request.paymentKey();
+        // Payment 엔티티에 저장된 paymentKey 사용
+        String paymentKey = payment.getPaymentKey();
         if (paymentKey == null || paymentKey.isBlank()) {
-            log.warn("토스 환불에는 paymentKey가 필요합니다.");
+            log.warn("토스 환불에는 paymentKey가 필요합니다. paymentId: {}, orderId: {}", 
+                    payment.getId(), payment.getOrderId());
             throw new BaseException(PaymentErrorCode.PAYMENT_KEY_REQUIRED);
         }
 

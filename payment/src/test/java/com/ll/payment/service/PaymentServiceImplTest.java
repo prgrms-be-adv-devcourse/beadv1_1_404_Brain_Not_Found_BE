@@ -47,6 +47,9 @@ class PaymentServiceImplTest {
     @Mock
     private OrderServiceClient orderServiceClient;
 
+    @Mock
+    private PaymentValidator paymentValidator;
+
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -189,7 +192,8 @@ class PaymentServiceImplTest {
                 restClient,
                 objectMapper,
                 depositServiceClient,
-                orderServiceClient
+                orderServiceClient,
+                paymentValidator
         );
         setField(service, "secretKey", "test-secret");
         setField(service, "targetUrl", "http://test-url");
@@ -223,11 +227,12 @@ class PaymentServiceImplTest {
                 5_000,
                 "사용자 환불",
                 PaidType.DEPOSIT,
-                null,
                 "USER-001"
         );
 
         when(paymentJpaRepository.findById(10L)).thenReturn(java.util.Optional.of(payment));
+        when(paymentValidator.validateRefundEligibility(any(Payment.class), any(PaymentRefundRequest.class)))
+                .thenReturn(5000);
         PaymentServiceImpl service = createServiceSpy();
 
         Payment result = service.refundPayment(request);
@@ -247,6 +252,7 @@ class PaymentServiceImplTest {
         when(payment.getPaidType()).thenReturn(PaidType.TOSS_PAYMENT);
         when(payment.getPaidAmount()).thenReturn(7000);
         when(payment.getOrderId()).thenReturn(3L);
+        when(payment.getPaymentKey()).thenReturn("PAY-KEY-3");
         PaymentRefundRequest request = new PaymentRefundRequest(
                 null,
                 "PAY-3",
@@ -255,11 +261,12 @@ class PaymentServiceImplTest {
                 7_000,
                 "사용자 환불",
                 PaidType.TOSS_PAYMENT,
-                "PAY-KEY-3",
                 "USER-003"
         );
 
         when(paymentJpaRepository.findByPaymentCode("PAY-3")).thenReturn(java.util.Optional.of(payment));
+        when(paymentValidator.validateRefundEligibility(any(Payment.class), any(PaymentRefundRequest.class)))
+                .thenReturn(7000);
         RestClient.RequestBodyUriSpec requestSpec = mock(RestClient.RequestBodyUriSpec.class);
         RestClient.RequestBodySpec bodySpec = mock(RestClient.RequestBodySpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
