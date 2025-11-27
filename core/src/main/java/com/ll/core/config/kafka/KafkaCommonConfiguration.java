@@ -1,6 +1,12 @@
 package com.ll.core.config.kafka;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.ll.core.logging.kafka.KafkaProducerLoggingListener;
+import com.ll.core.model.exception.BaseException;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -13,14 +19,22 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
-import org.springframework.util.backoff.FixedBackOff;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.nio.file.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -77,8 +91,7 @@ public class KafkaCommonConfiguration {
         return new DeadLetterPublishingRecoverer(
                 kafkaTemplate,
                 (record, ex) -> {
-                    log.info("Sending record to DLQ. topic: {}, partition: {}, offset: {}, exception: {}, message: {}",
-                            record.topic(), record.partition(), record.offset(), ex.getClass().getName(), ex.getMessage(), ex);
+                    // Todo : DLQ 토픽 발생시 Slack Kafka DLQ Alert 구현 고려
                     return new TopicPartition(record.topic() + ".dlq", record.partition());
                 }
         );
@@ -86,11 +99,43 @@ public class KafkaCommonConfiguration {
 
     @Bean
     public DefaultErrorHandler errorHandler(DeadLetterPublishingRecoverer recoverer) {
-        DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(2000L, 3L));
+        ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(5);
+
+        // 1초, 2초, 4초, 8초, 16초, 최대 30초
+        backOff.setInitialInterval(1000L);
+        backOff.setMultiplier(2.0);
+        backOff.setMaxInterval(30000L);
+
+        DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, backOff);
+
+        // 재시도하지 않을 예외 유형 추가
+        handler.addNotRetryableExceptions(
+                BaseException.class,
+                ValidationException.class,
+                MethodArgumentNotValidException.class,
+                HandlerMethodValidationException.class,
+                MissingServletRequestParameterException.class,
+                MissingRequestHeaderException.class,
+                NoResourceFoundException.class,
+                IllegalArgumentException.class,
+                JsonParseException.class,
+
+                ConstraintViolationException.class,
+                HttpMessageNotReadableException.class,
+                MethodArgumentTypeMismatchException.class,
+                IllegalStateException.class,
+                EntityNotFoundException.class,
+                JsonProcessingException.class,
+                AccessDeniedException.class
+        );
+
         handler.setRetryListeners((record, ex, deliveryAttempt) ->
+                // Todo : DeliveryAttempt 값이 일정 수준 이상일 때 Slack Kafka Retry Alert 구현 고려
                 log.warn("Failed record in retry listener. topic: {}, partition: {}, offset: {}, exception: {}, message: {}, deliveryAttempt: {}",
                 record.topic(), record.partition(), record.offset(), ex.getClass().getName(), ex.getMessage(), deliveryAttempt));
+
         handler.setCommitRecovered(true);
+
         return handler;
     }
 
