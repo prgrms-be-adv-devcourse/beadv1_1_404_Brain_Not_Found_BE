@@ -69,14 +69,6 @@ public class OrderValidator {
         }
     }
 
-    public void validateOrderForPayment(Order order) {
-        if (order.getOrderStatus() != OrderStatus.CREATED) {
-            log.warn("이미 처리된 주문입니다. orderCode: {}, 현재 상태: {}",
-                    order.getCode(), order.getOrderStatus());
-            throw new BaseException(OrderErrorCode.ORDER_ALREADY_PROCESSED);
-        }
-    }
-
     private ProductResponse getProductInfo(String productCode) {
         return Optional.ofNullable(productServiceClient.getProductByCode(productCode))
                 .orElseThrow(() -> {
