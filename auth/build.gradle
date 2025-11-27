@@ -1,7 +1,7 @@
 description = 'auth'
 
 springBoot {
-    mainClass = 'com.ll.account.auth.AuthApplication'
+    mainClass = 'com.ll.AuthApplication'
 }
 
 dependencies {
