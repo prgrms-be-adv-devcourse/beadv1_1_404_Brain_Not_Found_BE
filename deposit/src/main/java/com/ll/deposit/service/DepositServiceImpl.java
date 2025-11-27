@@ -5,6 +5,7 @@ import com.ll.deposit.model.entity.DepositHistory;
 import com.ll.deposit.model.enums.DepositHistoryType;
 import com.ll.deposit.model.exception.DepositNotFoundException;
 import com.ll.deposit.model.exception.DuplicateDepositTransactionException;
+import com.ll.deposit.model.exception.UnduplicateDepositTransactionException;
 import com.ll.deposit.model.vo.request.DepositDeleteRequest;
 import com.ll.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.deposit.model.vo.response.*;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class DepositServiceImpl implements DepositService {
+    public static final String REFUND = "Refund-";
     private final DepositRepository depositRepository;
     private final DepositHistoryRepository depositHistoryRepository;
 
@@ -63,6 +65,11 @@ public class DepositServiceImpl implements DepositService {
     }
 
     @Override
+    public DepositTransactionResponse refundDeposit(String userCode, DepositTransactionRequest request) {
+        return processDepositTransactionForRefund(userCode, request);
+    }
+
+    @Override
     public DepositHistoryPageResponse getDepositHistoryByUserCode(String userCode, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
         Deposit deposit = findDepositByUserCode(userCode);
         Page<DepositHistory> histories = depositHistoryRepository.findAllByDepositAndCreatedAtBetween(deposit, fromDate, toDate, pageable);
@@ -80,10 +87,26 @@ public class DepositServiceImpl implements DepositService {
         }
     }
 
+    private void isDuplicateTransactionForRefund(String referenceCode) {
+        if (!depositHistoryRepository.existsByReferenceCode(referenceCode)) {
+            throw new UnduplicateDepositTransactionException();
+        }
+        if (depositHistoryRepository.existsByReferenceCode(REFUND + referenceCode)) {
+            throw new DuplicateDepositTransactionException();
+        }
+    }
+
     private DepositTransactionResponse processDepositTransaction(String userCode, DepositTransactionRequest request, DepositHistoryType type) {
         isDuplicateTransaction(request.referenceCode());
         Deposit deposit = findDepositByUserCode(userCode);
         DepositHistory depositHistory = depositHistoryRepository.save(deposit.applyTransaction(request.amount(), request.referenceCode(), type));
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistory);
+    }
+
+    private DepositTransactionResponse processDepositTransactionForRefund(String userCode, DepositTransactionRequest request) {
+        isDuplicateTransactionForRefund(request.referenceCode());
+        Deposit deposit = findDepositByUserCode(userCode);
+        DepositHistory depositHistory = depositHistoryRepository.save(deposit.applyTransaction(request.amount(), REFUND + request.referenceCode(), DepositHistoryType.REFUND));
         return DepositTransactionResponse.from(deposit.getCode(), depositHistory);
     }
 }
