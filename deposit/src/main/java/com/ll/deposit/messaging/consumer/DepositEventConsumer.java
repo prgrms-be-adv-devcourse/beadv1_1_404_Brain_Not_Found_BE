@@ -1,6 +1,5 @@
 package com.ll.deposit.messaging.consumer;
 
-import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import com.ll.core.model.vo.kafka.UserCreateEvent;
 import com.ll.deposit.model.vo.request.DepositTransactionRequest;
@@ -36,23 +35,6 @@ public class DepositEventConsumer {
         }
         log.error("[UserCreate][Deposit Module] Received message in DLQ for UserCode {}", event.userCode());
     }
-
-//    @KafkaListener(topics = "order-event", groupId = "deposit-service")
-//    public void handleOrderEvent(OrderEvent event) {
-//        if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
-//            return;
-//        }
-//        log.info("[Order][Deposit Module] Received OrderEvent from Order service : {}", event);
-//        depositService.paymentDeposit(event);
-//    }
-
-//    @KafkaListener(topics = "order-event.dlq", groupId = "deposit-service")
-//    public void handleOrderDLQ(OrderEvent event) {
-//        if ( !event.orderEventType().toString().equals("SETTLEMENT_COMPLETED") ) {
-//            return;
-//        }
-//        log.error("[Order][Deposit Module] Received message in DLQ for OrderItemCode {}", event);
-//    }
 
     @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
     public void handleSettlementEvent(@Valid SettlementEvent event) {
