@@ -5,7 +5,7 @@ import com.ll.deposit.model.entity.DepositHistory;
 import com.ll.deposit.model.enums.DepositHistoryType;
 import com.ll.deposit.model.exception.DepositNotFoundException;
 import com.ll.deposit.model.exception.DuplicateDepositTransactionException;
-import com.ll.deposit.model.exception.UnduplicateDepositTransactionException;
+import com.ll.deposit.model.exception.RefundTargetNotFoundException;
 import com.ll.deposit.model.vo.request.DepositDeleteRequest;
 import com.ll.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.deposit.model.vo.response.*;
@@ -88,9 +88,9 @@ public class DepositServiceImpl implements DepositService {
     }
 
     private void isDuplicateTransactionForRefund(String referenceCode) {
-        isDuplicateTransaction(REFUND + referenceCode);
+        isDuplicateTransaction(refundCode(referenceCode));
         if (!depositHistoryRepository.existsByReferenceCode(referenceCode)) {
-            throw new UnduplicateDepositTransactionException();
+            throw new RefundTargetNotFoundException();
         }
     }
 
@@ -104,7 +104,11 @@ public class DepositServiceImpl implements DepositService {
     private DepositTransactionResponse processDepositTransactionForRefund(String userCode, DepositTransactionRequest request) {
         isDuplicateTransactionForRefund(request.referenceCode());
         Deposit deposit = findDepositByUserCode(userCode);
-        DepositHistory depositHistory = depositHistoryRepository.save(deposit.applyTransaction(request.amount(), REFUND + request.referenceCode(), DepositHistoryType.REFUND));
+        DepositHistory depositHistory = depositHistoryRepository.save(deposit.applyTransaction(request.amount(), refundCode(request.referenceCode()), DepositHistoryType.REFUND));
         return DepositTransactionResponse.from(deposit.getCode(), depositHistory);
+    }
+
+    public static String refundCode(String ref) {
+        return REFUND + ref;
     }
 }

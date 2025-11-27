@@ -2,13 +2,13 @@ package com.ll.deposit.model.exception;
 
 import com.ll.core.model.exception.BaseException;
 
-public class UnduplicateDepositTransactionException extends BaseException {
+public class RefundTargetNotFoundException extends BaseException {
 
-    public UnduplicateDepositTransactionException() {
+    public RefundTargetNotFoundException() {
         super(ErrorCode.REFUND_TRANSACTION_NOT_FOUND);
     }
 
-    public UnduplicateDepositTransactionException(String customMessage) {
+    public RefundTargetNotFoundException(String customMessage) {
         super(ErrorCode.REFUND_TRANSACTION_NOT_FOUND, customMessage);
     }
 }
