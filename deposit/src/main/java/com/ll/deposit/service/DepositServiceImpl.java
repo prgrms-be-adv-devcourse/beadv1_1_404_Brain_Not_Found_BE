@@ -88,11 +88,9 @@ public class DepositServiceImpl implements DepositService {
     }
 
     private void isDuplicateTransactionForRefund(String referenceCode) {
+        isDuplicateTransaction(REFUND + referenceCode);
         if (!depositHistoryRepository.existsByReferenceCode(referenceCode)) {
             throw new UnduplicateDepositTransactionException();
-        }
-        if (depositHistoryRepository.existsByReferenceCode(REFUND + referenceCode)) {
-            throw new DuplicateDepositTransactionException();
         }
     }
 
