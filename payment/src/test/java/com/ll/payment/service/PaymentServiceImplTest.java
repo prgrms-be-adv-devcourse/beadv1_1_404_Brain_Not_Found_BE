@@ -87,7 +87,7 @@ class PaymentServiceImplTest {
         verify(depositServiceClient).withdraw(eq("USER-001"), eq(5_000L), referenceCaptor.capture());
         assertThat(referenceCaptor.getValue()).startsWith("ORDER-1-");
 
-        verify(service, never()).tossPayment(any(PaymentRequest.class));
+        verify(service, never()).tossPayment(any(PaymentRequest.class), PaymentStatus.CHARGE);
 
         verify(paymentJpaRepository, times(1)).save(paymentCaptor.capture());
         Payment savedPayment = paymentCaptor.getValue();
@@ -120,7 +120,7 @@ class PaymentServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         Payment tossResult = mock(Payment.class);
-        doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class));
+        doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class), PaymentStatus.CHARGE);
 
         ArgumentCaptor<String> referenceCaptor = ArgumentCaptor.forClass(String.class);
         // 토스 결제 요청이 어떤 PaymentRequest로 호출되었는지 검증하기 위한 캡처
@@ -139,7 +139,7 @@ class PaymentServiceImplTest {
         assertThat(savedPayment.getPaidType()).isEqualTo(PaidType.DEPOSIT);
         assertThat(result.depositPayment()).isSameAs(savedPayment);
 
-        verify(service).tossPayment(tossRequestCaptor.capture());
+        verify(service).tossPayment(tossRequestCaptor.capture(), PaymentStatus.CHARGE);
         PaymentRequest tossRequest = tossRequestCaptor.getValue();
         assertThat(tossRequest.paidAmount()).isEqualTo(2_000);
         assertThat(tossRequest.paidType()).isEqualTo(PaidType.TOSS_PAYMENT);
@@ -168,7 +168,7 @@ class PaymentServiceImplTest {
         when(depositServiceClient.getDepositInfo("USER-001"))
                 .thenReturn(new DepositInfoResponse("USER-001", 0));
         Payment tossResult = mock(Payment.class);
-        doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class));
+        doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class), PaymentStatus.CHARGE);
 
         ArgumentCaptor<PaymentRequest> tossRequestCaptor = ArgumentCaptor.forClass(PaymentRequest.class);
 
@@ -178,7 +178,7 @@ class PaymentServiceImplTest {
         verify(depositServiceClient, never()).withdraw(anyString(), anyLong(), anyString());
         verify(paymentJpaRepository, never()).save(any(Payment.class));
 
-        verify(service).tossPayment(tossRequestCaptor.capture());
+        verify(service).tossPayment(tossRequestCaptor.capture(), PaymentStatus.CHARGE);
         PaymentRequest tossRequest = tossRequestCaptor.getValue();
         assertThat(tossRequest.paidAmount()).isEqualTo(5_000);
         assertThat(tossRequest.paidType()).isEqualTo(PaidType.TOSS_PAYMENT);
