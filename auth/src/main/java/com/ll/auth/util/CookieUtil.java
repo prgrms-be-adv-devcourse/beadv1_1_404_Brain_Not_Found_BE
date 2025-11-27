@@ -1,6 +1,5 @@
 package com.ll.auth.util;
 
-import jakarta.servlet.http.Cookie;
 import org.springframework.http.ResponseCookie;
 
 public class CookieUtil {

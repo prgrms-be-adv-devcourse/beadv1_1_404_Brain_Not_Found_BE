@@ -8,7 +8,6 @@ import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.response.UserLoginResponse;
 import com.ll.auth.service.AuthService;
 import com.ll.auth.util.CookieUtil;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

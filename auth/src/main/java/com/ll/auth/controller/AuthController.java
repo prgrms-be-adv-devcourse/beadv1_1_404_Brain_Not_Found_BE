@@ -1,6 +1,5 @@
 package com.ll.auth.controller;
 import com.ll.auth.model.vo.dto.RefreshTokenBody;
-import com.ll.auth.oAuth2.JWTProvider;
 import com.ll.auth.util.CookieUtil;
 import com.ll.core.model.response.BaseResponse;
 import com.ll.auth.model.vo.dto.Tokens;
@@ -19,8 +18,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-
-    private final JWTProvider jwtProvider;
 
     @PostMapping
     public ResponseEntity<BaseResponse<Tokens>> refreshToken(

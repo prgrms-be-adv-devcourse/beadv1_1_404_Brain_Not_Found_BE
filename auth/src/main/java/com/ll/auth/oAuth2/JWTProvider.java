@@ -86,21 +86,6 @@ public class JWTProvider {
         }
     }
 
-    /**
-     * 토큰에서 Claims 전체 추출 (validateToken 확장 버전)
-     */
-    public Claims extractClaims(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid JWT token: " + e.getMessage());
-        }
-    }
-
     public Authentication getAuthentication(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(key)
