@@ -1,10 +1,10 @@
 package com.ll.user.config;
 
 import com.ll.user.model.entity.User;
-import com.ll.user.model.enums.AccountStatus;
-import com.ll.user.model.enums.Grade;
-import com.ll.user.model.enums.Role;
-import com.ll.user.model.enums.SocialProvider;
+import com.ll.common.model.enums.AccountStatus;
+import com.ll.common.model.enums.Grade;
+import com.ll.common.model.enums.Role;
+import com.ll.common.model.enums.SocialProvider;
 import com.ll.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

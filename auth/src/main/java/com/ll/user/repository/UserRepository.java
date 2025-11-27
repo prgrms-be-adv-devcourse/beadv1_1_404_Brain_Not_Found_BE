@@ -1,7 +1,7 @@
 package com.ll.user.repository;
 
 import com.ll.user.model.entity.User;
-import com.ll.user.model.enums.SocialProvider;
+import com.ll.common.model.enums.SocialProvider;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

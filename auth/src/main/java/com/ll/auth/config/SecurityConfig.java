@@ -46,7 +46,8 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/**",
                                 "/api/auth/**",     // 로그인, 리프레시
-                                "/h2-console/**"
+                                "/h2-console/**",
+                                "/api/users/**"
                         ).permitAll()
                         .anyRequest().authenticated()  // 나머지는 JWT 필요
                 )

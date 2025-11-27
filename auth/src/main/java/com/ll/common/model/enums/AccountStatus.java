@@ -1,4 +1,4 @@
-package com.ll.auth.model.enums;
+package com.ll.common.model.enums;
 
 public enum AccountStatus {
     ACTIVE,

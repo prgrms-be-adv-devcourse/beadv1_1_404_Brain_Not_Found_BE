@@ -1,13 +1,13 @@
 package com.ll.auth.oAuth2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ll.auth.client.UserServiceClient;
 import com.ll.auth.model.entity.Auth;
-import com.ll.auth.model.vo.request.UserLoginRequest;
 import com.ll.auth.model.vo.dto.Tokens;
-import com.ll.auth.model.vo.response.UserLoginResponse;
 import com.ll.auth.service.AuthService;
 import com.ll.auth.util.CookieUtil;
+import com.ll.common.model.vo.request.UserLoginRequest;
+import com.ll.common.model.vo.response.UserLoginResponse;
+import com.ll.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +30,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private final JWTProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final OAuth2UserFactory oAuth2UserFactory;
-    private final UserServiceClient userServiceClient;
     private final AuthService authService;
+    private final UserService userService;
 
     @Override
     public void onAuthenticationSuccess(
@@ -41,7 +41,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     ) throws IOException {
 
         UserLoginRequest loginRequest = oAuth2UserFactory.getOAuth2UserInfo(authentication);
-        UserLoginResponse user = userServiceClient.requestUserLogin(loginRequest).getData();
+        UserLoginResponse user = userService.createOrUpdateUser(loginRequest);
 
         // JWT 발급
         Tokens tokens = jwtProvider.createToken(user.code(),user.role().name());

@@ -1,8 +1,8 @@
 package com.ll.user.controller;
 
 import com.ll.user.model.vo.request.UserPatchRequest;
-import com.ll.user.model.vo.request.UserLoginRequest;
-import com.ll.user.model.vo.response.UserLoginResponse;
+import com.ll.common.model.vo.request.UserLoginRequest;
+import com.ll.common.model.vo.response.UserLoginResponse;
 import com.ll.user.model.vo.response.UserResponse;
 import com.ll.user.service.UserService;
 import com.ll.core.model.response.BaseResponse;

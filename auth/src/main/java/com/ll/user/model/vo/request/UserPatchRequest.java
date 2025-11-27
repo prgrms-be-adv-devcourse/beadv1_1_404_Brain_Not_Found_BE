@@ -1,8 +1,8 @@
 package com.ll.user.model.vo.request;
 
 
-import com.ll.user.model.enums.Grade;
-import com.ll.user.model.enums.Role;
+import com.ll.common.model.enums.Grade;
+import com.ll.common.model.enums.Role;
 import jakarta.validation.constraints.Email;
 
 public record UserPatchRequest(
