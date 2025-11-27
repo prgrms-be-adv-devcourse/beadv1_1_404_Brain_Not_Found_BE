@@ -68,6 +68,11 @@ spring:
   eureka:
     client:
       enabled: false     # Eureka 서버에 등록하지 않음
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000ms
 # External Service URLs (로컬 개발용)
 external:
   user-service:

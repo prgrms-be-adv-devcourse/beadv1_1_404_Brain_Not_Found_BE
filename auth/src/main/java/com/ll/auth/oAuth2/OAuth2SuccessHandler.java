@@ -1,9 +1,9 @@
 package com.ll.auth.oAuth2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ll.auth.model.entity.Auth;
 import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.service.AuthService;
+import com.ll.auth.service.RedisService;
 import com.ll.auth.util.CookieUtil;
 import com.ll.common.model.vo.request.UserLoginRequest;
 import com.ll.common.model.vo.response.UserLoginResponse;
@@ -20,7 +20,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @Component
@@ -30,8 +29,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private final JWTProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final OAuth2UserFactory oAuth2UserFactory;
-    private final AuthService authService;
     private final UserService userService;
+    private final RedisService redisService;
 
     @Override
     public void onAuthenticationSuccess(
@@ -48,20 +47,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = tokens.accessToken().trim();
         String refreshToken = tokens.refreshToken().trim();
 
-        Optional<Auth> findedAuth = authService.getAuthByUserCode(user.code());
-        Auth auth;
-        if(findedAuth.isPresent()){
-            auth = findedAuth.get();
-            auth.updateRefreshToken(refreshToken);
-        }
-        else{
-            auth = Auth.builder()
-                    .userCode(user.code())
-                    .refreshToken(refreshToken)
-                    .build();
-        }
-        // Refresh Token 저장 (Redis 등)
-        authService.save(auth);
+        redisService.saveRefreshToken(user.code(),"test",refreshToken);
 
         int accessTokenMaxAge = 60 * 15; // 15분
         int refreshTokenMaxAge = 60 * 60 * 24 * 7; // 7일

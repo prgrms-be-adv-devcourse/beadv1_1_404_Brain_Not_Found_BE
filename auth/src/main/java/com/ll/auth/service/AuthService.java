@@ -23,6 +23,7 @@ public class AuthService {
 
     private final AuthRepository authRepository;
     private final JWTProvider jWTProvider;
+    private final RedisService redisService;
 
     public void save(Auth auth){
         authRepository.save(auth);
@@ -30,17 +31,13 @@ public class AuthService {
 
     public Tokens refreshToken(TokenValidRequest request){
 
-        Auth existAuth = authRepository.findByUserCode(request.userCode()).orElseThrow(TokenNotFoundException::new);
-        String existRefreshToken = existAuth.getRefreshToken();
-
-        if(!existRefreshToken.trim().equals(request.refreshToken().trim())){
-            throw new TokenNotFoundException();
+        if(redisService.getRefreshToken(request.userCode(),"test").equals(request.refreshToken())){
+            Tokens tokens = jWTProvider.createToken(request.userCode(),request.role());
+            redisService.saveRefreshToken(request.userCode(),"test",tokens.refreshToken());
+            return tokens;
         }
         else{
-            Tokens tokens = jWTProvider.createToken(request.userCode(),request.role());
-            existAuth.updateRefreshToken(tokens.refreshToken());
-            authRepository.save(existAuth);
-            return tokens;
+            throw new TokenNotFoundException();
         }
     }
 
@@ -49,7 +46,8 @@ public class AuthService {
         ResponseCookie refreshTokenCookie = CookieUtil.expiredCookie("refreshToken");
         response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
-        authRepository.deleteByUserCode(userCode);
+        redisService.deleteRefreshToken(userCode,"test");
+
     }
     public Optional<Auth> getAuthByUserCode(String userCode){
         return authRepository.findByUserCode(userCode);

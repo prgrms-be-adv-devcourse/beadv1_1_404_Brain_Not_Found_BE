@@ -35,7 +35,6 @@ public class AuthController {
             HttpServletResponse response
     ){
         authService.logoutUser(userCode,response);
-
         return ResponseEntity.ok().build();
     }
 
