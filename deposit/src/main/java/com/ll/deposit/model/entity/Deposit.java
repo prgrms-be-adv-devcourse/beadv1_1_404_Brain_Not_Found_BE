@@ -58,7 +58,7 @@ public class Deposit extends BaseEntity {
         Long before = this.balance;
 
         switch (type) {
-            case CHARGE -> this.charge(amount);
+            case CHARGE, REFUND -> this.charge(amount);
             case WITHDRAW, PAYMENT -> this.withdraw(amount);
             default -> throw new InvalidDepositHistoryTypeException();
         }
