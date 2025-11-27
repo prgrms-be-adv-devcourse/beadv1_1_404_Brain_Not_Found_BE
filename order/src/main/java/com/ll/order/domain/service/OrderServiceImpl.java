@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
@@ -83,6 +84,32 @@ public class OrderServiceImpl implements OrderService {
     public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
 
+        // 주문 및 주문 상품 생성 (독립 트랜잭션 - 항상 커밋)
+        OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
+        Order savedOrder = creationResult.order();
+        List<OrderItem> orderItems = creationResult.orderItems();
+
+        // 결제 처리 (별도 트랜잭션)
+        if (request.paidType() == PaidType.DEPOSIT) {
+            processDepositPayment(savedOrder, orderItems, request);
+        } else if (request.paidType() == PaidType.TOSS_PAYMENT) {
+            // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
+            // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
+            log.info("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)",
+                    savedOrder.getId(), savedOrder.getCode());
+        } else {
+            log.warn("지원하지 않는 결제 수단입니다. paidType: {}", request.paidType());
+            throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
+        }
+
+        return convertToOrderCreateResponse(savedOrder);
+    }
+
+    //     주문 및 주문 상품 생성 (독립 트랜잭션)
+//     결제 실패와 무관하게 주문은 항상 저장됨
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public OrderCreationResult createOrderWithItems(OrderCartItemRequest request, UserResponse userInfo) {
         CartItemsResponse cartInfo = getCartInfo(request.cartCode());
 
         List<ProductResponse> productList = new ArrayList<>();
@@ -102,7 +129,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
         for (CartItemInfo cartItem : cartInfo.items()) {
             ProductResponse productInfo = productList.stream()
-                    .filter(p -> p.id().equals(cartItem.productId()))
+                    .filter(response -> response.id().equals(cartItem.productId()))
                     .findFirst()
                     .orElseThrow(() -> {
                         log.warn("상품을 찾을 수 없습니다. productId: {}", cartItem.productId());
@@ -121,53 +148,74 @@ public class OrderServiceImpl implements OrderService {
         }
 
         orderItemJpaRepository.saveAll(orderItems);
-        /*
-        1) OrderCartItemRequest → 사용자 입력값 받기
-        2) OrderServiceImpl에서 PaidType 유효성 검사
-        3) OrderPaymentRequest에 PaidType 포함 → 결제 도메인 전달
-        */
-        switch (request.paidType()) {
-            case DEPOSIT -> {
-                OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
-                        savedOrder,
-                        savedOrder.getBuyerCode(),
-                        request.paidType(),
-                        request.paymentKey()
-                );
-                try {
-                    paymentApiClient.requestDepositPayment(orderPaymentRequest);
 
-                    savedOrder.changeStatus(OrderStatus.COMPLETED);
-                    orderJpaRepository.save(savedOrder);
+        return new OrderCreationResult(savedOrder, orderItems);
+    }
 
-                    publishOrderCompletedEvents(savedOrder, orderItems, savedOrder.getBuyerCode());
-                } catch (Exception e) {
-                    savedOrder.changeStatus(OrderStatus.FAILED);
-                    orderJpaRepository.save(savedOrder);
-                    log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
-                    throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
-                }
-            }
-            case TOSS_PAYMENT -> {
-                // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
-                // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
-                log.info("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)", 
-                        savedOrder.getId(), savedOrder.getCode());
-            }
-            default -> {
-                log.warn("지원하지 않는 결제 수단입니다. paidType: {}", request.paidType());
-                throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
-            }
+    /**
+     * 예치금 결제 처리 (별도 트랜잭션)
+     * 실패해도 주문에는 영향 없음 (주문은 이미 커밋됨)
+     */
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void processDepositPayment(Order order, List<OrderItem> orderItems, OrderCartItemRequest request) {
+        OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
+                order,
+                order.getBuyerCode(),
+                request.paidType(),
+                request.paymentKey()
+        );
+
+        try {
+            paymentApiClient.requestDepositPayment(orderPaymentRequest);
+
+            order.changeStatus(OrderStatus.COMPLETED);
+            orderJpaRepository.save(order);
+
+            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
+
+            log.info("예치금 결제 완료 - orderCode: {}, amount: {}",
+                    order.getCode(), order.getTotalPrice());
+        } catch (Exception e) {
+            order.changeStatus(OrderStatus.FAILED);
+            orderJpaRepository.save(order);
+
+            log.error("결제 처리 실패 - orderCode: {}, error: {}",
+                    order.getCode(), e.getMessage(), e);
+
+            throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
+        }
+    }
+
+
+    @Override
+    public OrderCreateResponse createDirectOrder(OrderDirectRequest request, String userCode) {
+        UserResponse userInfo = getUserInfo(userCode);
+
+        // 주문 및 주문 상품 생성 (독립 트랜잭션 - 항상 커밋)
+        OrderCreationResult creationResult = createDirectOrderWithItem(request, userInfo);
+        Order savedOrder = creationResult.order();
+        List<OrderItem> orderItems = creationResult.orderItems();
+
+        // 결제 처리 (별도 트랜잭션)
+        if (request.paidType() == PaidType.DEPOSIT) {
+            processDirectDepositPayment(savedOrder, orderItems, request);
+        } else if (request.paidType() == PaidType.TOSS_PAYMENT) {
+            // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
+            // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
+            log.info("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)",
+                    savedOrder.getId(), savedOrder.getCode());
+        } else {
+            log.warn("지원하지 않는 결제 수단입니다. paidType: {}", request.paidType());
+            throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
         }
 
         return convertToOrderCreateResponse(savedOrder);
     }
 
     @Override
-    @Transactional
-    public OrderCreateResponse createDirectOrder(OrderDirectRequest request, String userCode) {
-        UserResponse userInfo = getUserInfo(userCode);
-
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public OrderCreationResult createDirectOrderWithItem(OrderDirectRequest request, UserResponse userInfo) {
         ProductResponse productInfo = getProductInfo(request.productCode());
 
         log.info("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerCode: {}, sellerName: {}, quantity: {}, price: {}, status: {}",
@@ -198,44 +246,38 @@ public class OrderServiceImpl implements OrderService {
         );
         orderItemJpaRepository.save(orderItem);
 
-        switch (request.paidType()) {
-            case DEPOSIT -> {
-                OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
-                        savedOrder,
-                        savedOrder.getBuyerCode(),
-                        request.paidType(),
-                        request.paymentKey()
-                );
-                try {
-                    paymentApiClient.requestDepositPayment(orderPaymentRequest);
+        return new OrderCreationResult(savedOrder, List.of(orderItem));
+    }
 
-                    savedOrder.changeStatus(OrderStatus.COMPLETED);
-                    orderJpaRepository.save(savedOrder);
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void processDirectDepositPayment(Order order, List<OrderItem> orderItems, OrderDirectRequest request) {
+        OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
+                order,
+                order.getBuyerCode(),
+                request.paidType(),
+                request.paymentKey()
+        );
 
-                    // 결제 성공 후 이벤트 발행
-                    List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(savedOrder.getId());
-                    publishOrderCompletedEvents(savedOrder, orderItems, savedOrder.getBuyerCode());
+        try {
+            paymentApiClient.requestDepositPayment(orderPaymentRequest);
 
-                } catch (Exception e) {
-                    savedOrder.changeStatus(OrderStatus.FAILED);
-                    orderJpaRepository.save(savedOrder);
-                    log.error("결제 처리 실패 - orderCode: {}, error: {}", savedOrder.getCode(), e.getMessage(), e);
-                    throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
-                }
-            }
-            case TOSS_PAYMENT -> {
-                // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
-                // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
-                log.info("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)", 
-                        savedOrder.getId(), savedOrder.getCode());
-            }
-            default -> {
-                log.warn("지원하지 않는 결제 수단입니다. paidType: {}", request.paidType());
-                throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
-            }
+            order.changeStatus(OrderStatus.COMPLETED);
+            orderJpaRepository.save(order);
+
+            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
+
+            log.info("예치금 결제 완료 - orderCode: {}, amount: {}",
+                    order.getCode(), order.getTotalPrice());
+        } catch (Exception e) {
+            order.changeStatus(OrderStatus.FAILED);
+            orderJpaRepository.save(order);
+
+            log.error("결제 처리 실패 - orderCode: {}, error: {}",
+                    order.getCode(), e.getMessage(), e);
+
+            throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
         }
-
-        return convertToOrderCreateResponse(savedOrder);
     }
 
     @Override
@@ -341,6 +383,7 @@ public class OrderServiceImpl implements OrderService {
                 itemInfos
         );
     }
+
     // 주문 취소 처리 -> 환불 처리(동기) + 환불 이벤트 발행(비동기) + 재고 복구 요청
     private void handleOrderCancellation(Order order) {
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
@@ -367,10 +410,10 @@ public class OrderServiceImpl implements OrderService {
         for (OrderItem orderItem : orderItems) {
             if (buyerCode != null) {
                 RefundEvent refundEvent = RefundEvent.from(
-                    buyerCode,
-                    orderItem.getCode(),
-                    order.getCode(),
-                    (long) orderItem.getPrice() * orderItem.getQuantity()
+                        buyerCode,
+                        orderItem.getCode(),
+                        order.getCode(),
+                        (long) orderItem.getPrice() * orderItem.getQuantity()
                 );
                 orderEventProducer.sendRefund(refundEvent);
                 log.info("Refund event sent - orderCode: {}, orderItemCode: {}, amount: {}",
@@ -432,7 +475,7 @@ public class OrderServiceImpl implements OrderService {
                 });
     }
 
-     // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 이벤트 (inventory-event)
+    // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 이벤트 (inventory-event)
     private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             OrderEvent orderEvent = OrderEvent.of(

@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
@@ -69,6 +70,7 @@ public class PaymentServiceImpl implements PaymentService {
         // 예치금이 충분한 경우 바로 예치금 결제
         if (currentBalance >= requestedAmount) {
             Payment depositPayment = completeDepositPayment(payment, requestedAmount);
+            log.info("예치금 결제 완료 - orderId: {}, amount: {}", payment.orderId(), requestedAmount);
             return new PaymentProcessResult(depositPayment, null);
         }
 
@@ -76,27 +78,28 @@ public class PaymentServiceImpl implements PaymentService {
         int shortageAmount = requestedAmount - currentBalance;
         log.info("예치금 부족 - 현재 잔액: {}, 요청 금액: {}, 부족 금액: {}", 
                 currentBalance, requestedAmount, shortageAmount);
+        // 복합 결제 처리 (토스 충전 + 예치금 결제)
+        Payment chargeTossPayment = processDepositPaymentWithCharge(payment, shortageAmount, requestedAmount);
+        Payment depositPayment = completeDepositPayment(payment, requestedAmount);
+        log.info("예치금 결제 완료 - orderId: {}, amount: {}", payment.orderId(), requestedAmount);
 
-        // 토스 결제
+        return new PaymentProcessResult(depositPayment, chargeTossPayment);
+    }
+
+//     예치금 부족 시 토스 결제로 예치금 충전 후 예치금 결제 처리
+    // 보상 로직(환불)을 포함하므로 독립 트랜잭션이 필요함
+    // REQUIRES_NEW로 설정하여 실패 시에도 다른 트랜잭션에 영향을 주지 않음
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Payment processDepositPaymentWithCharge(PaymentRequest payment, int shortageAmount, int requestedAmount) {
         Payment chargeTossPayment = null;
         try {
-            PaymentRequest chargeTossRequest = payment.withAmountAndType(shortageAmount, PaidType.TOSS_PAYMENT);
-            chargeTossPayment = tossPayment(chargeTossRequest, PaymentStatus.CHARGE);
-            log.info("충전용 토스 결제 완료 - paymentId: {}, amount: {}", 
-                    chargeTossPayment.getId(), shortageAmount);
-
-            // 토스 결제 성공 후 예치금 충전
-            String chargeReferenceCode = "CHARGE-" + payment.orderId() + "-" + System.currentTimeMillis();
-            depositServiceClient.chargeDeposit(
-                    payment.buyerCode(), 
-                    (long) shortageAmount, 
-                    chargeReferenceCode
-            );
-            log.info("예치금 충전 완료 - buyerCode: {}, amount: {}", 
-                    payment.buyerCode(), shortageAmount);
-
+            // 토스 결제로 예치금 충전
+            chargeTossPayment = chargeDepositWithToss(payment, shortageAmount);
+            log.info("복합 결제 처리 완료 - 토스 충전: {}, 예치금 결제 대기: {}", 
+                    shortageAmount, requestedAmount);
         } catch (Exception e) {
-            log.error("토스 결제 또는 예치금 충전 실패 - orderId: {}, shortageAmount: {}, error: {}", 
+            log.error("복합 결제 처리 실패 - orderId: {}, shortageAmount: {}, error: {}", 
                     payment.orderId(), shortageAmount, e.getMessage(), e);
             
             // 토스 결제는 성공했지만 예치금 충전 실패한 경우 토스 환불
@@ -112,12 +115,31 @@ public class PaymentServiceImpl implements PaymentService {
             }
             throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_CREATE_FAILED);
         }
+        return chargeTossPayment;
+    }
 
-        // 예치금으로 전체 결제
-        Payment depositPayment = completeDepositPayment(payment, requestedAmount);
-        log.info("예치금 결제 완료 - orderId: {}, amount: {}", payment.orderId(), requestedAmount);
+//     토스 결제로 예치금 충전
+    // tossPayment가 이미 @Transactional을 가지고 있고, 예치금 충전은 외부 서비스 호출이므로
+    // 이 메서드에는 트랜잭션이 필요 없음 (중첩 트랜잭션 방지)
+    @Override
+    public Payment chargeDepositWithToss(PaymentRequest payment, int chargeAmount) {
+        // 토스 결제
+        PaymentRequest chargeTossRequest = payment.withAmountAndType(chargeAmount, PaidType.TOSS_PAYMENT);
+        Payment chargeTossPayment = tossPayment(chargeTossRequest, PaymentStatus.CHARGE);
+        log.info("충전용 토스 결제 완료 - paymentId: {}, amount: {}", 
+                chargeTossPayment.getId(), chargeAmount);
 
-        return new PaymentProcessResult(depositPayment, chargeTossPayment);
+        // 토스 결제 성공 후 예치금 충전
+        String chargeReferenceCode = "CHARGE-" + payment.orderId() + "-" + System.currentTimeMillis();
+        depositServiceClient.chargeDeposit(
+                payment.buyerCode(), 
+                (long) chargeAmount, 
+                chargeReferenceCode
+        );
+        log.info("예치금 충전 완료 - buyerCode: {}, amount: {}", 
+                payment.buyerCode(), chargeAmount);
+
+        return chargeTossPayment;
     }
 
     @Override
@@ -284,8 +306,9 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    private Payment completeDepositPayment(PaymentRequest payment, int amount) {
-        // 예치금 차감
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Payment completeDepositPayment(PaymentRequest payment, int amount) {
         depositServiceClient.withdraw(payment.buyerCode(), (long) amount, createReferenceCode(payment.orderId()));
         Payment depositPayment = Payment.createDepositPayment(
                 payment.orderId(),
