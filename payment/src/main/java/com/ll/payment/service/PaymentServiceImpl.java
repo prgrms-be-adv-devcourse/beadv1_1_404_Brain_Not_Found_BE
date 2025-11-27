@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
@@ -65,28 +66,63 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElse(0);
         int requestedAmount = payment.paidAmount();
 
+        // 예치금이 충분한 경우 바로 예치금 결제
         if (currentBalance >= requestedAmount) {
             Payment depositPayment = completeDepositPayment(payment, requestedAmount);
             return new PaymentProcessResult(depositPayment, null);
         }
 
-        Payment depositPayment = currentBalance > 0
-                ? completeDepositPayment(payment, currentBalance)
-                : null;
-
+        // 예치금이 부족한 경우 : 토스 결제로 금액 충전 + 예치금으로 전체 결제
         int shortageAmount = requestedAmount - currentBalance;
-        Payment tossPayment = null;
-        if (shortageAmount > 0) {
-            PaymentRequest tossRequest = payment.withAmountAndType(shortageAmount, PaidType.TOSS_PAYMENT);
-            tossPayment = tossPayment(tossRequest);
+        log.info("예치금 부족 - 현재 잔액: {}, 요청 금액: {}, 부족 금액: {}", 
+                currentBalance, requestedAmount, shortageAmount);
+
+        // 토스 결제
+        Payment chargeTossPayment = null;
+        try {
+            PaymentRequest chargeTossRequest = payment.withAmountAndType(shortageAmount, PaidType.TOSS_PAYMENT);
+            chargeTossPayment = tossPayment(chargeTossRequest, PaymentStatus.CHARGE);
+            log.info("충전용 토스 결제 완료 - paymentId: {}, amount: {}", 
+                    chargeTossPayment.getId(), shortageAmount);
+
+            // 토스 결제 성공 후 예치금 충전
+            String chargeReferenceCode = "CHARGE-" + payment.orderId() + "-" + System.currentTimeMillis();
+            depositServiceClient.chargeDeposit(
+                    payment.buyerCode(), 
+                    (long) shortageAmount, 
+                    chargeReferenceCode
+            );
+            log.info("예치금 충전 완료 - buyerCode: {}, amount: {}", 
+                    payment.buyerCode(), shortageAmount);
+
+        } catch (Exception e) {
+            log.error("토스 결제 또는 예치금 충전 실패 - orderId: {}, shortageAmount: {}, error: {}", 
+                    payment.orderId(), shortageAmount, e.getMessage(), e);
+            
+            // 토스 결제는 성공했지만 예치금 충전 실패한 경우 토스 환불
+            if (chargeTossPayment != null && chargeTossPayment.getPaymentStatus() == PaymentStatus.CHARGE) {
+                try {
+                    processTossRefundForCharge(chargeTossPayment, shortageAmount);
+                    log.info("예치금 충전 실패로 인한 토스 결제 환불 완료 - paymentId: {}", chargeTossPayment.getId());
+                } catch (Exception refundException) {
+                    log.error("토스 결제 환불 실패 - paymentId: {}, error: {}", 
+                            chargeTossPayment.getId(), refundException.getMessage(), refundException);
+                    // 환불도 실패한 경우는 수동 처리 필요
+                }
+            }
+            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_CREATE_FAILED);
         }
 
-        return new PaymentProcessResult(depositPayment, tossPayment);
+        // 예치금으로 전체 결제
+        Payment depositPayment = completeDepositPayment(payment, requestedAmount);
+        log.info("예치금 결제 완료 - orderId: {}, amount: {}", payment.orderId(), requestedAmount);
+
+        return new PaymentProcessResult(depositPayment, chargeTossPayment);
     }
 
     @Override
-    public Payment tossPayment(PaymentRequest request) {
-        // paymentKey가 없으면 자동으로 결제 생성
+    @Transactional
+    public Payment tossPayment(PaymentRequest request, PaymentStatus finalStatus) {
         String paymentKey = request.paymentKey();
         if (paymentKey == null || paymentKey.isBlank()) {
             paymentKey = createPayment(
@@ -97,25 +133,22 @@ public class PaymentServiceImpl implements PaymentService {
             );
         }
 
-        // 1) 결제 엔티티 초안 저장 (상태: PENDING)
+        // 1) 결제 엔티티 생성
         Payment payment = Payment.createTossPayment(
                 request.orderId(),
                 request.buyerId(),
-                request.paidAmount()
+                request.paidAmount(),
+                paymentKey
         );
         paymentJpaRepository.save(payment);
 
-        // 2) 더미 paymentKey인 경우 Toss 승인 API 호출 건너뛰기
         boolean isMockPaymentKey = paymentKey != null && paymentKey.startsWith("tgen_test_");
-
         if (isMockPaymentKey) {
             log.info("더미 paymentKey 사용 중. Toss 승인 API 호출을 건너뜁니다. paymentKey: {}", paymentKey);
-            // 더미 키인 경우 바로 결제 완료 처리
             payment.markSuccess(
-                    PaymentStatus.COMPLETED,
+                    finalStatus,
                     LocalDateTime.now()
             );
-            paymentJpaRepository.save(payment);
             return payment;
         }
 
@@ -130,12 +163,11 @@ public class PaymentServiceImpl implements PaymentService {
         validateTossResponse(request, tossPaymentResponse);
 
         payment.markSuccess(
-                PaymentStatus.COMPLETED,
+                finalStatus,
                 tossPaymentResponse.approvedAt() != null
                         ? tossPaymentResponse.approvedAt().toLocalDateTime()
-                        : java.time.LocalDateTime.now()
+                        : LocalDateTime.now()
         );
-        paymentJpaRepository.save(payment);
 
         return payment;
     }
@@ -201,8 +233,8 @@ public class PaymentServiceImpl implements PaymentService {
     // 3) 환불 성공 시 Payment 상태를 REFUNDED로 갱신하고 환불 일시·금액·외부 환불 키 등을 저장한다.
     // 4) 환불 결과에 맞춰 주문 상태도 업데이트하거나 후속 도메인 이벤트를 발행한다.
     // TODO(toss-integration): 실제 토스 취소 API 스펙에 맞춰 요청/응답 필드와 예외 처리를 구체화하세요.
-
     @Override
+    @Transactional
     public Payment refundPayment(PaymentRefundRequest request) {
         Payment payment = findPaymentForRefund(request);
         int refundAmount = paymentValidator.validateRefundEligibility(payment, request);
@@ -253,7 +285,8 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private Payment completeDepositPayment(PaymentRequest payment, int amount) {
-        depositServiceClient.withdraw(payment.buyerCode(), amount, createReferenceCode(payment.orderId()));
+        // 예치금 차감
+        depositServiceClient.withdraw(payment.buyerCode(), (long) amount, createReferenceCode(payment.orderId()));
         Payment depositPayment = Payment.createDepositPayment(
                 payment.orderId(),
                 payment.buyerId(),
@@ -265,21 +298,41 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private Payment findPaymentForRefund(PaymentRefundRequest request) {
-        if (request.paymentId() != null) {
-            return paymentJpaRepository.findById(request.paymentId())
+        // request에 orderId 외에는 들어가질 않음
+        if (request.orderId() != null) {
+            return paymentJpaRepository.findByOrderIdAndPaymentStatus(
+                            request.orderId(), 
+                            PaymentStatus.COMPLETED
+                    )
                     .orElseThrow(() -> {
-                        log.warn("결제 정보를 찾을 수 없습니다. paymentId: {}", request.paymentId());
+                        log.warn("환불 대상 결제 정보를 찾을 수 없습니다. orderId: {}, status: COMPLETED", request.orderId());
+                        return new BaseException(PaymentErrorCode.PAYMENT_NOT_FOUND);
+                    });
+        }
+
+        // paymentId, Code로 조회 (COMPLETED 상태만) <- request에 orderId가 있어서 사용되지 않으나 다른 곳에서 쓸 수 있으므로 유지중
+        if (request.paymentId() != null) {
+            return paymentJpaRepository.findByIdAndPaymentStatus(
+                            request.paymentId(),
+                            PaymentStatus.COMPLETED
+                    )
+                    .orElseThrow(() -> {
+                        log.warn("환불 대상 결제 정보를 찾을 수 없습니다. paymentId: {}, status: COMPLETED", request.paymentId());
                         return new BaseException(PaymentErrorCode.PAYMENT_NOT_FOUND);
                     });
         }
         if (request.paymentCode() != null && !request.paymentCode().isBlank()) {
-            return paymentJpaRepository.findByPaymentCode(request.paymentCode())
+            return paymentJpaRepository.findByPaymentCodeAndPaymentStatus(
+                            request.paymentCode(),
+                            PaymentStatus.COMPLETED
+                    )
                     .orElseThrow(() -> {
-                        log.warn("결제 정보를 찾을 수 없습니다. paymentCode: {}", request.paymentCode());
+                        log.warn("환불 대상 결제 정보를 찾을 수 없습니다. paymentCode: {}, status: COMPLETED", request.paymentCode());
                         return new BaseException(PaymentErrorCode.PAYMENT_NOT_FOUND);
                     });
         }
-        log.warn("환불 대상 결제 정보를 찾을 수 없습니다.");
+        
+        log.warn("환불 대상 결제 정보를 찾을 수 없습니다. orderId, paymentId, paymentCode 모두 없습니다.");
         throw new BaseException(PaymentErrorCode.REFUND_TARGET_NOT_FOUND);
     }
 
@@ -289,13 +342,45 @@ public class PaymentServiceImpl implements PaymentService {
             log.warn("예치금 환불에는 buyerCode가 필요합니다.");
             throw new BaseException(PaymentErrorCode.BUYER_CODE_REQUIRED);
         }
-        depositServiceClient.deposit(buyerCode, refundAmount, createReferenceCode(payment.getOrderId()));
+        depositServiceClient.chargeDeposit(buyerCode, (long) refundAmount, createReferenceCode(payment.getOrderId()));
+    }
+
+//     충전 실패 시 토스 결제 환불용 메서드 (PaymentRefundRequest 없이 호출)
+    private void processTossRefundForCharge(Payment payment, int refundAmount) {
+        String paymentKey = payment.getPaymentKey();
+        if (paymentKey == null || paymentKey.isBlank()) {
+            log.warn("토스 환불에는 paymentKey가 필요합니다. paymentId: {}, orderId: {}", 
+                    payment.getId(), payment.getOrderId());
+            throw new BaseException(PaymentErrorCode.PAYMENT_KEY_REQUIRED);
+        }
+
+        Map<String, Object> cancelRequest = new HashMap<>();
+        cancelRequest.put("paymentKey", paymentKey);
+        cancelRequest.put("cancelAmount", refundAmount);
+        cancelRequest.put("cancelReason", "예치금 충전 실패로 인한 환불");
+
+        try {
+            restClient.post()
+                    .uri(targetUrl + "/cancel")
+                    .headers(headers -> headers.set("Authorization", createAuthorizationHeader()))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(cancelRequest)
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("충전 실패로 인한 토스 결제 환불 성공 - paymentKey: {}, refundAmount: {}", 
+                    paymentKey, refundAmount);
+        } catch (Exception e) {
+            log.error("충전 실패로 인한 토스 결제 환불 요청에 실패했습니다. paymentKey: {}, refundAmount: {}", 
+                    paymentKey, refundAmount, e);
+            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_REFUND_FAILED);
+        }
     }
 
     private void processTossRefund(Payment payment, PaymentRefundRequest request, int refundAmount) {
-        String paymentKey = request.paymentKey();
+        String paymentKey = payment.getPaymentKey();
         if (paymentKey == null || paymentKey.isBlank()) {
-            log.warn("토스 환불에는 paymentKey가 필요합니다.");
+            log.warn("토스 환불에는 paymentKey가 필요합니다. paymentId: {}, orderId: {}", 
+                    payment.getId(), payment.getOrderId());
             throw new BaseException(PaymentErrorCode.PAYMENT_KEY_REQUIRED);
         }
 
