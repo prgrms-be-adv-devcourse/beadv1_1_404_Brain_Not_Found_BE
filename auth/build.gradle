@@ -1,7 +1,7 @@
 description = 'auth'
 
 springBoot {
-    mainClass = 'com.ll.auth.AuthApplication'
+    mainClass = 'com.ll.account.auth.AuthApplication'
 }
 
 dependencies {
@@ -13,6 +13,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     runtimeOnly 'com.h2database:h2'
+    implementation 'org.springframework.kafka:spring-kafka'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     compileOnly 'org.projectlombok:lombok'
@@ -23,6 +24,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly "mysql:mysql-connector-java:${mysqlVersion}"
 
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
     testImplementation 'org.assertj:assertj-core:3.26.0'
     testImplementation 'org.mockito:mockito-core:5.14.2'

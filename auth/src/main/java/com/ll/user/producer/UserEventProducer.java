@@ -1,4 +1,4 @@
-package com.ll.user.messaging.producer;
+package com.ll.user.producer;
 
 import com.ll.core.model.vo.kafka.UserCreateEvent;
 import lombok.RequiredArgsConstructor;

@@ -1,13 +1,13 @@
 package com.ll.user;
 
 import com.ll.user.exception.UserNotFoundException;
-import com.ll.user.messaging.producer.UserEventProducer;
 import com.ll.user.model.entity.User;
 import com.ll.user.model.enums.SocialProvider;
 import com.ll.user.model.vo.request.UserLoginRequest;
 import com.ll.user.model.vo.request.UserPatchRequest;
 import com.ll.user.model.vo.response.UserLoginResponse;
 import com.ll.user.model.vo.response.UserResponse;
+import com.ll.user.producer.UserEventProducer;
 import com.ll.user.repository.UserRepository;
 import com.ll.user.service.UserServiceImpl;
 import org.junit.jupiter.api.DisplayName;
