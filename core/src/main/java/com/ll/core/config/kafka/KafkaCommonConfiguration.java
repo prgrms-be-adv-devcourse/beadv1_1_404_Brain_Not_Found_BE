@@ -1,12 +1,6 @@
 package com.ll.core.config.kafka;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.ll.core.logging.kafka.KafkaProducerLoggingListener;
-import com.ll.core.model.exception.BaseException;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -19,7 +13,6 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
@@ -27,14 +20,7 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.MissingRequestHeaderException;
-import org.springframework.web.bind.MissingServletRequestParameterException;
-import org.springframework.web.method.annotation.HandlerMethodValidationException;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.nio.file.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -78,7 +64,7 @@ public class KafkaCommonConfiguration {
     public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> config = new HashMap<>(properties.buildConsumerProperties());
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class); // Key 에 대한 Deserializer 설정
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class); // Value 에 대한 Deserializer 설정
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, EnvelopDeserializer.class); // Value 에 대한 Deserializer 설정+
         config.put(JsonDeserializer.TRUSTED_PACKAGES, "*"); // 모든 패키지 신뢰 설정
         return new DefaultKafkaConsumerFactory<>(config);
     }
@@ -108,26 +94,7 @@ public class KafkaCommonConfiguration {
 
         DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, backOff);
 
-        // 재시도하지 않을 예외 유형 추가
-        handler.addNotRetryableExceptions(
-                BaseException.class,
-                ValidationException.class,
-                MethodArgumentNotValidException.class,
-                HandlerMethodValidationException.class,
-                MissingServletRequestParameterException.class,
-                MissingRequestHeaderException.class,
-                NoResourceFoundException.class,
-                IllegalArgumentException.class,
-                JsonParseException.class,
-
-                ConstraintViolationException.class,
-                HttpMessageNotReadableException.class,
-                MethodArgumentTypeMismatchException.class,
-                IllegalStateException.class,
-                EntityNotFoundException.class,
-                JsonProcessingException.class,
-                AccessDeniedException.class
-        );
+        handler.addNotRetryableExceptions(KafkaNotRetryableExceptionConfiguration.NOT_RETRYABLE_EXCEPTIONS);
 
         handler.setRetryListeners((record, ex, deliveryAttempt) ->
                 // Todo : DeliveryAttempt 값이 일정 수준 이상일 때 Slack Kafka Retry Alert 구현 고려

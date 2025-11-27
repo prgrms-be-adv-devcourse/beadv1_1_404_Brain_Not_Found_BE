@@ -1,5 +1,6 @@
 package com.ll.core.model.vo.kafka;
 
+
 import java.util.UUID;
 
 public record KafkaEventEnvelope<T>(
@@ -9,6 +10,7 @@ public record KafkaEventEnvelope<T>(
         long timestamp,          // 이벤트 발생 시간
         String producerService,  // 서비스 이름
         String correlationId,    // 트레이싱 ID
+        String payloadType,      // 페이로드 타입
         T payload                // 실제 비즈니스 데이터
 ) {
 
@@ -24,6 +26,7 @@ public record KafkaEventEnvelope<T>(
                 System.currentTimeMillis(),
                 producerService,
                 correlationId,
+                payload.getClass().getName(),
                 payload
         );
     }
