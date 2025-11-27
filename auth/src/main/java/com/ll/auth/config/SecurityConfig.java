@@ -1,6 +1,5 @@
 package com.ll.auth.config;
 
-import com.ll.auth.client.UserServiceClient;
 import com.ll.auth.oAuth2.OAuth2Service;
 import com.ll.auth.oAuth2.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -11,9 +10,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -28,7 +24,6 @@ public class SecurityConfig {
 
     private final OAuth2Service oAuth2Service;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
-
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -51,7 +46,8 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/**",
                                 "/api/auth/**",     // 로그인, 리프레시
-                                "/h2-console/**"
+                                "/h2-console/**",
+                                "/api/users/**"
                         ).permitAll()
                         .anyRequest().authenticated()  // 나머지는 JWT 필요
                 )
@@ -76,5 +72,6 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", config);
         return source;
     }
+
 
 }
