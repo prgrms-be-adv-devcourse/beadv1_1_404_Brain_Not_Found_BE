@@ -6,8 +6,12 @@ import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.request.TokenValidRequest;
 import com.ll.auth.oAuth2.JWTProvider;
 import com.ll.auth.repository.AuthRepository;
+import com.ll.auth.util.CookieUtil;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -40,7 +44,15 @@ public class AuthService {
         }
     }
 
+    public void logoutUser(String userCode , HttpServletResponse response){
+        ResponseCookie accessTokenCookie = CookieUtil.expiredCookie("accessToken");
+        ResponseCookie refreshTokenCookie = CookieUtil.expiredCookie("refreshToken");
+        response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
+        authRepository.deleteByUserCode(userCode);
+    }
     public Optional<Auth> getAuthByUserCode(String userCode){
         return authRepository.findByUserCode(userCode);
     }
+
 }
