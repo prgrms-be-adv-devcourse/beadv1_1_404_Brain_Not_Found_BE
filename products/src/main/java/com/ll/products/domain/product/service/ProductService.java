@@ -28,7 +28,6 @@ import java.util.List;
 
 @Slf4j
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ProductService {
 
@@ -38,7 +37,6 @@ public class ProductService {
     private final ApplicationEventPublisher eventPublisher;
 
     // 1. 상품 생성
-    @Transactional
     public ProductResponse createProduct(ProductCreateRequest request, String sellerCode, String role) {
         validateRole(role);
         Category category = getCategory(request.categoryId());
@@ -127,9 +125,6 @@ public class ProductService {
         log.info("재고 수정 완료: {}, 남은재고: {}", product.getName(), product.getQuantity());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
     }
-
-
-
 
     // 카테고리 조회
     private Category getCategory(Long categoryId) {

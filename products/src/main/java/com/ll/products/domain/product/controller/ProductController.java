@@ -22,6 +22,9 @@ import com.ll.products.domain.product.service.ProductService;
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 public class ProductController {
+    // 락 + 재고 HOLD는 “최종 결제 버튼 누른 후 서버에 진짜 구매 요청이 도착한 순간"
+    // 재고 변동은 반드시 동기(Sync)
+    // 결제/후처리는 비동기 가능 -> 사용자 경험 개선 ( 오래 걸림 )
 
     private final ProductService productService;
 
@@ -30,7 +33,6 @@ public class ProductController {
         System.out.println("ProductController.pong");
         return BaseResponse.ok("Ok");
     }
-
 
     // 1. 상품 생성
     @PostMapping
@@ -100,7 +102,7 @@ public class ProductController {
         return BaseResponse.ok(response);
     }
 
-    // 7. 재고 차감(주문 모듈)
+    // 7. 재고 변동 ( 증가/감소 )
     @PatchMapping("/{code}/inventory")
     public ResponseEntity<BaseResponse<Void>> updateInventory(
             @PathVariable String code,
