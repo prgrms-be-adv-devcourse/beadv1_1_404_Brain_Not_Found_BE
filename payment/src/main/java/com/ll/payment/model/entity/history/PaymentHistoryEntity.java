@@ -20,12 +20,6 @@ public class PaymentHistoryEntity extends BaseEntity {
     @Column(nullable = true)
     private Long paymentId;
 
-    @Column(nullable = false)
-    private Long orderId;
-
-    @Column(nullable = false)
-    private String orderCode;
-
     // 이벤트 정보
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -70,37 +64,31 @@ public class PaymentHistoryEntity extends BaseEntity {
 
     public static PaymentHistoryEntity create(
             Long paymentId,
-            Long orderId,
-            String orderCode,
             PaymentHistoryActionType eventType,
             PaymentStatus paymentStatus,
             String pgName,
             String paymentKey,
             String transactionId,
             Integer amount,
-            String currency,
             String failCode,
             String failMessage,
             String metadata,
-            LocalDateTime requestedAt,
             LocalDateTime approvedAt,
             LocalDateTime refundedAt
     ) {
         PaymentHistoryEntity paymentHistory = new PaymentHistoryEntity();
         paymentHistory.paymentId = paymentId;
-        paymentHistory.orderId = orderId;
-        paymentHistory.orderCode = orderCode;
         paymentHistory.eventType = eventType;
         paymentHistory.paymentStatus = paymentStatus;
         paymentHistory.pgName = pgName;
         paymentHistory.paymentKey = paymentKey;
         paymentHistory.transactionId = transactionId;
         paymentHistory.amount = amount;
-        paymentHistory.currency = currency;
+        paymentHistory.currency = "KRW"; // 통화는 항상 KRW로 통일
         paymentHistory.failCode = failCode;
         paymentHistory.failMessage = failMessage;
         paymentHistory.metadata = metadata;
-        paymentHistory.requestedAt = requestedAt;
+        paymentHistory.requestedAt = LocalDateTime.now(); // 요청 시각은 자동으로 현재 시각으로 설정
         paymentHistory.approvedAt = approvedAt;
         paymentHistory.refundedAt = refundedAt;
         

@@ -3,7 +3,6 @@ package com.ll.order.domain.model.entity;
 import com.ll.core.model.persistence.BaseEntity;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.order.OrderType;
-import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

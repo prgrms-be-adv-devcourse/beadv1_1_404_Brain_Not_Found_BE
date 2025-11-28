@@ -59,12 +59,6 @@ public class OrderHistoryEntity extends BaseEntity {
     private OrderHistoryActionType actionType;
 
     // 연관 정보
-    @Column(nullable = true)
-    private Long paymentId;
-
-    @Column(nullable = true)
-    private String paymentCode;
-
     @Column(columnDefinition = "TEXT", nullable = true)
     private String relatedOrderItemIds; // JSON 배열 형태로 저장
 
@@ -92,8 +86,6 @@ public class OrderHistoryEntity extends BaseEntity {
             List<OrderItem> orderItems,
             OrderHistoryActionType actionType,
             OrderStatus previousStatus,
-            Long paymentId,
-            String paymentCode,
             String reason,
             String errorMessage,
             String requestData,
@@ -111,8 +103,6 @@ public class OrderHistoryEntity extends BaseEntity {
         orderHistory.currentStatus = order.getOrderStatus();
         orderHistory.statusChangedAt = LocalDateTime.now();
         orderHistory.actionType = actionType;
-        orderHistory.paymentId = paymentId;
-        orderHistory.paymentCode = paymentCode;
         
         // OrderItem ID 리스트를 JSON 배열 형태로 변환
         if (orderItems != null && !orderItems.isEmpty()) {
