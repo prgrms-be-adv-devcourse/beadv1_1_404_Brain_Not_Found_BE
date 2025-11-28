@@ -120,9 +120,13 @@ public class ProductService {
     // 7. 재고 수정
     @Transactional
     public void updateInventory(String code, Integer quantity) {
-        Product product = getProductByCode(code);
+        // 비관적 락으로 상품 조회 (재고 차감 시 Race Condition 방지)
+        Product product = productRepository.findByCodeWithLock(code)
+                .orElseThrow(() -> new ProductNotFoundException(code));
+        
         product.updateQuantity(quantity);
-        log.info("재고 수정 완료: {}, 남은재고: {}", product.getName(), product.getQuantity());
+        log.info("재고 수정 완료: {}, 변경량: {}, 남은재고: {}", 
+                product.getName(), quantity, product.getQuantity());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
     }
 

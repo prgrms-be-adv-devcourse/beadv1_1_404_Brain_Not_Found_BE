@@ -12,6 +12,7 @@ import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
+import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
@@ -82,6 +83,9 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
+
+        // 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
+        validateInventoryAvailability(request);
 
         // 주문 및 주문 상품 생성 (독립 트랜잭션 - 항상 커밋)
         OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
@@ -182,6 +186,8 @@ public class OrderServiceImpl implements OrderService {
         try {
             paymentApiClient.requestDepositPayment(orderPaymentRequest);
 
+            updateProductInventory(order, orderItems, order.getBuyerCode());
+
             order.changeStatus(OrderStatus.COMPLETED);
             orderJpaRepository.save(order);
 
@@ -199,7 +205,6 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(successHistory);
 
-            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
             log.info("예치금 결제 완료 - orderCode: {}, amount: {}",
                     order.getCode(), order.getTotalPrice());
@@ -335,7 +340,7 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(successHistory);
 
-            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
+            updateProductInventory(order, orderItems, order.getBuyerCode());
 
             log.info("예치금 결제 완료 - orderCode: {}, amount: {}",
                     order.getCode(), order.getTotalPrice());
@@ -445,7 +450,7 @@ public class OrderServiceImpl implements OrderService {
             orderHistoryJpaRepository.save(successHistory);
 
             // 결제 성공 후 이벤트 발행
-            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
+            updateProductInventory(order, orderItems, order.getBuyerCode());
 
         } catch (Exception e) {
             order.changeStatus(OrderStatus.FAILED);
@@ -599,6 +604,32 @@ public class OrderServiceImpl implements OrderService {
         return cartInfo;
     }
 
+    /**
+     * 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
+     * 목적: 빠른 실패 (Fast Fail) - 명확히 재고 부족한 경우 조기 차단
+     */
+    private void validateInventoryAvailability(OrderCartItemRequest request) {
+        CartItemsResponse cartInfo = getCartInfo(request.cartCode());
+        
+        for (CartItemInfo item : cartInfo.items()) {
+            ProductResponse productInfo = getProductInfo(item.productCode());
+            
+            // 재고 부족 체크
+            if (productInfo.quantity() < item.quantity()) {
+                log.warn("재고가 부족합니다. productCode: {}, 요청 수량: {}, 재고: {}",
+                        item.productCode(), item.quantity(), productInfo.quantity());
+                throw new BaseException(OrderErrorCode.INSUFFICIENT_INVENTORY);
+            }
+            
+            // 판매 중인지 체크
+            if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
+                log.warn("판매 중이 아닌 상품입니다. productCode: {}, status: {}",
+                        item.productCode(), productInfo.status());
+                throw new BaseException(OrderErrorCode.PRODUCT_NOT_ON_SALE);
+            }
+        }
+    }
+
     private Order findOrderByCode(String orderCode) {
         return Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
                 .orElseThrow(() -> {
@@ -608,7 +639,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 (동기 API 호출)
-    private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
+    private void updateProductInventory(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             OrderEvent orderEvent = OrderEvent.of(
                     buyerCode,
