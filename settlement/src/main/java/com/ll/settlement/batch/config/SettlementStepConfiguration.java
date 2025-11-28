@@ -3,6 +3,7 @@ package com.ll.settlement.batch.config;
 import com.ll.settlement.batch.listener.SettlementBatchStepLogger;
 import com.ll.settlement.batch.proccessor.SettlementProcessor;
 import com.ll.settlement.model.entity.Settlement;
+import com.ll.settlement.model.exception.SkippableItemException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
@@ -20,6 +21,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 public class SettlementStepConfiguration {
     @Value("${custom.batch.chunk.size:500}")
     private Integer CHUNK_SIZE;
+    @Value("${custom.batch.retry.limit:100}")
+    private Integer RETRY_LIMIT;
 
     @Bean
     @Qualifier("settlementStep")
@@ -38,8 +41,8 @@ public class SettlementStepConfiguration {
                 .writer(settlementWriter)
                 .listener(logger)
                 .faultTolerant()
-                .skip(Exception.class)
-                .skipLimit(10)
+                .skip(SkippableItemException.class)
+                .skipLimit(RETRY_LIMIT)
                 .build();
     }
 
