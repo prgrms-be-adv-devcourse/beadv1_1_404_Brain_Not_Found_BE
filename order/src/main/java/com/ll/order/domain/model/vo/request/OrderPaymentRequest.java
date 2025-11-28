@@ -1,7 +1,7 @@
 package com.ll.order.domain.model.vo.request;
 
 import com.ll.order.domain.model.entity.Order;
-import com.ll.order.domain.model.enums.PaidType;
+import com.ll.order.domain.model.enums.payment.PaidType;
 
 public record OrderPaymentRequest(
         Long orderId,

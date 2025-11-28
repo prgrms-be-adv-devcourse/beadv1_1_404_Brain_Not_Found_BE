@@ -1,7 +1,7 @@
 package com.ll.order.domain.model.vo.request;
 
-import com.ll.order.domain.model.enums.OrderType;
-import com.ll.order.domain.model.enums.PaidType;
+import com.ll.order.domain.model.enums.order.OrderType;
+import com.ll.order.domain.model.enums.payment.PaidType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

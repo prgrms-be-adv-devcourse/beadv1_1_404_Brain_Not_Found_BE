@@ -12,4 +12,10 @@ public interface PaymentService {
     Payment tossPayment(PaymentRequest request, PaymentStatus finalStatus);
 
     Payment refundPayment(PaymentRefundRequest request);
+
+    Payment completeDepositPayment(PaymentRequest payment, int amount);
+
+    Payment chargeDepositWithToss(PaymentRequest payment, int chargeAmount);
+
+    Payment processDepositPaymentWithCharge(PaymentRequest payment, int shortageAmount, int requestedAmount);
 }
