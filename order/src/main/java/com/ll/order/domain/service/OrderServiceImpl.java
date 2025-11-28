@@ -607,7 +607,7 @@ public class OrderServiceImpl implements OrderService {
                 });
     }
 
-    // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 이벤트 (inventory-event)
+    // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 (동기 API 호출)
     private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             OrderEvent orderEvent = OrderEvent.of(
@@ -620,12 +620,17 @@ public class OrderServiceImpl implements OrderService {
             orderEventProducer.sendOrder(orderEvent);
             log.info("주문 이벤트 send - orderCode: {}, orderItemCode: {}", order.getCode(), orderItem.getCode());
 
-            // 재고 감소 이벤트 발행
-            orderEventProducer.sendInventoryDecrease(
-                    String.valueOf(orderItem.getCode()),
-                    orderItem.getQuantity()
-            );
-            log.info("Inventory decrease event sent - productId: {}, quantity: {}", orderItem.getProductId(), orderItem.getQuantity());
+            // 재고 감소 (동기 API 호출)
+            try {
+                productServiceClient.decreaseInventory(orderItem.getProductCode(), orderItem.getQuantity());
+                log.info("재고 차감 완료 - productCode: {}, quantity: {}", 
+                        orderItem.getProductCode(), orderItem.getQuantity());
+            } catch (Exception e) {
+                log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}", 
+                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
+                // 재고 차감 실패 시에도 주문은 완료 상태이므로 예외를 던지지 않고 로그만 남김
+                // 필요 시 보상 트랜잭션 로직 추가 가능
+            }
         }
     }
 

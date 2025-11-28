@@ -23,7 +23,7 @@ import com.ll.products.domain.product.service.ProductService;
 @RequiredArgsConstructor
 public class ProductController {
     // 락 + 재고 HOLD는 “최종 결제 버튼 누른 후 서버에 진짜 구매 요청이 도착한 순간"
-    // 재고 변동은 반드시 동기(Sync)
+    // 재고 변동은 반드시 동기(Sync) -> 비관적 락
     // 결제/후처리는 비동기 가능 -> 사용자 경험 개선 ( 오래 걸림 )
 
     private final ProductService productService;
