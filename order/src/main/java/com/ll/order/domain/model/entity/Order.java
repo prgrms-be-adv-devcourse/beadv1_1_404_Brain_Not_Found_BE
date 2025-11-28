@@ -1,9 +1,8 @@
 package com.ll.order.domain.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
-import com.ll.order.domain.model.enums.OrderStatus;
-import com.ll.order.domain.model.enums.OrderType;
-import com.ll.order.domain.model.vo.response.product.ProductResponse;
+import com.ll.order.domain.model.enums.order.OrderStatus;
+import com.ll.order.domain.model.enums.order.OrderType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -65,16 +64,16 @@ public class Order extends BaseEntity {
         return orderItem;
     }
 
-    public OrderItem createOrderItem(ProductResponse product, int quantity) {
-        return createOrderItem(
-                product.id(),
-                product.code(),
-                product.sellerCode(),
-                product.name(),
-                quantity,
-                product.price()
-        );
-    }
+//    public OrderItem createOrderItem(ProductResponse product, int quantity) {
+//        return createOrderItem(
+//                product.id(),
+//                product.code(),
+//                product.sellerCode(),
+//                product.name(),
+//                quantity,
+//                product.price()
+//        );
+//    }
 
     public void changeStatus(OrderStatus orderStatus) {
         this.orderStatus = orderStatus;

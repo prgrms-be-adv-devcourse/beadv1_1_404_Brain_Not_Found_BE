@@ -40,4 +40,4 @@ gradle/wrapper
 gradlew
 gradlew.bat
 
-Trouble.md
+*.md
