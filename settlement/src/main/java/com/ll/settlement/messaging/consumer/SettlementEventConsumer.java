@@ -42,7 +42,7 @@ public class SettlementEventConsumer {
     @KafkaListener(topics = "refund-event", groupId = "settlement-service")
     public void handleRefundEvent(RefundEvent event) {
         log.info("[Refund][Settlement Module] Received refund complete event from Order service : {}", event);
-        settlementService.setSettlementStatusToRefunded(event);
+        settlementService.refundSettlement(event);
     }
 
     @KafkaListener(topics = "refund-event.dlq", groupId = "settlement-service")
