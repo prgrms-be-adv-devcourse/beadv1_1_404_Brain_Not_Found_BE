@@ -4,7 +4,7 @@ import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.OrderItemWithBidirectional;
 import com.ll.order.domain.model.entity.OrderWithBidirectional;
-import com.ll.order.domain.model.enums.OrderType;
+import com.ll.order.domain.model.enums.order.OrderType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;

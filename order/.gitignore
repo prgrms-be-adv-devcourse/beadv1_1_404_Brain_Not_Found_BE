@@ -36,5 +36,4 @@ out/
 ### VS Code ###
 .vscode/
 
-Trouble.md
-transactional.md
+*.md

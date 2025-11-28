@@ -1,7 +1,7 @@
 package com.ll.order.domain.model.vo.response.order;
 
 import com.ll.order.domain.model.entity.Order;
-import com.ll.order.domain.model.enums.OrderStatus;
+import com.ll.order.domain.model.enums.order.OrderStatus;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
