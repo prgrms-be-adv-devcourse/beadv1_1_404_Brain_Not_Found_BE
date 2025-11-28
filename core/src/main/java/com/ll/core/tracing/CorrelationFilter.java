@@ -21,7 +21,7 @@ public class CorrelationFilter implements Filter {
         String correlationId = request.getHeader("X-Correlation-Id");
 
         if (correlationId == null || correlationId.isBlank()) {
-            correlationId = "Internal_api-" + Generators.timeBasedGenerator().generate().toString();
+            correlationId = Generators.timeBasedGenerator().generate().toString();
         }
 
         CorrelationContext.set(correlationId);

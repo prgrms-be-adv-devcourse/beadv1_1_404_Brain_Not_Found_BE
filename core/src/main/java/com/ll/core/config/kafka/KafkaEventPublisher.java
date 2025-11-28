@@ -8,15 +8,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
-
 @Component
 @RequiredArgsConstructor
 public class KafkaEventPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Value("${spring.application.name:unknown-module}")
+    @Value("${spring.application.name}")
     private String moduleName;
 
     public <T> void publish(String topic, T payload) {
@@ -25,9 +23,9 @@ public class KafkaEventPublisher {
         ProducerRecord<String, Object> record = new ProducerRecord<>(topic, envelope);
 
         // 분석용 중복 헤더 추가
-        record.headers().add("eventId", envelope.eventId().getBytes(StandardCharsets.UTF_8));
-        record.headers().add("eventType", envelope.eventType().getBytes(StandardCharsets.UTF_8));
-        record.headers().add("correlationId", envelope.correlationId().getBytes(StandardCharsets.UTF_8));
+        record.headers().add("eventId", envelope.eventId().getBytes());
+        record.headers().add("eventType", envelope.eventType().getBytes());
+        record.headers().add("correlationId", envelope.correlationId().getBytes());
 
         kafkaTemplate.send(record);
     }

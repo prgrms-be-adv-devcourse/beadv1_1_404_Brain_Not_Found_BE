@@ -36,7 +36,7 @@ public class SettlementServiceImpl implements SettlementService {
     }
 
     @Override
-    public void setSettlementStatusToRefunded(RefundEvent event) {
+    public void refundSettlement(RefundEvent event) {
         Settlement settlement = settlementRepository.findByOrderItemCode(event.orderItemCode()).orElseThrow(SettlementNotFoundException::new);
         settlement.refund();
         settlementRepository.save(settlement);
