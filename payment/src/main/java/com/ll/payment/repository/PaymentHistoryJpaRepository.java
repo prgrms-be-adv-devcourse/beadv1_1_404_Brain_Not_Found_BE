@@ -8,7 +8,5 @@ import java.util.List;
 
 @Repository
 public interface PaymentHistoryJpaRepository extends JpaRepository<PaymentHistoryEntity, Long> {
-    List<PaymentHistoryEntity> findByPaymentIdOrderByStatusChangedAtDesc(Long paymentId);
-    List<PaymentHistoryEntity> findByOrderIdOrderByStatusChangedAtDesc(Long orderId);
 }
 
