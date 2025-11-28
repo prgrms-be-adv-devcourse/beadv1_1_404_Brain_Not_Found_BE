@@ -7,7 +7,6 @@ public enum PaymentHistoryActionType {
     CANCEL,           // 결제 취소
     REFUND_REQUEST,   // 환불 요청
     REFUND_DONE,      // 환불 완료
-    CHARGE,           // 충전 (예치금 충전용)
-    STATUS_CHANGE     // 상태 변경 (기타 상태 변경)
+    CHARGE          // 충전 (예치금 충전용)
 }
 
