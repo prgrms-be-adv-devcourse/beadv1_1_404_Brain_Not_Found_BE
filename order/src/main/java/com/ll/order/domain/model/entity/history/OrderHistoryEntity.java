@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,7 +61,8 @@ public class OrderHistoryEntity extends BaseEntity {
 
     // 연관 정보
     @Column(columnDefinition = "TEXT", nullable = true)
-    private String relatedOrderItemIds; // JSON 배열 형태로 저장
+    @Convert(converter = LongListJsonConverter.class)
+    private List<Long> relatedOrderItemIds; // JSON 배열 형태로 저장 (자동 변환)
 
     // 메타데이터
     @Column(columnDefinition = "TEXT", nullable = true)
@@ -78,9 +80,6 @@ public class OrderHistoryEntity extends BaseEntity {
     @Column(nullable = true)
     private String createdBy; // 생성자 (시스템 또는 사용자)
 
-    /**
-     * 주문 이력 엔티티 생성 (전체 매개변수)
-     */
     public static OrderHistoryEntity create(
             Order order,
             List<OrderItem> orderItems,
@@ -104,15 +103,13 @@ public class OrderHistoryEntity extends BaseEntity {
         orderHistory.statusChangedAt = LocalDateTime.now();
         orderHistory.actionType = actionType;
         
-        // OrderItem ID 리스트를 JSON 배열 형태로 변환
+        // OrderItem ID 리스트를 직접 할당 (AttributeConverter가 자동으로 JSON 변환)
         if (orderItems != null && !orderItems.isEmpty()) {
-            List<Long> itemIds = orderItems.stream()
+            orderHistory.relatedOrderItemIds = orderItems.stream()
                     .map(OrderItem::getId)
                     .collect(Collectors.toList());
-            // 간단한 JSON 배열 문자열 생성: [1,2,3]
-            orderHistory.relatedOrderItemIds = "[" + itemIds.stream()
-                    .map(String::valueOf)
-                    .collect(Collectors.joining(",")) + "]";
+        } else {
+            orderHistory.relatedOrderItemIds = new ArrayList<>();
         }
         
         orderHistory.reason = reason;
