@@ -1,7 +1,9 @@
 package com.ll.products.domain.product.service;
 
+import com.ll.products.domain.image.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +38,10 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final UserClient userClient;
     private final ApplicationEventPublisher eventPublisher;
+    private final S3Service s3Service;
+
+    @Value("${cloud.aws.s3.base-url}")
+    private String s3BaseUrl;
 
     // 1. 상품 생성
     public ProductResponse createProduct(ProductCreateRequest request, String sellerCode, String role) {
@@ -57,13 +63,13 @@ public class ProductService {
         Product savedProduct = productRepository.save(product);
         log.info("상품 생성 완료: {} (ID: {})", savedProduct.getName(), savedProduct.getId());
         eventPublisher.publishEvent(ProductEvent.created(this, savedProduct));
-        return ProductResponse.from(savedProduct);
+        return ProductResponse.from(savedProduct, s3BaseUrl);
     }
 
     // 2. 상품 상세조회(code 기반)
     public ProductResponse getProduct(String code) {
         Product product = getProductByCode(code);
-        return ProductResponse.from(product);
+        return ProductResponse.from(product, s3BaseUrl);
     }
 
     // 3. 상품 목록조회
@@ -75,7 +81,7 @@ public class ProductService {
             Pageable pageable
     ) {
         Page<Product> products = productRepository.searchProducts(sellerCode, categoryId, status, name, pageable);
-        return products.map(ProductListResponse::from);
+        return products.map(product -> ProductListResponse.from(product, s3BaseUrl));
     }
 
     // 4. 상품 삭제(soft delete)
@@ -83,6 +89,7 @@ public class ProductService {
     public void deleteProduct(String code, String userCode, String role) {
         Product product = getProductByCode(code);
         validateOwnership(product, userCode, role);
+        deleteProductImagesFromS3(product);
         product.softDelete();
         log.info("상품 삭제 완료: {} (ID: {})", product.getName(), product.getId());
         eventPublisher.publishEvent(ProductEvent.deleted(this, product));
@@ -93,6 +100,10 @@ public class ProductService {
     public ProductResponse updateProduct(String code, ProductUpdateRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
         validateOwnership(product, userCode, role);
+        if (request.images() != null) {
+            deleteProductImagesFromS3(product);
+            setImages(request.images(), product);
+        }
         product.updateBasicInfo(
                 request.name(),
                 request.description(),
@@ -101,10 +112,9 @@ public class ProductService {
         );
         Category category = getCategory(request.categoryId());
         product.updateCategory(category);
-        setImages(request.images(), product);
         log.info("상품 수정 완료: {} (ID: {})", product.getName(), product.getId());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
-        return ProductResponse.from(product);
+        return ProductResponse.from(product, s3BaseUrl);
     }
 
     // 6. 상품 상태변경
@@ -115,7 +125,7 @@ public class ProductService {
         product.updateStatus(request.status());
         log.info("상품 상태변경 완료: {} -> {} (ID: {})", product.getName(), request.status(), product.getId());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
-        return ProductResponse.from(product);
+        return ProductResponse.from(product, s3BaseUrl);
     }
 
     // 7. 재고 수정
@@ -179,5 +189,20 @@ public class ProductService {
         if (!userCode.equals(product.getSellerCode())) {
             throw new ProductOwnershipException(null, product.getCode());
         }
+    }
+
+    // S3에서 이미지 삭제
+    private void deleteProductImagesFromS3(Product product) {
+        if (product.getImages() == null || product.getImages().isEmpty()) {
+            return;
+        }
+        product.getImages().forEach(image -> {
+            try {
+                s3Service.deleteImage(image.getFileKey());
+                log.info("S3 이미지 삭제 완료: {}", image.getFileKey());
+            } catch (Exception e) {
+                log.warn("S3 이미지 삭제 실패: {}", image.getFileKey(), e);
+            }
+        });
     }
 }
