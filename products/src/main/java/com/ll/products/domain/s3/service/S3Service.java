@@ -1,10 +1,10 @@
-package com.ll.products.domain.image.service;
+package com.ll.products.domain.s3.service;
 
-import com.ll.products.domain.image.exception.InvalidFileExtensionException;
-import com.ll.products.domain.image.exception.InvalidFileNameException;
-import com.ll.products.domain.image.exception.S3DeleteException;
-import com.ll.products.domain.image.exception.S3UploadException;
-import com.ll.products.domain.image.model.dto.response.PresignedUrlResponse;
+import com.ll.products.domain.s3.exception.InvalidFileExtensionException;
+import com.ll.products.domain.s3.exception.InvalidFileNameException;
+import com.ll.products.domain.s3.exception.S3DeleteException;
+import com.ll.products.domain.s3.exception.S3UploadException;
+import com.ll.products.domain.s3.model.dto.response.PresignedUrlResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

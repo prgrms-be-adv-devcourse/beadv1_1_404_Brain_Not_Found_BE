@@ -1,4 +1,4 @@
-package com.ll.products.domain.image.exception;
+package com.ll.products.domain.s3.exception;
 
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.exception.ErrorCode;

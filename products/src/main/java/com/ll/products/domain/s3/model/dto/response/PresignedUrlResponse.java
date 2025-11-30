@@ -1,4 +1,4 @@
-package com.ll.products.domain.image.model.dto.response;
+package com.ll.products.domain.s3.model.dto.response;
 
 import lombok.Builder;
 

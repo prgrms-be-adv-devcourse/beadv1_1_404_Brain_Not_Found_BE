@@ -1,6 +1,6 @@
 package com.ll.products.domain.product.service;
 
-import com.ll.products.domain.image.service.S3Service;
+import com.ll.products.domain.s3.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

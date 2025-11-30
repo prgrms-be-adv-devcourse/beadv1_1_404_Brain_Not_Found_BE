@@ -1,4 +1,4 @@
-package com.ll.products.domain.image.config;
+package com.ll.products.domain.s3.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
