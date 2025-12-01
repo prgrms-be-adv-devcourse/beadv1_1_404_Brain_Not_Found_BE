@@ -17,6 +17,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -64,7 +65,7 @@ public class S3Service {
 
     private String generatePresignedPutUrl(String fileKey, String extension) {
         try {
-            String contentType = getContentType(extension);
+            String contentType = EXTENSION_TYPE.get(extension);
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(fileKey)
@@ -92,22 +93,19 @@ public class S3Service {
         if (filename == null || filename.isBlank() || !filename.contains(".")) {
             throw new InvalidFileNameException(filename);
         }
-        return filename.substring(filename.lastIndexOf("."));
+        return filename.substring(filename.lastIndexOf(".")).toLowerCase();
     }
 
     private void validateExtension(String extension) {
-        String lowerExtension = extension.toLowerCase();
-        if (!lowerExtension.matches("\\.(jpg|jpeg|png|gif)")) {
+        if (!EXTENSION_TYPE.containsKey(extension)) {
             throw new InvalidFileExtensionException(extension);
         }
     }
 
-    private String getContentType(String extension) {
-        return switch (extension.toLowerCase()) {
-            case ".jpg", ".jpeg" -> "image/jpeg";
-            case ".png" -> "image/png";
-            case ".gif" -> "image/gif";
-            default -> "application/octet-stream";
-        };
-    }
+    private static final Map<String, String> EXTENSION_TYPE = Map.of(
+            ".jpg", "image/jpeg",
+            ".jpeg", "image/jpeg",
+            ".png", "image/png",
+            ".gif", "image/gif"
+    );
 }
