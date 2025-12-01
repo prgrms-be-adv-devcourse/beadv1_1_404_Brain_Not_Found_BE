@@ -26,6 +26,7 @@ public enum PaymentErrorCode implements BaseErrorCode {
     REFUND_NOT_ELIGIBLE(HttpStatus.CONFLICT, "환불은 완료된 결제만 가능합니다."),
     TOSS_PAYMENT_STATUS_INVALID(HttpStatus.CONFLICT, "토스 결제 승인 상태가 DONE이 아닙니다."),
     TOSS_PAYMENT_AMOUNT_MISMATCH(HttpStatus.CONFLICT, "토스 승인 금액과 요청 금액이 일치하지 않습니다."),
+    DUPLICATE_PAYMENT_REQUEST(HttpStatus.CONFLICT, "이미 진행 중인 결제가 있습니다."),
 
     // 500 — 내부 서버 오류
     TOSS_PAYMENT_CREATE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Toss 결제 생성 API 호출에 실패했습니다."),

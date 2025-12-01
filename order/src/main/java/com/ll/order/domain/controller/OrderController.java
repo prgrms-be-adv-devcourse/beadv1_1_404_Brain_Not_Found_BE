@@ -32,12 +32,6 @@ public class OrderController implements OrderControllerSwagger {
 
     private final OrderService orderService;
 
-    @GetMapping("/ping")
-    public ResponseEntity<BaseResponse<String>> pong() {
-        System.out.println("OrderController.pong");
-        return BaseResponse.ok("Ok");
-    }
-
     @PostMapping("/cartItems")
     // TODO 토스 보완 결제 시 paymentKey 필수 여부와 검증 로직 추가 필요
     public Object createCartItemOrder(

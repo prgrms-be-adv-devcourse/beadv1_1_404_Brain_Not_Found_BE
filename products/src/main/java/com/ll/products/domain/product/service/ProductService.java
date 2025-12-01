@@ -28,9 +28,9 @@ import java.util.List;
 
 @Slf4j
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ProductService {
+    // TODO : 모든 재고 차감 성공 확인 / 차감 실패 시 결제 취소 / 재고 차감 성공 "후" 주문 완료 <- 이 부분 처리 필요
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
@@ -38,7 +38,6 @@ public class ProductService {
     private final ApplicationEventPublisher eventPublisher;
 
     // 1. 상품 생성
-    @Transactional
     public ProductResponse createProduct(ProductCreateRequest request, String sellerCode, String role) {
         validateRole(role);
         Category category = getCategory(request.categoryId());
@@ -122,14 +121,15 @@ public class ProductService {
     // 7. 재고 수정
     @Transactional
     public void updateInventory(String code, Integer quantity) {
-        Product product = getProductByCode(code);
+        // 비관적 락으로 상품 조회 (재고 차감 시 Race Condition 방지)
+        Product product = productRepository.findByCodeWithLock(code)
+                .orElseThrow(() -> new ProductNotFoundException(code));
+        
         product.updateQuantity(quantity);
-        log.info("재고 수정 완료: {}, 남은재고: {}", product.getName(), product.getQuantity());
+        log.info("재고 수정 완료: {}, 변경량: {}, 남은재고: {}", 
+                product.getName(), quantity, product.getQuantity());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
     }
-
-
-
 
     // 카테고리 조회
     private Category getCategory(Long categoryId) {

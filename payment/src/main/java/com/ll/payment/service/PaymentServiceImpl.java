@@ -140,8 +140,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 //     토스 결제로 예치금 충전
-    // tossPayment가 이미 @Transactional을 가지고 있고, 예치금 충전은 외부 서비스 호출이므로
-    // 이 메서드에는 트랜잭션이 필요 없음 (중첩 트랜잭션 방지)
+    // tossPayment가 이미 @Transactional을 가지고 있고, 예치금 충전은 외부 서비스 호출이므로 이 메서드에는 트랜잭션이 필요 없음 (중첩 트랜잭션 방지)
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Payment chargeDepositWithToss(PaymentRequest payment, int chargeAmount) {
@@ -167,6 +166,32 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public Payment tossPayment(PaymentRequest request, PaymentStatus finalStatus) {
+        // 1. 비관적 락으로 중복 결제 체크 (메서드 시작 부분)
+        Optional<Payment> existingCompletedPayment = paymentJpaRepository
+                .findByOrderIdAndPaymentStatusWithLock(
+                        request.orderId(),
+                        PaymentStatus.COMPLETED
+                );
+        
+        if (existingCompletedPayment.isPresent()) {
+            log.warn("이미 결제 완료된 주문입니다. orderId: {}, paymentId: {}",
+                    request.orderId(), existingCompletedPayment.get().getId());
+            return existingCompletedPayment.get();
+        }
+        
+        // 2. 진행 중인 결제(PENDING)가 있는지 확인 (락 없이 조회)
+        Optional<Payment> existingPendingPayment = paymentJpaRepository
+                .findByOrderIdAndPaymentStatus(
+                        request.orderId(),
+                        PaymentStatus.PENDING
+                );
+        
+        if (existingPendingPayment.isPresent()) {
+            log.warn("이미 진행 중인 결제가 있습니다. orderId: {}, paymentId: {}",
+                    request.orderId(), existingPendingPayment.get().getId());
+            throw new BaseException(PaymentErrorCode.DUPLICATE_PAYMENT_REQUEST);
+        }
+        
         String paymentKey = request.paymentKey();
         if (paymentKey == null || paymentKey.isBlank()) {
             paymentKey = createPayment(
@@ -177,7 +202,7 @@ public class PaymentServiceImpl implements PaymentService {
             );
         }
 
-        // 결제 요청 이력 저장
+        // 결제 요청 이력 저장 (락 유지 중)
         PaymentHistoryEntity requestHistory = PaymentHistoryEntity.create(
                 null, // paymentId (아직 생성 전)
                 PaymentHistoryActionType.REQUEST,
@@ -466,7 +491,23 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public Payment completeDepositPayment(PaymentRequest payment, int amount) {
+        // 1. 비관적 락으로 중복 결제 체크
+        Optional<Payment> existingPayment = paymentJpaRepository
+                .findByOrderIdAndPaymentStatusWithLock(
+                        payment.orderId(),
+                        PaymentStatus.COMPLETED
+                );
+        
+        if (existingPayment.isPresent()) {
+            log.warn("이미 결제 완료된 주문입니다. orderId: {}, paymentId: {}",
+                    payment.orderId(), existingPayment.get().getId());
+            return existingPayment.get();
+        }
+        
+        // 2. 예치금 차감 (락 유지 중)
         depositServiceClient.withdraw(payment.buyerCode(), (long) amount, createReferenceCode(payment.orderId()));
+        
+        // 3. Payment 엔티티 생성 및 저장 (락 유지 중)
         Payment depositPayment = Payment.createDepositPayment(
                 payment.orderId(),
                 payment.buyerId(),
@@ -475,7 +516,7 @@ public class PaymentServiceImpl implements PaymentService {
         );
         paymentJpaRepository.save(depositPayment);
 
-        // 결제 성공 이력 저장
+        // 4. 결제 성공 이력 저장 (락 유지 중)
         PaymentHistoryEntity paymentHistory = PaymentHistoryEntity.create(
                 depositPayment.getId(),
                 PaymentHistoryActionType.SUCCESS,

@@ -47,7 +47,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrderService 테스트")
-class OrderServiceImplTest {
+class OrderServiceImplTest { // BDD, nested test, slice test
 
     @Mock
     private OrderJpaRepository orderJpaRepository;

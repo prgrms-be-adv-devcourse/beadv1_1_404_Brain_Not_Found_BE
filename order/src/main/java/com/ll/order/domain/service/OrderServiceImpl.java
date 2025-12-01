@@ -12,6 +12,8 @@ import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
+import com.ll.order.domain.model.enums.product.ProductStatus;
+import com.ll.order.domain.model.vo.InventoryDeduction;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
@@ -83,10 +85,16 @@ public class OrderServiceImpl implements OrderService {
     public OrderCreateResponse createCartItemOrder(OrderCartItemRequest request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
 
+        // 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
+        validateInventoryAvailability(request);
+
         // 주문 및 주문 상품 생성 (독립 트랜잭션 - 항상 커밋)
         OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
         Order savedOrder = creationResult.order();
         List<OrderItem> orderItems = creationResult.orderItems();
+
+        // 재고 차감 (주문 생성 후, 결제 전)
+        updateProductInventory(savedOrder, orderItems, userInfo.code());
 
         // 결제 처리 (별도 트랜잭션)
         if (request.paidType() == PaidType.DEPOSIT) {
@@ -165,10 +173,6 @@ public class OrderServiceImpl implements OrderService {
         return new OrderCreationResult(savedOrder, orderItems);
     }
 
-    /**
-     * 예치금 결제 처리 (별도 트랜잭션)
-     * 실패해도 주문에는 영향 없음 (주문은 이미 커밋됨)
-     */
     @Override
     @Transactional
     public void processDepositPayment(Order order, List<OrderItem> orderItems, OrderCartItemRequest request) {
@@ -199,6 +203,7 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(successHistory);
 
+            // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
             publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
             log.info("예치금 결제 완료 - orderCode: {}, amount: {}",
@@ -221,6 +226,9 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(failHistory);
 
+            // 결제 실패 시 재고 롤백 (재고 차감이 결제 전에 이루어졌기 때문)
+            rollbackInventoryForOrder(orderItems);
+
             log.error("결제 처리 실패 - orderCode: {}, error: {}",
                     order.getCode(), e.getMessage(), e);
 
@@ -232,10 +240,15 @@ public class OrderServiceImpl implements OrderService {
     public OrderCreateResponse createDirectOrder(OrderDirectRequest request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
 
+        // 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
+        validateDirectOrderInventoryAvailability(request);
+
         // 주문 및 주문 상품 생성 (독립 트랜잭션 - 항상 커밋)
         OrderCreationResult creationResult = createDirectOrderWithItem(request, userInfo);
         Order savedOrder = creationResult.order();
         List<OrderItem> orderItems = creationResult.orderItems();
+
+        updateProductInventory(savedOrder, orderItems, userInfo.code());
 
         // 결제 처리 (별도 트랜잭션)
         if (request.paidType() == PaidType.DEPOSIT) {
@@ -286,7 +299,6 @@ public class OrderServiceImpl implements OrderService {
         );
         orderItemJpaRepository.save(orderItem);
 
-        // 주문 생성 이력 저장
         OrderHistoryEntity orderHistory = OrderHistoryEntity.create(
                 savedOrder,
                 List.of(orderItem),
@@ -335,6 +347,7 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(successHistory);
 
+            // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
             publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
             log.info("예치금 결제 완료 - orderCode: {}, amount: {}",
@@ -356,6 +369,9 @@ public class OrderServiceImpl implements OrderService {
                     "SYSTEM"
             );
             orderHistoryJpaRepository.save(failHistory);
+
+            // 결제 실패 시 재고 롤백 (재고 차감이 결제 전에 이루어졌기 때문)
+            rollbackInventoryForOrder(orderItems);
 
             log.error("결제 처리 실패 - orderCode: {}, error: {}",
                     order.getCode(), e.getMessage(), e);
@@ -444,7 +460,7 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(successHistory);
 
-            // 결제 성공 후 이벤트 발행
+            // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
             publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
         } catch (Exception e) {
@@ -465,6 +481,9 @@ public class OrderServiceImpl implements OrderService {
                     "SYSTEM"
             );
             orderHistoryJpaRepository.save(failHistory);
+
+            // 결제 실패 시 재고 롤백 (재고 차감이 주문 생성 시점에 이루어졌기 때문)
+            rollbackInventoryForOrder(orderItems);
 
             log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderCode, paymentKey, e.getMessage(), e);
             throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
@@ -599,6 +618,46 @@ public class OrderServiceImpl implements OrderService {
         return cartInfo;
     }
 
+    private void validateInventoryAvailability(OrderCartItemRequest request) {
+        CartItemsResponse cartInfo = getCartInfo(request.cartCode());
+        
+        for (CartItemInfo item : cartInfo.items()) {
+            ProductResponse productInfo = getProductInfo(item.productCode());
+            
+            // 재고 부족 체크
+            if (productInfo.quantity() < item.quantity()) {
+                log.warn("재고가 부족합니다. productCode: {}, 요청 수량: {}, 재고: {}",
+                        item.productCode(), item.quantity(), productInfo.quantity());
+                throw new BaseException(OrderErrorCode.INSUFFICIENT_INVENTORY);
+            }
+            
+            // 판매 중인지 체크
+            if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
+                log.warn("판매 중이 아닌 상품입니다. productCode: {}, status: {}",
+                        item.productCode(), productInfo.status());
+                throw new BaseException(OrderErrorCode.PRODUCT_NOT_ON_SALE);
+            }
+        }
+    }
+
+    private void validateDirectOrderInventoryAvailability(OrderDirectRequest request) {
+        ProductResponse productInfo = getProductInfo(request.productCode());
+        
+        // 재고 부족 체크
+        if (productInfo.quantity() < request.quantity()) {
+            log.warn("재고가 부족합니다. productCode: {}, 요청 수량: {}, 재고: {}",
+                    request.productCode(), request.quantity(), productInfo.quantity());
+            throw new BaseException(OrderErrorCode.INSUFFICIENT_INVENTORY);
+        }
+        
+        // 판매 중인지 체크
+        if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
+            log.warn("판매 중이 아닌 상품입니다. productCode: {}, status: {}",
+                    request.productCode(), productInfo.status());
+            throw new BaseException(OrderErrorCode.PRODUCT_NOT_ON_SALE);
+        }
+    }
+
     private Order findOrderByCode(String orderCode) {
         return Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
                 .orElseThrow(() -> {
@@ -607,7 +666,71 @@ public class OrderServiceImpl implements OrderService {
                 });
     }
 
-    // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 이벤트 (inventory-event)
+    // 재고 감소 (동기 API 호출)
+    private void updateProductInventory(Order order, List<OrderItem> orderItems, String buyerCode) {
+        List<String> failedProducts = new ArrayList<>();
+        List<InventoryDeduction> successfulDeductions = new ArrayList<>();
+        
+        for (OrderItem orderItem : orderItems) {
+            // 재고 감소 (동기 API 호출) <- 비관적 락 적용 시점
+            try {
+                productServiceClient.decreaseInventory(orderItem.getProductCode(), orderItem.getQuantity());
+                log.info("재고 차감 완료 - productCode: {}, quantity: {}", 
+                        orderItem.getProductCode(), orderItem.getQuantity());
+                // 성공한 재고 차감 정보 저장 (롤백용)
+                successfulDeductions.add(new InventoryDeduction(
+                        orderItem.getProductCode(),
+                        orderItem.getQuantity()
+                ));
+            } catch (Exception e) {
+                log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}", 
+                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
+                failedProducts.add(orderItem.getProductCode());
+            }
+        }
+        
+        // 재고 차감 실패 시 성공한 재고 차감 롤백
+        if (!failedProducts.isEmpty()) {
+            log.error("재고 차감 실패 - orderCode: {}, failedProducts: {}", order.getCode(), failedProducts);
+            
+            // 성공한 재고 차감 롤백
+            if (!successfulDeductions.isEmpty()) {
+                rollbackInventory(successfulDeductions);
+            }
+            
+            throw new BaseException(OrderErrorCode.INVENTORY_DEDUCTION_FAILED);
+        }
+    }
+
+    // 재고 롤백 (명시적 롤백 - 각 재고 차감이 별도 트랜잭션으로 커밋되었기 때문)
+    private void rollbackInventory(List<InventoryDeduction> successfulDeductions) {
+        log.warn("재고 차감 실패로 인한 재고 롤백 시작 - 롤백 대상: {}개", successfulDeductions.size());
+        
+        for (InventoryDeduction deduction : successfulDeductions) {
+            try {
+                productServiceClient.restoreInventory(deduction.productCode(), deduction.quantity());
+                log.info("재고 롤백 완료 - productCode: {}, quantity: {}", 
+                        deduction.productCode(), deduction.quantity());
+            } catch (Exception e) {
+                log.error("재고 롤백 실패 - productCode: {}, quantity: {}, error: {}", 
+                        deduction.productCode(), deduction.quantity(), e.getMessage(), e);
+                // 롤백 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
+            }
+        }
+    }
+
+    // 주문의 재고 롤백 (결제 실패 시 사용)
+    private void rollbackInventoryForOrder(List<OrderItem> orderItems) {
+        log.warn("결제 실패로 인한 재고 롤백 시작 - orderItems: {}개", orderItems.size());
+        
+        List<InventoryDeduction> deductions = orderItems.stream()
+                .map(item -> new InventoryDeduction(item.getProductCode(), item.getQuantity()))
+                .toList();
+        
+        rollbackInventory(deductions);
+    }
+
+    // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때만)
     private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             OrderEvent orderEvent = OrderEvent.of(
@@ -618,14 +741,7 @@ public class OrderServiceImpl implements OrderService {
                     (long) orderItem.getPrice() * orderItem.getQuantity()
             );
             orderEventProducer.sendOrder(orderEvent);
-            log.info("주문 이벤트 send - orderCode: {}, orderItemCode: {}", order.getCode(), orderItem.getCode());
-
-            // 재고 감소 이벤트 발행
-            orderEventProducer.sendInventoryDecrease(
-                    String.valueOf(orderItem.getCode()),
-                    orderItem.getQuantity()
-            );
-            log.info("Inventory decrease event sent - productId: {}, quantity: {}", orderItem.getProductId(), orderItem.getQuantity());
+            log.info("주문 완료 이벤트 발행 - orderCode: {}, orderItemCode: {}", order.getCode(), orderItem.getCode());
         }
     }
 
