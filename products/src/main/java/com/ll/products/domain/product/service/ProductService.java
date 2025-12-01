@@ -105,6 +105,7 @@ public class ProductService {
     @Transactional
     public ProductResponse updateProduct(String code, ProductUpdateRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
+        validateImageSize(request, product);
         validateOwnership(product, userCode, role);
         deleteImages(request, product);
         setImages(request.addImages(), product);
@@ -164,9 +165,6 @@ public class ProductService {
     // 이미지 추가
     private static void setImages(List<ProductImageDto> imageDtoList, Product product) {
         if (imageDtoList != null && !imageDtoList.isEmpty()) {
-            if (product.getImages().size() + imageDtoList.size() > MAX_IMAGE_COUNT) {
-                throw new ImageUploadLimitException(MAX_IMAGE_COUNT);
-            }
             imageDtoList.forEach(imageDto ->
                     product.addImage(imageDto.toEntity())
             );
@@ -235,5 +233,12 @@ public class ProductService {
                 log.warn("S3 이미지 삭제 실패: {}", fileKey, e);
             }
         });
+    }
+
+    // 이미지 수량 검증
+    private static void validateImageSize(ProductUpdateRequest request, Product product) {
+        if (product.getImages().size() - request.deleteImageKeys().size() + request.addImages().size() > MAX_IMAGE_COUNT) {
+            throw new ImageUploadLimitException(MAX_IMAGE_COUNT);
+        }
     }
 }
