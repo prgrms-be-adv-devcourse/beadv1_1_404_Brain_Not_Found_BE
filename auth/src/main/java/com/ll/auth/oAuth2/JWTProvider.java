@@ -22,7 +22,7 @@ public class JWTProvider {
     @Value("${jwt.secret:your-default-secret-key-must-be-at-least-256-bits-long}")  // application.yml 설정
     private String secretKey;
 
-    @Value("${jwt.expiration:1800000}")  // 30분 (밀리초)
+    @Value("${jwt.expiration:900000}")  // 15분 (밀리초) 1000 * 60 * 15
     public
     Long expirationTime;
 
