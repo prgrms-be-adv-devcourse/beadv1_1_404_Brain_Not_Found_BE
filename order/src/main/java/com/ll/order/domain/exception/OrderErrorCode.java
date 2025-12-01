@@ -26,6 +26,7 @@ public enum OrderErrorCode implements BaseErrorCode {
     INSUFFICIENT_INVENTORY(HttpStatus.UNPROCESSABLE_ENTITY, "재고가 부족합니다."),
     PRODUCT_NOT_ON_SALE(HttpStatus.UNPROCESSABLE_ENTITY, "판매 중이 아닌 상품입니다."),
     PRODUCT_PRICE_MISMATCH(HttpStatus.UNPROCESSABLE_ENTITY, "요청한 상품 가격이 실제 가격과 일치하지 않습니다."),
+    INVENTORY_DEDUCTION_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "재고 차감에 실패했습니다."),
 
     // 500 — 내부 서버 오류
     PAYMENT_PROCESSING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "결제 처리에 실패했습니다.");
