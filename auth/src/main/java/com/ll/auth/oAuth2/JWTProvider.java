@@ -27,8 +27,7 @@ public class JWTProvider {
     Long expirationTime;
 
     @Value("${jwt.refresh-expiration:604800000}")  // 7일 = 7 * 24 * 60 * 60 * 1000
-    public
-    Long refreshExpirationTime;
+    public Long refreshExpirationTime;
 
     private SecretKey key;  // HS512 서명 키
 

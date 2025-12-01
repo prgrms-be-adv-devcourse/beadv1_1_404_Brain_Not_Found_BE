@@ -1,6 +1,8 @@
 package com.ll.auth.service;
 
+import com.ll.auth.exception.DeviceCodeNotProvidedException;
 import com.ll.auth.exception.TokenNotFoundException;
+import com.ll.auth.exception.TokenNotProvidedException;
 import com.ll.auth.model.entity.Auth;
 import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.request.TokenValidRequest;
@@ -31,9 +33,15 @@ public class AuthService {
 
     public Tokens refreshToken(TokenValidRequest request){
 
-        if(redisService.getRefreshToken(request.userCode(),"test").equals(request.refreshToken())){
+        if(request.refreshToken() == null || request.refreshToken().isEmpty()){
+            throw new TokenNotProvidedException();
+        }
+        if(request.deviceCode() == null || request.deviceCode().isEmpty()){
+            throw new DeviceCodeNotProvidedException();
+        }
+        if(redisService.getRefreshToken(request.userCode(),request.deviceCode()).equals(request.refreshToken())){
             Tokens tokens = jWTProvider.createToken(request.userCode(),request.role());
-            redisService.saveRefreshToken(request.userCode(),"test",tokens.refreshToken());
+            redisService.saveRefreshToken(request.userCode(),request.deviceCode(),tokens.refreshToken());
             return tokens;
         }
         else{
@@ -41,16 +49,15 @@ public class AuthService {
         }
     }
 
-    public void logoutUser(String userCode , HttpServletResponse response){
+    public void logoutUser(String userCode , HttpServletResponse response , String deviceCode){
+
+        redisService.deleteRefreshToken(userCode,deviceCode);
         ResponseCookie accessTokenCookie = CookieUtil.expiredCookie("accessToken");
         ResponseCookie refreshTokenCookie = CookieUtil.expiredCookie("refreshToken");
         response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
-        redisService.deleteRefreshToken(userCode,"test");
 
-    }
-    public Optional<Auth> getAuthByUserCode(String userCode){
-        return authRepository.findByUserCode(userCode);
+
     }
 
 }

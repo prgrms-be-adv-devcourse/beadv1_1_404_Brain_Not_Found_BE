@@ -1,10 +1,11 @@
 package com.ll.auth.controller;
-import com.ll.auth.model.vo.dto.RefreshTokenBody;
+import com.ll.auth.service.RedisService;
 import com.ll.auth.util.CookieUtil;
 import com.ll.core.model.response.BaseResponse;
 import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.request.TokenValidRequest;
 import com.ll.auth.service.AuthService;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -18,23 +19,26 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final RedisService redisService;
 
     @PostMapping
     public ResponseEntity<BaseResponse<Tokens>> refreshToken(
-            @RequestBody RefreshTokenBody request,
+            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            @CookieValue(name = "deviceCode", required = false) String deviceCode,
             @RequestHeader(value="X-User-Code") String userCode,
             @RequestHeader(value="X-Role") String role
     ){
-        TokenValidRequest validRequest = new TokenValidRequest(userCode,role, request.refreshToken());
+        TokenValidRequest validRequest = new TokenValidRequest(userCode,role,refreshToken,deviceCode);
         return BaseResponse.ok(authService.refreshToken(validRequest));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @RequestHeader(value="X-User-Code") String userCode,
+            @CookieValue(name ="deviceCode", required = false) String deviceCode,
             HttpServletResponse response
     ){
-        authService.logoutUser(userCode,response);
+        authService.logoutUser(userCode,response,deviceCode);
         return ResponseEntity.ok().build();
     }
 
@@ -48,6 +52,12 @@ public class AuthController {
         ResponseCookie refreshTokenCookie = CookieUtil.generateCookie("refreshToken","test",refreshTokenMaxAge);
         response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
+        Cookie deviceCodeCookie = new Cookie("deviceCode","test");
+        deviceCodeCookie.setPath("/");
+        response.addCookie(deviceCodeCookie);
+
+        //RefreshToken 저장
+        redisService.saveRefreshToken("test","test","test");
         return ResponseEntity.ok().build();
     }
     @GetMapping("/ping")

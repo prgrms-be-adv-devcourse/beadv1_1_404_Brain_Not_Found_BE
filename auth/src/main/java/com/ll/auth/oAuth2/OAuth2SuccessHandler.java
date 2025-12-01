@@ -1,13 +1,14 @@
 package com.ll.auth.oAuth2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.uuid.Generators;
 import com.ll.auth.model.vo.dto.Tokens;
-import com.ll.auth.service.AuthService;
 import com.ll.auth.service.RedisService;
 import com.ll.auth.util.CookieUtil;
 import com.ll.common.model.vo.request.UserLoginRequest;
 import com.ll.common.model.vo.response.UserLoginResponse;
 import com.ll.user.service.UserService;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -47,17 +48,23 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = tokens.accessToken().trim();
         String refreshToken = tokens.refreshToken().trim();
 
-        redisService.saveRefreshToken(user.code(),"test",refreshToken);
-
         int accessTokenMaxAge = 60 * 15; // 15분
         int refreshTokenMaxAge = 60 * 60 * 24 * 7; // 7일
 
+        // Cookie 생성
         ResponseCookie accessTokenCookie = CookieUtil.generateCookie("accessToken",accessToken,accessTokenMaxAge);
         ResponseCookie refreshTokenCookie = CookieUtil.generateCookie("refreshToken",refreshToken,refreshTokenMaxAge);
-
+        String deviceCode = getDeviceCode(request);
         response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
+        Cookie deviceCodeCookie = new Cookie("deviceCode",deviceCode);
+        deviceCodeCookie.setPath("/");
+        response.addCookie(deviceCodeCookie);
 
+        //RefreshToken 저장
+        redisService.saveRefreshToken(user.code(),deviceCode,refreshToken);
+
+        //User 정보 Client에 제공
         Map<String, Object> body = Map.of(
                 "user", Map.of(
                         "userCode", user.code(),
@@ -67,13 +74,25 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                         "socialProvider", user.socialProvider().name()
                 )
         );
-
         response.setContentType("application/json;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpServletResponse.SC_OK);
-
         String json = objectMapper.writeValueAsString(body);
         response.getWriter().write(json);
         response.getWriter().flush();
+    }
+
+
+    private String getDeviceCode(HttpServletRequest request) {
+
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("deviceCode".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return Generators.timeBasedEpochGenerator().generate().toString();
+
     }
 }
