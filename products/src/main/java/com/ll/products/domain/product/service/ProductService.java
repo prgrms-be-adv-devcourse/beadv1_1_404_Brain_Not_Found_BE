@@ -1,7 +1,12 @@
 package com.ll.products.domain.product.service;
 
+import com.ll.products.domain.product.exception.ImageUploadLimitException;
+import com.ll.products.domain.product.exception.ProductImageNotFoundException;
+import com.ll.products.domain.product.model.entity.ProductImage;
+import com.ll.products.domain.s3.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +41,12 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final UserClient userClient;
     private final ApplicationEventPublisher eventPublisher;
+    private final S3Service s3Service;
+
+    @Value("${cloud.aws.s3.base-url}")
+    private String s3BaseUrl;
+
+    private static final int MAX_IMAGE_COUNT = 5;
 
     // 1. 상품 생성
     public ProductResponse createProduct(ProductCreateRequest request, String sellerCode, String role) {
@@ -57,13 +68,13 @@ public class ProductService {
         Product savedProduct = productRepository.save(product);
         log.info("상품 생성 완료: {} (ID: {})", savedProduct.getName(), savedProduct.getId());
         eventPublisher.publishEvent(ProductEvent.created(this, savedProduct));
-        return ProductResponse.from(savedProduct);
+        return ProductResponse.from(savedProduct, s3BaseUrl);
     }
 
     // 2. 상품 상세조회(code 기반)
     public ProductResponse getProduct(String code) {
         Product product = getProductByCode(code);
-        return ProductResponse.from(product);
+        return ProductResponse.from(product, s3BaseUrl);
     }
 
     // 3. 상품 목록조회
@@ -75,7 +86,7 @@ public class ProductService {
             Pageable pageable
     ) {
         Page<Product> products = productRepository.searchProducts(sellerCode, categoryId, status, name, pageable);
-        return products.map(ProductListResponse::from);
+        return products.map(product -> ProductListResponse.from(product, s3BaseUrl));
     }
 
     // 4. 상품 삭제(soft delete)
@@ -83,6 +94,8 @@ public class ProductService {
     public void deleteProduct(String code, String userCode, String role) {
         Product product = getProductByCode(code);
         validateOwnership(product, userCode, role);
+        List<String> fileKeys = product.getImages().stream().map(ProductImage::getFileKey).toList();
+        deleteProductImagesFromS3(fileKeys);
         product.softDelete();
         log.info("상품 삭제 완료: {} (ID: {})", product.getName(), product.getId());
         eventPublisher.publishEvent(ProductEvent.deleted(this, product));
@@ -92,7 +105,10 @@ public class ProductService {
     @Transactional
     public ProductResponse updateProduct(String code, ProductUpdateRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
+        validateImageSize(request, product);
         validateOwnership(product, userCode, role);
+        deleteImages(request, product);
+        setImages(request.addImages(), product);
         product.updateBasicInfo(
                 request.name(),
                 request.description(),
@@ -101,10 +117,9 @@ public class ProductService {
         );
         Category category = getCategory(request.categoryId());
         product.updateCategory(category);
-        setImages(request.images(), product);
         log.info("상품 수정 완료: {} (ID: {})", product.getName(), product.getId());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
-        return ProductResponse.from(product);
+        return ProductResponse.from(product, s3BaseUrl);
     }
 
     // 6. 상품 상태변경
@@ -115,7 +130,7 @@ public class ProductService {
         product.updateStatus(request.status());
         log.info("상품 상태변경 완료: {} -> {} (ID: {})", product.getName(), request.status(), product.getId());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
-        return ProductResponse.from(product);
+        return ProductResponse.from(product, s3BaseUrl);
     }
 
     // 7. 재고 수정
@@ -147,10 +162,9 @@ public class ProductService {
         return sellerName != null ? sellerName : "알 수 없는 판매자";
     }
 
-    // 이미지 설정
+    // 이미지 추가
     private static void setImages(List<ProductImageDto> imageDtoList, Product product) {
-        product.deleteImages();
-        if (imageDtoList != null) {
+        if (imageDtoList != null && !imageDtoList.isEmpty()) {
             imageDtoList.forEach(imageDto ->
                     product.addImage(imageDto.toEntity())
             );
@@ -171,13 +185,60 @@ public class ProductService {
         }
     }
 
-    // 소유권 검증
+    // 상품 소유권 검증
     private void validateOwnership(Product product, String userCode, String role) {
         if ("ADMIN".equals(role)) {
             return;
         }
         if (!userCode.equals(product.getSellerCode())) {
             throw new ProductOwnershipException(null, product.getCode());
+        }
+    }
+
+    // 이미지 삭제
+    private void deleteImages(ProductUpdateRequest request, Product product) {
+        if (request.deleteImageKeys() != null && !request.deleteImageKeys().isEmpty()) {
+            List<ProductImage> imagesToDelete = product.getImages().stream()
+                    .filter(image -> request.deleteImageKeys().contains(image.getFileKey()))
+                    .toList();
+            validateImageOwnership(request, imagesToDelete);
+            deleteProductImagesFromS3(request.deleteImageKeys());
+            product.deleteImages(imagesToDelete);
+        }
+    }
+
+    // 이미지 소유권 검증
+    private static void validateImageOwnership(ProductUpdateRequest request, List<ProductImage> imagesToDelete) {
+        if (imagesToDelete.size() != request.deleteImageKeys().size()) {
+            List<String> existKeys = imagesToDelete.stream()
+                    .map(ProductImage::getFileKey)
+                    .toList();
+            List<String> invalidKeys = request.deleteImageKeys().stream()
+                    .filter(key -> !existKeys.contains(key))
+                    .toList();
+            throw new ProductImageNotFoundException(invalidKeys.get(0));
+        }
+    }
+
+    // S3에서 이미지 삭제
+    private void deleteProductImagesFromS3(List<String> fileKeys) {
+        if (fileKeys == null || fileKeys.isEmpty()) {
+            return;
+        }
+        fileKeys.forEach(fileKey -> {
+            try {
+                s3Service.deleteImage(fileKey);
+                log.info("S3 이미지 삭제 완료: {}", fileKey);
+            } catch (Exception e) {
+                log.warn("S3 이미지 삭제 실패: {}", fileKey, e);
+            }
+        });
+    }
+
+    // 이미지 수량 검증
+    private static void validateImageSize(ProductUpdateRequest request, Product product) {
+        if (product.getImages().size() - request.deleteImageKeys().size() + request.addImages().size() > MAX_IMAGE_COUNT) {
+            throw new ImageUploadLimitException(MAX_IMAGE_COUNT);
         }
     }
 }

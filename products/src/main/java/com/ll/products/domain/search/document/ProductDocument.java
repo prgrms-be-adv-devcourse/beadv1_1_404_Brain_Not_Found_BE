@@ -58,7 +58,7 @@ public class ProductDocument {
     private Boolean isDeleted;
 
     @Field(type = FieldType.Keyword)
-    private String mainImageUrl;
+    private String mainImageFileKey;
 
     @Field(type = FieldType.Date, format = {}, pattern = "uuuu-MM-dd'T'HH:mm:ss.SSSSSS||uuuu-MM-dd")
     private LocalDateTime createdAt;
@@ -67,10 +67,10 @@ public class ProductDocument {
     private LocalDateTime updatedAt;
 
     public static ProductDocument from(Product product) {
-        String mainImageUrl = product.getImages().stream()
+        String mainImageFileKey = product.getImages().stream()
                 .filter(image -> image.getIsMain())
                 .findFirst()
-                .map(image -> image.getUrl())
+                .map(image -> image.getFileKey())
                 .orElse(null);
 
         return ProductDocument.builder()
@@ -86,7 +86,7 @@ public class ProductDocument {
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                 .status(product.getStatus().name())
                 .isDeleted(product.getIsDeleted())
-                .mainImageUrl(mainImageUrl)
+                .mainImageFileKey(mainImageFileKey)
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .build();

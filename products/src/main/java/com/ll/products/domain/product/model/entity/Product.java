@@ -93,8 +93,8 @@ public class Product extends BaseEntity {
         image.updateProduct(this);
     }
 
-    public void deleteImages() {
-        this.images.clear();
+    public void deleteImages(List<ProductImage> imagesToDelete) {
+        this.images.removeAll(imagesToDelete);
     }
 
     private void validateUpdateQuantity(Integer quantity) {
