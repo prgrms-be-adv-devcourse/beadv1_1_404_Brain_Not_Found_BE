@@ -1,5 +1,8 @@
 package com.ll.products.domain.product.service;
 
+import com.ll.products.domain.product.exception.ImageUploadLimitException;
+import com.ll.products.domain.product.exception.ProductImageNotFoundException;
+import com.ll.products.domain.product.model.entity.ProductImage;
 import com.ll.products.domain.s3.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +45,8 @@ public class ProductService {
 
     @Value("${cloud.aws.s3.base-url}")
     private String s3BaseUrl;
+
+    private static final int MAX_IMAGE_COUNT = 5;
 
     // 1. 상품 생성
     public ProductResponse createProduct(ProductCreateRequest request, String sellerCode, String role) {
@@ -89,7 +94,8 @@ public class ProductService {
     public void deleteProduct(String code, String userCode, String role) {
         Product product = getProductByCode(code);
         validateOwnership(product, userCode, role);
-        deleteProductImagesFromS3(product);
+        List<String> fileKeys = product.getImages().stream().map(ProductImage::getFileKey).toList();
+        deleteProductImagesFromS3(fileKeys);
         product.softDelete();
         log.info("상품 삭제 완료: {} (ID: {})", product.getName(), product.getId());
         eventPublisher.publishEvent(ProductEvent.deleted(this, product));
@@ -100,10 +106,8 @@ public class ProductService {
     public ProductResponse updateProduct(String code, ProductUpdateRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
         validateOwnership(product, userCode, role);
-        if (request.images() != null) {
-            deleteProductImagesFromS3(product);
-            setImages(request.images(), product);
-        }
+        deleteImages(request, product);
+        setImages(request.addImages(), product);
         product.updateBasicInfo(
                 request.name(),
                 request.description(),
@@ -157,10 +161,12 @@ public class ProductService {
         return sellerName != null ? sellerName : "알 수 없는 판매자";
     }
 
-    // 이미지 설정
+    // 이미지 추가
     private static void setImages(List<ProductImageDto> imageDtoList, Product product) {
-        product.deleteImages();
-        if (imageDtoList != null) {
+        if (imageDtoList != null && !imageDtoList.isEmpty()) {
+            if (product.getImages().size() + imageDtoList.size() > MAX_IMAGE_COUNT) {
+                throw new ImageUploadLimitException(MAX_IMAGE_COUNT);
+            }
             imageDtoList.forEach(imageDto ->
                     product.addImage(imageDto.toEntity())
             );
@@ -181,7 +187,7 @@ public class ProductService {
         }
     }
 
-    // 소유권 검증
+    // 상품 소유권 검증
     private void validateOwnership(Product product, String userCode, String role) {
         if ("ADMIN".equals(role)) {
             return;
@@ -191,17 +197,42 @@ public class ProductService {
         }
     }
 
+    // 이미지 삭제
+    private void deleteImages(ProductUpdateRequest request, Product product) {
+        if (request.deleteImageKeys() != null && !request.deleteImageKeys().isEmpty()) {
+            List<ProductImage> imagesToDelete = product.getImages().stream()
+                    .filter(image -> request.deleteImageKeys().contains(image.getFileKey()))
+                    .toList();
+            validateImageOwnership(request, imagesToDelete);
+            deleteProductImagesFromS3(request.deleteImageKeys());
+            product.deleteImages(imagesToDelete);
+        }
+    }
+
+    // 이미지 소유권 검증
+    private static void validateImageOwnership(ProductUpdateRequest request, List<ProductImage> imagesToDelete) {
+        if (imagesToDelete.size() != request.deleteImageKeys().size()) {
+            List<String> existKeys = imagesToDelete.stream()
+                    .map(ProductImage::getFileKey)
+                    .toList();
+            List<String> invalidKeys = request.deleteImageKeys().stream()
+                    .filter(key -> !existKeys.contains(key))
+                    .toList();
+            throw new ProductImageNotFoundException(invalidKeys.get(0));
+        }
+    }
+
     // S3에서 이미지 삭제
-    private void deleteProductImagesFromS3(Product product) {
-        if (product.getImages() == null || product.getImages().isEmpty()) {
+    private void deleteProductImagesFromS3(List<String> fileKeys) {
+        if (fileKeys == null || fileKeys.isEmpty()) {
             return;
         }
-        product.getImages().forEach(image -> {
+        fileKeys.forEach(fileKey -> {
             try {
-                s3Service.deleteImage(image.getFileKey());
-                log.info("S3 이미지 삭제 완료: {}", image.getFileKey());
+                s3Service.deleteImage(fileKey);
+                log.info("S3 이미지 삭제 완료: {}", fileKey);
             } catch (Exception e) {
-                log.warn("S3 이미지 삭제 실패: {}", image.getFileKey(), e);
+                log.warn("S3 이미지 삭제 실패: {}", fileKey, e);
             }
         });
     }
