@@ -18,11 +18,11 @@ public record ProductListResponse(
         String mainImageUrl,
         LocalDateTime createdAt
 ) {
-    public static ProductListResponse from(Product product) {
+    public static ProductListResponse from(Product product, String s3BaseUrl) {
         String mainImageUrl = product.getImages().stream()
                 .filter(image -> image.getIsMain())
                 .findFirst()
-                .map(image -> image.getUrl())
+                .map(image -> image.getUrl(s3BaseUrl))
                 .orElse(null);
 
         return ProductListResponse.builder()

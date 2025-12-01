@@ -23,7 +23,10 @@ public record ProductUpdateRequest(
         Integer price,
 
         @Valid
-        @Size(max=5)
-        List<ProductImageDto> images
+        @Size(max = 5)
+        List<ProductImageDto> addImages,
+
+        List<String> deleteImageKeys
+
 ) {
 }

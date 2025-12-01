@@ -3,9 +3,9 @@ spring:
   # 로컬에서는 3306으로 사용하셔야 할 것 같습니다. 아마 호남님이 안켜졌던 문제가 각자 로컬에서 3306을 쓰는데 3311로 접속하려고 해서 그런것 아닌가 싶습니다.
   datasource:
 #    url: jdbc:mysql://localhost:3311/product_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
-    url: jdbc:mysql://localhost:3306/product_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
-    username: ${DB_USER_PRODUCT}
-    password: ${DB_PASSWORD_PRODUCT}
+    url: jdbc:mysql://localhost:3306/products?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
 
   # JPA 설정
   jpa:
@@ -46,3 +46,17 @@ api:
   user:
     base-url: http://localhost:8083
 #    base-url: http://localhost:8080
+
+# AWS S3 설정
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET}
+      base-url: https://${AWS_S3_BUCKET}.s3.${AWS_REGION:ap-northeast-2}.amazonaws.com
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    region:
+      static: ${AWS_REGION:ap-northeast-2}
+    stack:
+      auto: false
