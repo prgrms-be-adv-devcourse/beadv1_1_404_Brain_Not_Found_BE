@@ -46,7 +46,8 @@ custom:
   batch:
     chunk:
       size: 500
-
+    skip:
+      limit: 10
 
 eureka:
   client:
