@@ -92,6 +92,9 @@ public class OrderServiceImpl implements OrderService {
         Order savedOrder = creationResult.order();
         List<OrderItem> orderItems = creationResult.orderItems();
 
+        // 재고 차감 (주문 생성 후, 결제 전)
+        updateProductInventory(savedOrder, orderItems, userInfo.code());
+
         // 결제 처리 (별도 트랜잭션)
         if (request.paidType() == PaidType.DEPOSIT) {
             processDepositPayment(savedOrder, orderItems, request);
@@ -182,8 +185,6 @@ public class OrderServiceImpl implements OrderService {
         try {
             paymentApiClient.requestDepositPayment(orderPaymentRequest);
 
-            updateProductInventory(order, orderItems, order.getBuyerCode());
-
             order.changeStatus(OrderStatus.COMPLETED);
             orderJpaRepository.save(order);
 
@@ -233,10 +234,15 @@ public class OrderServiceImpl implements OrderService {
     public OrderCreateResponse createDirectOrder(OrderDirectRequest request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
 
+        // 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
+        validateDirectOrderInventoryAvailability(request);
+
         // 주문 및 주문 상품 생성 (독립 트랜잭션 - 항상 커밋)
         OrderCreationResult creationResult = createDirectOrderWithItem(request, userInfo);
         Order savedOrder = creationResult.order();
         List<OrderItem> orderItems = creationResult.orderItems();
+
+        updateProductInventory(savedOrder, orderItems, userInfo.code());
 
         // 결제 처리 (별도 트랜잭션)
         if (request.paidType() == PaidType.DEPOSIT) {
@@ -287,7 +293,6 @@ public class OrderServiceImpl implements OrderService {
         );
         orderItemJpaRepository.save(orderItem);
 
-        // 주문 생성 이력 저장
         OrderHistoryEntity orderHistory = OrderHistoryEntity.create(
                 savedOrder,
                 List.of(orderItem),
@@ -335,8 +340,6 @@ public class OrderServiceImpl implements OrderService {
                     "SYSTEM"
             );
             orderHistoryJpaRepository.save(successHistory);
-
-            updateProductInventory(order, orderItems, order.getBuyerCode());
 
             log.info("예치금 결제 완료 - orderCode: {}, amount: {}",
                     order.getCode(), order.getTotalPrice());
@@ -444,9 +447,6 @@ public class OrderServiceImpl implements OrderService {
                     "SYSTEM"
             );
             orderHistoryJpaRepository.save(successHistory);
-
-            // 결제 성공 후 이벤트 발행
-            updateProductInventory(order, orderItems, order.getBuyerCode());
 
         } catch (Exception e) {
             order.changeStatus(OrderStatus.FAILED);
@@ -600,10 +600,6 @@ public class OrderServiceImpl implements OrderService {
         return cartInfo;
     }
 
-    /**
-     * 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
-     * 목적: 빠른 실패 (Fast Fail) - 명확히 재고 부족한 경우 조기 차단
-     */
     private void validateInventoryAvailability(OrderCartItemRequest request) {
         CartItemsResponse cartInfo = getCartInfo(request.cartCode());
         
@@ -626,6 +622,24 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    private void validateDirectOrderInventoryAvailability(OrderDirectRequest request) {
+        ProductResponse productInfo = getProductInfo(request.productCode());
+        
+        // 재고 부족 체크
+        if (productInfo.quantity() < request.quantity()) {
+            log.warn("재고가 부족합니다. productCode: {}, 요청 수량: {}, 재고: {}",
+                    request.productCode(), request.quantity(), productInfo.quantity());
+            throw new BaseException(OrderErrorCode.INSUFFICIENT_INVENTORY);
+        }
+        
+        // 판매 중인지 체크
+        if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
+            log.warn("판매 중이 아닌 상품입니다. productCode: {}, status: {}",
+                    request.productCode(), productInfo.status());
+            throw new BaseException(OrderErrorCode.PRODUCT_NOT_ON_SALE);
+        }
+    }
+
     private Order findOrderByCode(String orderCode) {
         return Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
                 .orElseThrow(() -> {
@@ -636,6 +650,8 @@ public class OrderServiceImpl implements OrderService {
 
     // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 (동기 API 호출)
     private void updateProductInventory(Order order, List<OrderItem> orderItems, String buyerCode) {
+        List<String> failedProducts = new ArrayList<>();
+        
         for (OrderItem orderItem : orderItems) {
             OrderEvent orderEvent = OrderEvent.of(
                     buyerCode,
@@ -655,9 +671,14 @@ public class OrderServiceImpl implements OrderService {
             } catch (Exception e) {
                 log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}", 
                         orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
-                // 재고 차감 실패 시에도 주문은 완료 상태이므로 예외를 던지지 않고 로그만 남김
-                // 필요 시 보상 트랜잭션 로직 추가 가능
+                failedProducts.add(orderItem.getProductCode());
             }
+        }
+        
+        // 모든 재고 차감 실패 시 예외 던지기
+        if (!failedProducts.isEmpty()) {
+            log.error("재고 차감 실패 - orderCode: {}, failedProducts: {}", order.getCode(), failedProducts);
+            throw new BaseException(OrderErrorCode.INVENTORY_DEDUCTION_FAILED);
         }
     }
 
