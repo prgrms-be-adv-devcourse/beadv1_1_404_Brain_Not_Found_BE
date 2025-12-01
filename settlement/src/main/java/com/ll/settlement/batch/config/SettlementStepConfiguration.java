@@ -1,9 +1,9 @@
 package com.ll.settlement.batch.config;
 
+import com.ll.core.model.exception.BaseException;
 import com.ll.settlement.batch.listener.SettlementBatchStepLogger;
 import com.ll.settlement.batch.proccessor.SettlementProcessor;
 import com.ll.settlement.model.entity.Settlement;
-import com.ll.settlement.model.exception.SkippableItemException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
@@ -41,7 +41,7 @@ public class SettlementStepConfiguration {
                 .writer(settlementWriter)
                 .listener(logger)
                 .faultTolerant()
-                .skip(SkippableItemException.class)
+                .skip(BaseException.class)
                 .skipLimit(RETRY_LIMIT)
                 .build();
     }
