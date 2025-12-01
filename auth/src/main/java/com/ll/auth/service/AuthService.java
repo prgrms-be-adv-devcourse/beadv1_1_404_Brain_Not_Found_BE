@@ -52,10 +52,10 @@ public class AuthService {
         redisService.deleteRefreshToken(userCode,deviceCode);
         ResponseCookie accessTokenCookie = CookieUtil.expiredCookie("accessToken");
         ResponseCookie refreshTokenCookie = CookieUtil.expiredCookie("refreshToken");
+        ResponseCookie deviceCodeCookie =  CookieUtil.expiredCookie("deviceCode");
         response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
-
-
+        response.addHeader(HttpHeaders.SET_COOKIE,deviceCodeCookie.toString());
     }
 
 }
