@@ -26,6 +26,7 @@ public class InventoryEventConsumer {
     @KafkaListener(topics = "inventory-event", groupId = "product-service")
     public void handleInventoryEvent(KafkaEventEnvelope<InventoryEvent> event) {
         InventoryEvent inventoryEvent = event.payload();
+
         InventoryEventType eventType = inventoryEvent.eventType();
         String productCode = inventoryEvent.productCode();
         String referenceCode = inventoryEvent.referenceCode();
@@ -36,13 +37,15 @@ public class InventoryEventConsumer {
 
         try {
             if (eventType == InventoryEventType.STOCK_DECREMENT) {
-                // 재고 차감: quantity를 음수로 전달
-                productService.updateInventory(productCode, -quantity);
-                log.info("재고 차감 완료 - productCode: {}, quantity: {}", productCode, quantity);
+                // 재고 차감: quantity를 음수로 전달, referenceCode도 함께 전달 (중복 방지)
+                productService.updateInventory(productCode, -quantity, referenceCode);
+                log.info("재고 차감 완료 - productCode: {}, quantity: {}, referenceCode: {}", 
+                        productCode, quantity, referenceCode);
             } else if (eventType == InventoryEventType.STOCK_ROLLBACK) {
-                // 재고 복구: quantity를 양수로 전달
-                productService.updateInventory(productCode, quantity);
-                log.info("재고 복구 완료 - productCode: {}, quantity: {}", productCode, quantity);
+                // 재고 복구: quantity를 양수로 전달, referenceCode도 함께 전달 (중복 방지)
+                productService.updateInventory(productCode, quantity, referenceCode);
+                log.info("재고 복구 완료 - productCode: {}, quantity: {}, referenceCode: {}", 
+                        productCode, quantity, referenceCode);
             } else {
                 log.warn("알 수 없는 재고 이벤트 타입 - eventType: {}, productCode: {}", eventType, productCode);
             }
