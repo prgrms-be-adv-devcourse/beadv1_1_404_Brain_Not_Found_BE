@@ -35,8 +35,8 @@ custom:
   batch:
     chunk:
       size: 500
-    retry:
-      limit: 100
+    skip:
+      limit: 10
 eureka:
   client:
     register-with-eureka: true

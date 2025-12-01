@@ -21,7 +21,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 public class SettlementStepConfiguration {
     @Value("${custom.batch.chunk.size:500}")
     private Integer CHUNK_SIZE;
-    @Value("${custom.batch.retry.limit:100}")
+    @Value("${custom.batch.skip.limit:10}")
     private Integer RETRY_LIMIT;
 
     @Bean
