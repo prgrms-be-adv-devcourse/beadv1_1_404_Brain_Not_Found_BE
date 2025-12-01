@@ -28,14 +28,14 @@ public class RedisService {
 
     public void deleteRefreshToken(String userCode, String deviceCode) {
         if(!redisTemplate.hasKey(generateCode(userCode,deviceCode))) {
-            throw new TokenNotFoundException();
+            return;
         }
         redisTemplate.delete(generateCode(userCode,deviceCode));
     }
 
     private String generateCode(String userCode,String deviceCode){
 
-        return userCode + ":" +deviceCode;
+        return "refresh" + userCode + ":" +deviceCode;
     }
 }
 
