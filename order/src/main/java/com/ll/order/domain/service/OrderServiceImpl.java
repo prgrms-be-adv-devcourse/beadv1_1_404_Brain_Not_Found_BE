@@ -13,6 +13,7 @@ import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
 import com.ll.order.domain.model.enums.product.ProductStatus;
+import com.ll.order.domain.model.vo.InventoryDeduction;
 import com.ll.order.domain.model.vo.request.*;
 import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
@@ -202,6 +203,8 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(successHistory);
 
+            // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
+            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
             log.info("예치금 결제 완료 - orderCode: {}, amount: {}",
                     order.getCode(), order.getTotalPrice());
@@ -341,6 +344,9 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(successHistory);
 
+            // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
+            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
+
             log.info("예치금 결제 완료 - orderCode: {}, amount: {}",
                     order.getCode(), order.getTotalPrice());
         } catch (Exception e) {
@@ -448,6 +454,9 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(successHistory);
 
+            // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
+            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
+
         } catch (Exception e) {
             order.changeStatus(OrderStatus.FAILED);
             orderJpaRepository.save(order);
@@ -466,6 +475,9 @@ public class OrderServiceImpl implements OrderService {
                     "SYSTEM"
             );
             orderHistoryJpaRepository.save(failHistory);
+
+            // 결제 실패 시 재고 롤백 (재고 차감이 주문 생성 시점에 이루어졌기 때문)
+            rollbackInventoryForOrder(orderItems);
 
             log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderCode, paymentKey, e.getMessage(), e);
             throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
@@ -648,10 +660,72 @@ public class OrderServiceImpl implements OrderService {
                 });
     }
 
-    // 주문 완료 후 이벤트 발행 - 정산 이벤트 (order-event) - 재고 감소 (동기 API 호출)
+    // 재고 감소 (동기 API 호출)
     private void updateProductInventory(Order order, List<OrderItem> orderItems, String buyerCode) {
         List<String> failedProducts = new ArrayList<>();
+        List<InventoryDeduction> successfulDeductions = new ArrayList<>();
         
+        for (OrderItem orderItem : orderItems) {
+            // 재고 감소 (동기 API 호출) <- 비관적 락 적용 시점
+            try {
+                productServiceClient.decreaseInventory(orderItem.getProductCode(), orderItem.getQuantity());
+                log.info("재고 차감 완료 - productCode: {}, quantity: {}", 
+                        orderItem.getProductCode(), orderItem.getQuantity());
+                // 성공한 재고 차감 정보 저장 (롤백용)
+                successfulDeductions.add(new InventoryDeduction(
+                        orderItem.getProductCode(),
+                        orderItem.getQuantity()
+                ));
+            } catch (Exception e) {
+                log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}", 
+                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
+                failedProducts.add(orderItem.getProductCode());
+            }
+        }
+        
+        // 재고 차감 실패 시 성공한 재고 차감 롤백
+        if (!failedProducts.isEmpty()) {
+            log.error("재고 차감 실패 - orderCode: {}, failedProducts: {}", order.getCode(), failedProducts);
+            
+            // 성공한 재고 차감 롤백
+            if (!successfulDeductions.isEmpty()) {
+                rollbackInventory(successfulDeductions);
+            }
+            
+            throw new BaseException(OrderErrorCode.INVENTORY_DEDUCTION_FAILED);
+        }
+    }
+
+    // 재고 롤백 (명시적 롤백 - 각 재고 차감이 별도 트랜잭션으로 커밋되었기 때문)
+    private void rollbackInventory(List<InventoryDeduction> successfulDeductions) {
+        log.warn("재고 차감 실패로 인한 재고 롤백 시작 - 롤백 대상: {}개", successfulDeductions.size());
+        
+        for (InventoryDeduction deduction : successfulDeductions) {
+            try {
+                productServiceClient.restoreInventory(deduction.productCode(), deduction.quantity());
+                log.info("재고 롤백 완료 - productCode: {}, quantity: {}", 
+                        deduction.productCode(), deduction.quantity());
+            } catch (Exception e) {
+                log.error("재고 롤백 실패 - productCode: {}, quantity: {}, error: {}", 
+                        deduction.productCode(), deduction.quantity(), e.getMessage(), e);
+                // 롤백 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
+            }
+        }
+    }
+
+    // 주문의 재고 롤백 (결제 실패 시 사용)
+    private void rollbackInventoryForOrder(List<OrderItem> orderItems) {
+        log.warn("결제 실패로 인한 재고 롤백 시작 - orderItems: {}개", orderItems.size());
+        
+        List<InventoryDeduction> deductions = orderItems.stream()
+                .map(item -> new InventoryDeduction(item.getProductCode(), item.getQuantity()))
+                .toList();
+        
+        rollbackInventory(deductions);
+    }
+
+    // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때만)
+    private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             OrderEvent orderEvent = OrderEvent.of(
                     buyerCode,
@@ -661,24 +735,7 @@ public class OrderServiceImpl implements OrderService {
                     (long) orderItem.getPrice() * orderItem.getQuantity()
             );
             orderEventProducer.sendOrder(orderEvent);
-            log.info("주문 이벤트 send - orderCode: {}, orderItemCode: {}", order.getCode(), orderItem.getCode());
-
-            // 재고 감소 (동기 API 호출)
-            try {
-                productServiceClient.decreaseInventory(orderItem.getProductCode(), orderItem.getQuantity());
-                log.info("재고 차감 완료 - productCode: {}, quantity: {}", 
-                        orderItem.getProductCode(), orderItem.getQuantity());
-            } catch (Exception e) {
-                log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}", 
-                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
-                failedProducts.add(orderItem.getProductCode());
-            }
-        }
-        
-        // 모든 재고 차감 실패 시 예외 던지기
-        if (!failedProducts.isEmpty()) {
-            log.error("재고 차감 실패 - orderCode: {}, failedProducts: {}", order.getCode(), failedProducts);
-            throw new BaseException(OrderErrorCode.INVENTORY_DEDUCTION_FAILED);
+            log.info("주문 완료 이벤트 발행 - orderCode: {}, orderItemCode: {}", order.getCode(), orderItem.getCode());
         }
     }
 

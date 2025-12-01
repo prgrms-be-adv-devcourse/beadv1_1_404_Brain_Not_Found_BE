@@ -38,7 +38,7 @@ public class ProductServiceClient {
         log.info("재고 복구 요청 - productCode: {}, quantity: {}", productCode, quantity);
          restClient.patch()
                  .uri(productServiceUrl + "/api/products/{productCode}/inventory/restore", productCode)
-                 .body(Map.of("quantity", quantity))
+                 .body(Map.of("quantity", quantity)) // 양수니까 재고 증가 ( == 복구 )
                  .retrieve()
                  .toBodilessEntity();
     }
