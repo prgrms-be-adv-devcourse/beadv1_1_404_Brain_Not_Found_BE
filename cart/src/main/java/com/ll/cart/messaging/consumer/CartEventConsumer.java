@@ -1,5 +1,6 @@
 package com.ll.cart.messaging.consumer;
 
+import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
 import com.ll.core.model.vo.kafka.UserCreateEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,19 +13,17 @@ import org.springframework.stereotype.Component;
 public class CartEventConsumer {
 
     @KafkaListener(topics = "user-create-event", groupId = "cart-service")
-    public void handleUserCreateEvent(UserCreateEvent event) {
-        if ( !event.eventType().toString().equals("CART_CREATE") ) {
+    public void handleUserCreateEvent(KafkaEventEnvelope<UserCreateEvent> event) {
+        if ( !event.payload().eventType().toString().equals("CART_CREATE") ) {
             return;
         }
-        log.info("[UserCreate][Cart Module] Received UserCreate from User service : {}", event);
     }
 
     @KafkaListener(topics = "user-create-event.dlq", groupId = "cart-service")
-    public void handleUserCreateDLQ(UserCreateEvent event) {
-        if ( !event.eventType().toString().equals("CART_CREATE") ) {
+    public void handleUserCreateDLQ(KafkaEventEnvelope<UserCreateEvent> event) {
+        if ( !event.payload().eventType().toString().equals("CART_CREATE") ) {
             return;
         }
-        log.error("[UserCreate][Cart Module] Received message in DLQ for UserCode {}", event.userCode());
     }
 
 }

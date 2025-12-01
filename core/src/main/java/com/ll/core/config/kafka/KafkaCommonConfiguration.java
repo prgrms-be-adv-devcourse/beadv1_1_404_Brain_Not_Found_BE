@@ -64,7 +64,7 @@ public class KafkaCommonConfiguration {
     public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> config = new HashMap<>(properties.buildConsumerProperties());
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class); // Key 에 대한 Deserializer 설정
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, EnvelopDeserializer.class); // Value 에 대한 Deserializer 설정+
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, EnvelopeDeserializer.class); // Value 에 대한 Deserializer 설정+
         config.put(JsonDeserializer.TRUSTED_PACKAGES, "*"); // 모든 패키지 신뢰 설정
         return new DefaultKafkaConsumerFactory<>(config);
     }
@@ -78,6 +78,7 @@ public class KafkaCommonConfiguration {
                 kafkaTemplate,
                 (record, ex) -> {
                     // Todo : DLQ 토픽 발생시 Slack Kafka DLQ Alert 구현 고려
+                    log.info("DLQ Error 원인 : {}", ex.getCause().getMessage());
                     return new TopicPartition(record.topic() + ".dlq", record.partition());
                 }
         );

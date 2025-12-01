@@ -1,6 +1,8 @@
 package com.ll.core.model.vo.kafka;
 
 
+import jakarta.validation.Valid;
+
 import java.util.UUID;
 
 public record KafkaEventEnvelope<T>(
@@ -11,6 +13,7 @@ public record KafkaEventEnvelope<T>(
         String producerService,  // 서비스 이름
         String correlationId,    // 트레이싱 ID
         String payloadType,      // 페이로드 타입
+        @Valid
         T payload                // 실제 비즈니스 데이터
 ) {
 
