@@ -28,12 +28,6 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @GetMapping("/ping")
-    public ResponseEntity<BaseResponse<String>> pong() {
-        System.out.println("ProductController.pong");
-        return BaseResponse.ok("Ok");
-    }
-
     // 1. 상품 생성
     @PostMapping
     public ResponseEntity<BaseResponse<ProductResponse>> createProduct(

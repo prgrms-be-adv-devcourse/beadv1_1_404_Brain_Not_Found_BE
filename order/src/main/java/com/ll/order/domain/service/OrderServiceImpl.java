@@ -169,10 +169,6 @@ public class OrderServiceImpl implements OrderService {
         return new OrderCreationResult(savedOrder, orderItems);
     }
 
-    /**
-     * 예치금 결제 처리 (별도 트랜잭션)
-     * 실패해도 주문에는 영향 없음 (주문은 이미 커밋됨)
-     */
     @Override
     @Transactional
     public void processDepositPayment(Order order, List<OrderItem> orderItems, OrderCartItemRequest request) {

@@ -30,6 +30,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class ProductService {
+    // TODO : 모든 재고 차감 성공 확인 / 차감 실패 시 결제 취소 / 재고 차감 성공 "후" 주문 완료 <- 이 부분 처리 필요
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
