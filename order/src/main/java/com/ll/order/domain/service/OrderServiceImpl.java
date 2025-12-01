@@ -703,16 +703,17 @@ public class OrderServiceImpl implements OrderService {
     }
 
     // 재고 롤백 (명시적 롤백 - 각 재고 차감이 별도 트랜잭션으로 커밋되었기 때문)
+    // Kafka 이벤트로 발행하여 비동기 처리
     private void rollbackInventory(List<InventoryDeduction> successfulDeductions) {
         log.warn("재고 차감 실패로 인한 재고 롤백 시작 - 롤백 대상: {}개", successfulDeductions.size());
         
         for (InventoryDeduction deduction : successfulDeductions) {
             try {
-                productServiceClient.restoreInventory(deduction.productCode(), deduction.quantity());
-                log.info("재고 롤백 완료 - productCode: {}, quantity: {}", 
+                orderEventProducer.sendInventoryRollback(deduction.productCode(), deduction.quantity());
+                log.info("재고 롤백 이벤트 발행 완료 - productCode: {}, quantity: {}", 
                         deduction.productCode(), deduction.quantity());
             } catch (Exception e) {
-                log.error("재고 롤백 실패 - productCode: {}, quantity: {}, error: {}", 
+                log.error("재고 롤백 이벤트 발행 실패 - productCode: {}, quantity: {}, error: {}", 
                         deduction.productCode(), deduction.quantity(), e.getMessage(), e);
                 // 롤백 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
             }
