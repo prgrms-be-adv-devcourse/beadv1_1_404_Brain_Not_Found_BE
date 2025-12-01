@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
 public record SettlementEvent(
-        @NotNull
+        @NotNull(message = "settlementId 는 필수입력값입니다.")
         Long settlementId,
         @NotBlank(message = "SelleCode 는 공백이거나 null일 수 없습니다.")
         String sellerCode,

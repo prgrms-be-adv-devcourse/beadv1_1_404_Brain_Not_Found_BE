@@ -1,5 +1,6 @@
 package com.ll.deposit.messaging.consumer;
 
+import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import com.ll.core.model.vo.kafka.UserCreateEvent;
 import com.ll.deposit.model.vo.request.DepositTransactionRequest;
@@ -20,26 +21,23 @@ public class DepositEventConsumer {
     private final DepositService depositService;
 
     @KafkaListener(topics = "user-create-event", groupId = "deposit-service")
-    public void handleUserCreateEvent(UserCreateEvent event) {
-        if ( !event.eventType().toString().equals("DEPOSIT_CREATE") ) {
+    public void handleUserCreateEvent(KafkaEventEnvelope<UserCreateEvent> event) {
+        if ( !event.payload().eventType().toString().equals("DEPOSIT_CREATE") ) {
             return;
         }
-        log.info("[UserCreate][Deposit Module] Received UserCreate from User service : {}", event);
-        depositService.createDeposit(event.userCode());
+        depositService.createDeposit(event.payload().userCode());
     }
 
     @KafkaListener(topics = "user-create-event.dlq", groupId = "deposit-service")
-    public void handleUserCreateDLQ(UserCreateEvent event) {
-        if ( !event.eventType().toString().equals("DEPOSIT_CREATE") ) {
+    public void handleUserCreateDLQ(KafkaEventEnvelope<UserCreateEvent> event) {
+        if ( !event.payload().eventType().toString().equals("DEPOSIT_CREATE") ) {
             return;
         }
-        log.error("[UserCreate][Deposit Module] Received message in DLQ for UserCode {}", event.userCode());
     }
 
     @KafkaListener(topics = "settlement-event", groupId = "deposit-service")
-    public void handleSettlementEvent(@Valid SettlementEvent event) {
-        log.info("[Settlement][Deposit Module] Received SettlementEvent from Settlement service : {}", event);
-        depositService.chargeDeposit(event.sellerCode(), DepositTransactionRequest.of(event.amount(), settlementCompleteReferenceFormatter.apply(event)));
+    public void handleSettlementEvent(@Valid KafkaEventEnvelope<SettlementEvent> event) {
+        depositService.chargeDeposit(event.payload().sellerCode(), DepositTransactionRequest.of(event.payload().amount(), settlementCompleteReferenceFormatter.apply(event.payload())));
     }
 
     private final Function<SettlementEvent, String> settlementCompleteReferenceFormatter =
