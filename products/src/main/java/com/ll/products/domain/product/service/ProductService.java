@@ -121,7 +121,6 @@ public class ProductService {
     // 7. 재고 수정
     @Transactional
     public void updateInventory(String code, Integer quantity) {
-        // 비관적 락으로 상품 조회 (재고 차감 시 Race Condition 방지)
         Product product = productRepository.findByCodeWithLock(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
         

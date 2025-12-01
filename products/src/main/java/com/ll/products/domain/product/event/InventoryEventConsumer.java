@@ -1,13 +1,19 @@
-package com.ll.products.messaging.consumer;
+package com.ll.products.domain.product.event;
 
 import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
 import com.ll.core.model.vo.kafka.InventoryEvent;
 import com.ll.core.model.vo.kafka.enums.InventoryEventType;
+import com.ll.products.domain.product.model.entity.DlqStatus;
+import com.ll.products.domain.product.model.entity.InventoryDlqEvent;
+import com.ll.products.domain.product.repository.InventoryDlqEventRepository;
 import com.ll.products.domain.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Slf4j
 @Component
@@ -15,6 +21,7 @@ import org.springframework.stereotype.Component;
 public class InventoryEventConsumer {
 
     private final ProductService productService;
+    private final InventoryDlqEventRepository inventoryDlqEventRepository;
 
     @KafkaListener(topics = "inventory-event", groupId = "product-service")
     public void handleInventoryEvent(KafkaEventEnvelope<InventoryEvent> event) {
@@ -47,12 +54,32 @@ public class InventoryEventConsumer {
     }
 
     @KafkaListener(topics = "inventory-event.dlq", groupId = "product-service")
+    @Transactional
     public void handleInventoryDLQ(KafkaEventEnvelope<InventoryEvent> event) {
         InventoryEvent inventoryEvent = event.payload();
+        
         log.error("재고 이벤트 DLQ 수신 - eventType: {}, productCode: {}, quantity: {}, referenceCode: {}. 수동 처리 필요", 
                 inventoryEvent.eventType(), inventoryEvent.productCode(), 
                 inventoryEvent.quantity(), inventoryEvent.referenceCode());
-        // TODO: DLQ 처리 로직 추가 (알림, 모니터링 등)
+        
+        // DLQ 이벤트 저장 (수동 처리 가능하도록)
+        InventoryDlqEvent dlqEvent = InventoryDlqEvent.builder()
+                .productCode(inventoryEvent.productCode())
+                .quantity(inventoryEvent.quantity())
+                .eventType(inventoryEvent.eventType())
+                .referenceCode(inventoryEvent.referenceCode())
+                .retryCount(5) // 이미 5번 재시도했음
+                .status(DlqStatus.PENDING) // 수동 처리 대기
+                .failedAt(LocalDateTime.now())
+                .build();
+        
+        inventoryDlqEventRepository.save(dlqEvent);
+        
+        log.info("DLQ 이벤트 저장 완료 - id: {}, productCode: {}, referenceCode: {}", 
+                dlqEvent.getId(), dlqEvent.getProductCode(), dlqEvent.getReferenceCode());
+        
+        // TODO: 알림 발송 (Slack, Email 등)
+        // TODO: 모니터링 메트릭 전송
     }
 }
 

@@ -557,7 +557,7 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 2. 환불 이벤트 발행 (비동기) + 재고 복구 요청
+        // 2. 환불 이벤트 발행 (비동기) + 재고 복구 이벤트 발행 (비동기)
         for (OrderItem orderItem : orderItems) {
             if (buyerCode != null) {
                 RefundEvent refundEvent = RefundEvent.from(
@@ -571,13 +571,15 @@ public class OrderServiceImpl implements OrderService {
                         order.getCode(), orderItem.getCode(), refundEvent.amount());
             }
 
+            // 재고 복구 이벤트 발행 (Kafka 이벤트로 비동기 처리)
             try {
-                productServiceClient.restoreInventory(orderItem.getProductCode(), orderItem.getQuantity());
-                log.info("재고 복구 요청 - productCode: {}, quantity: {}",
+                orderEventProducer.sendInventoryRollback(orderItem.getProductCode(), orderItem.getQuantity());
+                log.info("재고 복구 이벤트 발행 완료 - productCode: {}, quantity: {}",
                         orderItem.getProductCode(), orderItem.getQuantity());
             } catch (Exception e) {
-                log.error("재고 복구 요청 실패 - productCode: {}, quantity: {}, error: {}",
+                log.error("재고 복구 이벤트 발행 실패 - productCode: {}, quantity: {}, error: {}",
                         orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
+                // 이벤트 발행 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
             }
         }
     }
