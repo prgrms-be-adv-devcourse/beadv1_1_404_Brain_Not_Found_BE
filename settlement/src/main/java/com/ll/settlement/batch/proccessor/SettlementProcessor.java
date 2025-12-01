@@ -19,16 +19,8 @@ public class SettlementProcessor implements ItemProcessor<Settlement, Settlement
             settlement.done();
             return settlement;
         } catch ( Exception e ) {
-            log.warn("WILL BE SKIPPED (via policy) | settlementId={} | reason={}", safeId(settlement), e.getMessage());
+            log.warn("WILL BE SKIPPED (via policy) | settlementId={} | reason={}", settlement.getId(), e.getMessage());
             throw new SkippableItemException(e.getMessage());
-        }
-    }
-
-    private String safeId(Settlement settlement) {
-        try {
-            return String.valueOf(settlement.getId());
-        } catch (Exception ex) {
-            return "unknown";
         }
     }
 }
