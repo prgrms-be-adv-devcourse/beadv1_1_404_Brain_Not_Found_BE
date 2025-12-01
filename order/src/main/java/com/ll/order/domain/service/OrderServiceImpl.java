@@ -226,6 +226,9 @@ public class OrderServiceImpl implements OrderService {
             );
             orderHistoryJpaRepository.save(failHistory);
 
+            // 결제 실패 시 재고 롤백 (재고 차감이 결제 전에 이루어졌기 때문)
+            rollbackInventoryForOrder(orderItems);
+
             log.error("결제 처리 실패 - orderCode: {}, error: {}",
                     order.getCode(), e.getMessage(), e);
 
@@ -366,6 +369,9 @@ public class OrderServiceImpl implements OrderService {
                     "SYSTEM"
             );
             orderHistoryJpaRepository.save(failHistory);
+
+            // 결제 실패 시 재고 롤백 (재고 차감이 결제 전에 이루어졌기 때문)
+            rollbackInventoryForOrder(orderItems);
 
             log.error("결제 처리 실패 - orderCode: {}, error: {}",
                     order.getCode(), e.getMessage(), e);
