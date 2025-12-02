@@ -5,6 +5,7 @@ import com.ll.products.domain.search.document.ProductDocument;
 import com.ll.products.domain.search.dto.ProductSearchResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +28,9 @@ import java.util.List;
 public class ProductSearchService {
 
     private final ElasticsearchOperations elasticsearchOperations;
+
+    @Value("${cloud.aws.s3.base-url}")
+    private String s3BaseUrl;
 
     public Page<ProductSearchResponse> search(
             String keyword,
@@ -55,7 +59,7 @@ public class ProductSearchService {
         );
         log.debug("검색 결과: totalElements={}, totalPages={}, currentPage={}, size={}",
                 documents.getTotalElements(), documents.getTotalPages(), documents.getNumber(), documents.getSize());
-        return documents.map(ProductSearchResponse::from);
+        return documents.map(d -> ProductSearchResponse.from(d, s3BaseUrl));
     }
 
 

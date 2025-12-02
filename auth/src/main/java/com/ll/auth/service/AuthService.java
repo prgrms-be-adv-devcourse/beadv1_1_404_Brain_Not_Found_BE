@@ -1,6 +1,8 @@
 package com.ll.auth.service;
 
+import com.ll.auth.exception.DeviceCodeNotProvidedException;
 import com.ll.auth.exception.TokenNotFoundException;
+import com.ll.auth.exception.TokenNotProvidedException;
 import com.ll.auth.model.entity.Auth;
 import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.request.TokenValidRequest;
@@ -14,8 +16,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -23,6 +23,7 @@ public class AuthService {
 
     private final AuthRepository authRepository;
     private final JWTProvider jWTProvider;
+    private final RedisService redisService;
 
     public void save(Auth auth){
         authRepository.save(auth);
@@ -30,29 +31,31 @@ public class AuthService {
 
     public Tokens refreshToken(TokenValidRequest request){
 
-        Auth existAuth = authRepository.findByUserCode(request.userCode()).orElseThrow(TokenNotFoundException::new);
-        String existRefreshToken = existAuth.getRefreshToken();
-
-        if(!existRefreshToken.trim().equals(request.refreshToken().trim())){
-            throw new TokenNotFoundException();
+        if(request.refreshToken() == null || request.refreshToken().isEmpty()){
+            throw new TokenNotProvidedException();
         }
-        else{
+        if(request.deviceCode() == null || request.deviceCode().isEmpty()){
+            throw new DeviceCodeNotProvidedException();
+        }
+        if(redisService.getRefreshToken(request.userCode(),request.deviceCode()).equals(request.refreshToken())){
             Tokens tokens = jWTProvider.createToken(request.userCode(),request.role());
-            existAuth.updateRefreshToken(tokens.refreshToken());
-            authRepository.save(existAuth);
+            redisService.saveRefreshToken(request.userCode(),request.deviceCode(),tokens.refreshToken());
             return tokens;
         }
+        else{
+            throw new TokenNotFoundException();
+        }
     }
 
-    public void logoutUser(String userCode , HttpServletResponse response){
+    public void logoutUser(String userCode , HttpServletResponse response , String deviceCode){
+
+        redisService.deleteRefreshToken(userCode,deviceCode);
         ResponseCookie accessTokenCookie = CookieUtil.expiredCookie("accessToken");
         ResponseCookie refreshTokenCookie = CookieUtil.expiredCookie("refreshToken");
+        ResponseCookie deviceCodeCookie =  CookieUtil.expiredCookie("deviceCode");
         response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
-        authRepository.deleteByUserCode(userCode);
-    }
-    public Optional<Auth> getAuthByUserCode(String userCode){
-        return authRepository.findByUserCode(userCode);
+        response.addHeader(HttpHeaders.SET_COOKIE,deviceCodeCookie.toString());
     }
 
 }

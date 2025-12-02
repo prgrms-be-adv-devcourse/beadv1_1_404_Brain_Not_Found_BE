@@ -1,5 +1,6 @@
 package com.ll.products.domain.product.model.entity;
 
+import com.ll.products.global.util.S3ImageUrlBuilder;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,7 +24,7 @@ public class ProductImage {
     private Product product;
 
     @Column(nullable = false)
-    private String url;
+    private String fileKey;
 
     @Column(nullable = false)
     private Integer sequence;
@@ -33,5 +34,9 @@ public class ProductImage {
 
     public void updateProduct(Product product) {
         this.product = product;
+    }
+
+    public String getUrl(String s3BaseUrl) {
+        return S3ImageUrlBuilder.buildImageUrl(fileKey, s3BaseUrl);
     }
 }

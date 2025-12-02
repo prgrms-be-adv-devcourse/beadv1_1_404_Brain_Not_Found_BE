@@ -41,28 +41,34 @@ public class Deposit extends BaseEntity {
                 .build();
     }
 
-    public void charge(Long amount) {
+    public DepositHistory charge(Long amount, String referenceCode) {
+        return increaseBalance(amount, referenceCode, DepositHistoryType.CHARGE);
+    }
+    
+    public DepositHistory refund(Long amount, String referenceCode) {
+        return increaseBalance(amount, referenceCode, DepositHistoryType.REFUND);
+    }
+
+    public DepositHistory withdraw(Long amount, String referenceCode) {
+        return decreaseBalance(amount, referenceCode, DepositHistoryType.WITHDRAW);
+    }
+    
+    public DepositHistory payment(Long amount, String referenceCode) {
+        return decreaseBalance(amount, referenceCode, DepositHistoryType.PAYMENT);
+    }
+
+    private DepositHistory increaseBalance(Long amount, String referenceCode, DepositHistoryType type) {
+        Long before = this.balance;
         validateActive();
         this.balance += amount;
+        return DepositHistory.create(this.getId(), amount, before, this.balance, referenceCode, type);
     }
 
-    public void withdraw(Long amount) {
-        validateActive();
-        if (this.balance < amount) {
-            throw new InsufficientDepositBalanceException();
-        }
-        this.balance -= amount;
-    }
-
-    public DepositHistory applyTransaction(Long amount, String referenceCode, DepositHistoryType type) {
+    private DepositHistory decreaseBalance(Long amount, String referenceCode, DepositHistoryType type) {
         Long before = this.balance;
-
-        switch (type) {
-            case CHARGE, REFUND -> this.charge(amount);
-            case WITHDRAW, PAYMENT -> this.withdraw(amount);
-            default -> throw new InvalidDepositHistoryTypeException();
-        }
-
+        validateActive();
+        validateSufficientBalance(amount);
+        this.balance -= amount;
         return DepositHistory.create(this.getId(), amount, before, this.balance, referenceCode, type);
     }
 
@@ -88,6 +94,12 @@ public class Deposit extends BaseEntity {
     private void validateActive() {
         if (this.depositStatus != DepositStatus.ACTIVE) {
             throw new InvalidDepositStatusTransitionException();
+        }
+    }
+
+    private void validateSufficientBalance(Long amount) {
+        if (amount == null || this.balance <= amount) {
+            throw new InsufficientDepositBalanceException();
         }
     }
 }

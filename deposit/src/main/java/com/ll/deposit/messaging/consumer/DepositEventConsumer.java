@@ -3,6 +3,7 @@ package com.ll.deposit.messaging.consumer;
 import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import com.ll.core.model.vo.kafka.UserCreateEvent;
+import com.ll.core.model.vo.kafka.enums.UserCreateEventType;
 import com.ll.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.deposit.service.DepositService;
 import jakarta.validation.Valid;
@@ -22,7 +23,7 @@ public class DepositEventConsumer {
 
     @KafkaListener(topics = "user-create-event", groupId = "deposit-service")
     public void handleUserCreateEvent(KafkaEventEnvelope<UserCreateEvent> event) {
-        if ( !event.payload().eventType().toString().equals("DEPOSIT_CREATE") ) {
+        if ( event.payload().eventType() != UserCreateEventType.DEPOSIT_CREATE ) {
             return;
         }
         depositService.createDeposit(event.payload().userCode());
@@ -30,7 +31,7 @@ public class DepositEventConsumer {
 
     @KafkaListener(topics = "user-create-event.dlq", groupId = "deposit-service")
     public void handleUserCreateDLQ(KafkaEventEnvelope<UserCreateEvent> event) {
-        if ( !event.payload().eventType().toString().equals("DEPOSIT_CREATE") ) {
+        if ( event.payload().eventType() != UserCreateEventType.DEPOSIT_CREATE ) {
             return;
         }
     }

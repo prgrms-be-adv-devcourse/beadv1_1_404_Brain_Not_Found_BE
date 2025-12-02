@@ -1,7 +1,6 @@
 package com.ll.products.domain.product.model.dto.response;
 
 import lombok.Builder;
-import com.ll.products.domain.product.model.dto.ProductImageDto;
 import com.ll.products.domain.product.model.entity.Product;
 import com.ll.products.domain.product.model.entity.ProductStatus;
 
@@ -21,11 +20,11 @@ public record ProductResponse(
         Integer quantity,
         String description,
         Integer price,
-        List<ProductImageDto> images,
+        List<ProductImageResponse> images,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static ProductResponse from(Product product) {
+    public static ProductResponse from(Product product, String s3BaseUrl) {
         return ProductResponse.builder()
                 .id(product.getId())
                 .code(product.getCode())
@@ -39,7 +38,7 @@ public record ProductResponse(
                 .price(product.getPrice())
                 .status(product.getStatus())
                 .images(product.getImages().stream()
-                        .map(ProductImageDto::from)
+                        .map(image -> ProductImageResponse.from(image, s3BaseUrl))
                         .toList())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
