@@ -1,9 +1,13 @@
 HELP.md
+infra/.env
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+env.template
+setup-env.bat
+
 
 ### STS ###
 .apt_generated
@@ -35,3 +39,8 @@ out/
 
 ### VS Code ###
 .vscode/
+gradle/wrapper
+gradlew
+gradlew.bat
+
+troubleshooting.md

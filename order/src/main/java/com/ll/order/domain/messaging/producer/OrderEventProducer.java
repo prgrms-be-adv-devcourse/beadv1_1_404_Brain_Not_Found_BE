@@ -1,0 +1,35 @@
+package com.ll.order.domain.messaging.producer;
+
+import com.fasterxml.uuid.Generators;
+import com.ll.core.config.kafka.KafkaEventPublisher;
+import com.ll.core.model.vo.kafka.InventoryEvent;
+import com.ll.core.model.vo.kafka.OrderEvent;
+import com.ll.core.model.vo.kafka.RefundEvent;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class OrderEventProducer {
+
+    private final KafkaEventPublisher kafkaEventPublisher;
+
+    public void sendOrder(OrderEvent event) {
+        kafkaEventPublisher.publish("order-event", event);
+    }
+
+    public void sendRefund(RefundEvent event) {
+        kafkaEventPublisher.publish("refund-event", event);
+    }
+
+    // 재고 처리는 API 요청으로
+    public void sendInventoryDecrease(String productCode, int quantity) {
+        String referenceCode = Generators.timeBasedEpochGenerator().generate().toString();
+        kafkaEventPublisher.publish("inventory-event", InventoryEvent.stockDecreaseEvent(productCode, quantity, referenceCode));
+    }
+
+    public void sendInventoryRollback(String productCode, int quantity) {
+        String referenceCode = Generators.timeBasedEpochGenerator().generate().toString();
+        kafkaEventPublisher.publish("inventory-event", InventoryEvent.stockRollbackEvent(productCode, quantity, referenceCode));
+    }
+}

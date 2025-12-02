@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: core
+
+custom:
+  config:
+    kafka:
+      acks: all
+      enable-idempotence: true
+

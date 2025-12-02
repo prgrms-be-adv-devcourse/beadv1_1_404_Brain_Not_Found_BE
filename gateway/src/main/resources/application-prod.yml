@@ -1,0 +1,137 @@
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # Deposit
+            - id: deposit-route-protected
+              uri: lb://DEPOSIT
+              predicates:
+                - Path=/api/deposits, /api/deposits/**    #deposit은 모두 인증
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            # Category (PRODUCTS)         #카테고리 CUD 인증
+            - id: category-route-protected
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/categories, /api/categories/**
+                - Method=PUT, POST, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            - id: category-route-public     #카테고리들 조회
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/categories, /api/categories/**
+                - Method=GET
+
+            # Product (PRODUCTS)
+            - id: product-route-getAll-protected  # 상품 목록 조회 R 관리자용 인증
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/products
+                - Method=GET
+              order: 1
+              filters:
+                - name: TokenAuthenticationFilter
+
+            - id: product-route-public          #상품 조회
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/products/**
+                - Method=GET
+              order: 2
+
+
+            - id: product-route-protected     #상품 수정 및 삭제 인증
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/products, /api/products/**
+                - Method=PATCH, PUT, POST, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+
+            - id: product-es-route-public   #상품 es 검색
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/search/**
+                - Method=GET
+
+            - id: product-images-route-protected   #이미지 업로드 인증
+              uri: lb://PRODUCTS
+              predicates:
+                - Path=/api/images/**
+                - Method=POST
+              filters:
+                - name: TokenAuthenticationFilter
+
+            # Order
+            - id: order-route-pg
+              uri: lb://ORDER
+              predicates:
+                - Path=/api/orders/payment/**, /api/orders/payment, /orders/payment /orders/payment/**
+                - Method=GET
+            - id: order-route-protected
+              uri: lb://ORDER
+              predicates:
+                - Path=/api/orders/**, /api/orders
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+            - id: payment-route-protected
+              uri: lb://PAYMENT
+              predicates:
+                - Path=/api/payments/**, /api/payments
+                - Method=POST
+              filters:
+                - name: TokenAuthenticationFilter
+            # User
+            - id: user-route-protected
+              uri: lb://USER
+              predicates:
+                - Path=/api/users/**
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
+              order: 2
+
+            - id: user-route-public
+              uri: lb://USER
+              predicates:
+                - Path=/api/users
+                - Method=GET
+              order: 1
+            # Auth
+            - id: auth-route-public
+              uri: lb://AUTH
+              predicates:
+                - Path=/api/auth
+                - Method=POST
+            # test
+            - id: auth-route-test
+              uri: lb://AUTH
+              predicates:
+                - Path=/api/test/
+                - Method=GET
+
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${DISCOVERY_URL}
+
+custom:
+  jwt:
+    secrets:
+      app-key: ${JWT_SECRET}
+
+logging:
+  level:
+    root: info
+
+

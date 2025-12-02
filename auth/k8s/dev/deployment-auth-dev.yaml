@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+#이 파일 정의
+metadata:
+  name: auth-dpy-dev
+#동작 정의
+spec:
+  replicas: 1
+#  제어할 라벨
+  selector:
+    matchLabels:
+      app: auth-dev
+#      pod 정의
+  template:
+    metadata:
+      labels:
+        app: auth-dev
+#        컨테이너 정의
+    spec:
+      containers:
+        - name: auth-pod-dev
+          image: auth:0.0.1-SNAPSHOT
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: auth-config-dev
+            - secretRef:
+                name: auth-secret-dev
+      restartPolicy: Always
