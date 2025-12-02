@@ -22,13 +22,12 @@ public class JWTProvider {
     @Value("${jwt.secret:your-default-secret-key-must-be-at-least-256-bits-long}")  // application.yml 설정
     private String secretKey;
 
-    @Value("${jwt.expiration:1800000}")  // 30분 (밀리초)
+    @Value("${jwt.expiration:900000}")  // 15분 (밀리초) 1000 * 60 * 15
     public
     Long expirationTime;
 
     @Value("${jwt.refresh-expiration:604800000}")  // 7일 = 7 * 24 * 60 * 60 * 1000
-    public
-    Long refreshExpirationTime;
+    public Long refreshExpirationTime;
 
     private SecretKey key;  // HS512 서명 키
 
@@ -54,7 +53,6 @@ public class JWTProvider {
                 .signWith(key)  // 서명
                 .compact();
         String refreshToken = Jwts.builder()
-                .claims(claims)  // 커스텀 클레임// 사용자 ID
                 .issuedAt(now)
                 .issuer("Gooream")  // 앱 식별자
                 .expiration(refreshExpirationDate)
