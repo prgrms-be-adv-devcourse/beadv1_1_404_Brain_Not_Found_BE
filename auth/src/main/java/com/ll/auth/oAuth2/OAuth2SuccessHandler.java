@@ -2,7 +2,6 @@ package com.ll.auth.oAuth2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.uuid.Generators;
-import com.ll.auth.model.entity.Auth;
 import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.service.AuthService;
 import com.ll.auth.service.RedisService;
@@ -66,11 +65,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         //RefreshToken 저장
         redisService.saveRefreshToken(user.code(),deviceCode,refreshToken);
-        authService.asyncSave(Auth.builder()
-                .userCode(user.code())
-                .refreshToken(refreshToken)
-                .deviceCode(deviceCode)
-                .build());
+        authService.asyncSave(user.code(),deviceCode,refreshToken);
         //User 정보 Client에 제공
         Map<String, Object> body = Map.of(
                 "user", Map.of(

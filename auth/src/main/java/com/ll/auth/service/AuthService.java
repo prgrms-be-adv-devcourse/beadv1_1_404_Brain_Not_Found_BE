@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -34,7 +35,7 @@ public class AuthService {
     }
 
     public void update(String userCode, String deviceCode, String refreshToken){
-        Auth auth = authRepository.findByUserCodeAndDeviceCode(userCode,deviceCode);
+        Auth auth = authRepository.findByUserCodeAndDeviceCode(userCode,deviceCode).orElseThrow(TokenNotFoundException::new);
         auth.updateRefreshToken(refreshToken);
         save(auth);
     }
@@ -109,8 +110,20 @@ public class AuthService {
     }
 
     @Async
-    public void asyncSave(Auth auth){
-        save(auth);
+    public void asyncSave(String userCode, String deviceCode, String refreshToken){
+
+        Optional<Auth> auth = authRepository.findByUserCodeAndDeviceCode(userCode,deviceCode);
+
+        if(auth.isPresent()){
+            update(userCode, deviceCode, refreshToken);
+        }
+        else{
+            save(Auth.builder()
+                    .userCode(userCode)
+                    .deviceCode(deviceCode)
+                    .refreshToken(refreshToken)
+                    .build());
+        }
         log.info("Async DB Save 완료");
     }
 }

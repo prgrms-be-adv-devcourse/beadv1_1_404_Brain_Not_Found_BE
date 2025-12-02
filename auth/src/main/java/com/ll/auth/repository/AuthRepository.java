@@ -11,7 +11,7 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
 
     Optional<Auth> findByUserCode(String userCode);
 
-    Auth findByUserCodeAndDeviceCode(String userCode, String deviceCode);
+    Optional<Auth> findByUserCodeAndDeviceCode(String userCode, String deviceCode);
 
     void deleteByUserCodeAndDeviceCode(String userCode, String deviceCode);
     List<Auth> findByExpiredAtAfter(LocalDateTime expiredAtAfter);
