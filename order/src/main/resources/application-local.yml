@@ -129,3 +129,9 @@ order:
     scheduler:
       enabled: true                        # 스케줄러 활성화 여부
       cron: "0 */5 * * * ?"                # 실행 주기 (5분마다, cron 표현식)
+  # 보상 로직 재시도 설정
+  compensation:
+    max-retry-count: 5                     # 최대 재시도 횟수
+    scheduler:
+      enabled: true                        # 스케줄러 활성화 여부
+      cron: "0 */10 * * * ?"               # 실행 주기 (10분마다, cron 표현식)
