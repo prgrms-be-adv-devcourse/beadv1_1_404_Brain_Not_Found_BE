@@ -45,7 +45,7 @@ external:
 
   # Payment Configuration
 payment:
-  widgetClientKey: ${PAYMENT_WIDGET_CLIENT_KEY}
+  widgetClientKey: ${PAYMENT_WIDGET_CLIENT_KEY:test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm}
   successUrl: http://localhost:8082/api/orders/payment/success
   failUrl: http://localhost:8082/api/orders/payment/fail
 
