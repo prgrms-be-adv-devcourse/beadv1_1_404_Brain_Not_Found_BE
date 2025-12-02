@@ -35,7 +35,7 @@ public class ProductServiceClient {
     }
 
     public void decreaseInventory(String productCode, Integer quantity) {
-        log.info("재고 차감 요청 - productCode: {}, quantity: {}", productCode, quantity);
+        log.debug("재고 차감 요청 - productCode: {}, quantity: {}", productCode, quantity);
         restClient.patch()
                 .uri(productServiceUrl + "/api/products/{productCode}/inventory", productCode)
                 .body(Map.of("quantity", -quantity)) // 음수로 전달하여 차감

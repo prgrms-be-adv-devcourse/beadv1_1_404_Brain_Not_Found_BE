@@ -63,7 +63,7 @@ public class ProductService {
                 .build();
         setImages(request.images(), product);
         Product savedProduct = productRepository.save(product);
-        log.info("상품 생성 완료: {} (ID: {})", savedProduct.getName(), savedProduct.getId());
+        log.debug("상품 생성 완료: {} (ID: {})", savedProduct.getName(), savedProduct.getId());
         eventPublisher.publishEvent(ProductEvent.created(this, savedProduct));
         return ProductResponse.from(savedProduct);
     }
@@ -92,7 +92,7 @@ public class ProductService {
         Product product = getProductByCode(code);
         validateOwnership(product, userCode, role);
         product.softDelete();
-        log.info("상품 삭제 완료: {} (ID: {})", product.getName(), product.getId());
+        log.debug("상품 삭제 완료: {} (ID: {})", product.getName(), product.getId());
         eventPublisher.publishEvent(ProductEvent.deleted(this, product));
     }
 
@@ -110,7 +110,7 @@ public class ProductService {
         Category category = getCategory(request.categoryId());
         product.updateCategory(category);
         setImages(request.images(), product);
-        log.info("상품 수정 완료: {} (ID: {})", product.getName(), product.getId());
+        log.debug("상품 수정 완료: {} (ID: {})", product.getName(), product.getId());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
         return ProductResponse.from(product);
     }
@@ -121,7 +121,7 @@ public class ProductService {
         Product product = getProductByCode(code);
         validateOwnership(product, userCode, role);
         product.updateStatus(request.status());
-        log.info("상품 상태변경 완료: {} -> {} (ID: {})", product.getName(), request.status(), product.getId());
+        log.debug("상품 상태변경 완료: {} -> {} (ID: {})", product.getName(), request.status(), product.getId());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
         return ProductResponse.from(product);
     }
@@ -175,9 +175,9 @@ public class ProductService {
         history.markAsSuccess(beforeQuantity, afterQuantity);
         inventoryHistoryRepository.save(history);
 
-        log.info("재고 수정 완료: {}, 변경량: {}, 남은재고: {}",
+        log.debug("재고 수정 완료: {}, 변경량: {}, 남은재고: {}",
                 product.getName(), quantity, afterQuantity);
-        log.info("재고 이력 저장 완료 - id: {}, productCode: {}, beforeQuantity: {}, afterQuantity: {}",
+        log.debug("재고 이력 저장 완료 - id: {}, productCode: {}, beforeQuantity: {}, afterQuantity: {}",
                 history.getId(), code, beforeQuantity, afterQuantity);
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
     }
