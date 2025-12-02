@@ -65,12 +65,6 @@ external:
   user-service:
     url: http://user:8083
 
-# JWT 설정
-jwt:
-  secret: ${JWT_SECRET}
-  expiration: 1800000
-  refresh-expiration: 604800000
-
 logging:
   level:
     org.springframework.security: INFO

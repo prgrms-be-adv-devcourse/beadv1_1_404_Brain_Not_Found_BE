@@ -8,8 +8,8 @@ import com.ll.products.domain.product.model.entity.ProductImage;
 
 @Builder
 public record ProductImageDto(
-        @NotBlank(message = "이미지 URL은 필수입니다")
-        String url,
+        @NotBlank(message = "이미지 fileKey는 필수입니다")
+        String fileKey,
 
         @NotNull(message = "이미지 순서는 필수입니다")
         @PositiveOrZero(message = "이미지 순서는 0 이상이어야 합니다")
@@ -20,7 +20,7 @@ public record ProductImageDto(
 ) {
     public static ProductImageDto from(ProductImage image) {
         return ProductImageDto.builder()
-                .url(image.getUrl())
+                .fileKey(image.getFileKey())
                 .sequence(image.getSequence())
                 .isMain(image.getIsMain())
                 .build();
@@ -28,7 +28,7 @@ public record ProductImageDto(
 
     public ProductImage toEntity() {
         return ProductImage.builder()
-                .url(this.url)
+                .fileKey(this.fileKey)
                 .sequence(this.sequence)
                 .isMain(this.isMain)
                 .build();

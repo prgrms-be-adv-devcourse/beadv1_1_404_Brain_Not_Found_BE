@@ -29,6 +29,9 @@ dependencies {
 
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 
+    // AWS S3
+    implementation "software.amazon.awssdk:s3:2.39.3"
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 }

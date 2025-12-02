@@ -4,6 +4,7 @@ import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
 import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.core.model.vo.kafka.SettlementEvent;
 import com.ll.core.model.vo.kafka.OrderEvent;
+import com.ll.core.model.vo.kafka.enums.OrderEventType;
 import com.ll.settlement.service.SettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +25,7 @@ public class SettlementEventConsumer {
 
     @KafkaListener(topics = "order-event", groupId = "settlement-service")
     public void handleOrderEvent(KafkaEventEnvelope<OrderEvent> event) {
-        if ( !event.payload().orderEventType().toString().equals("ORDER_COMPLETED") ) {
+        if ( event.payload().orderEventType() != OrderEventType.ORDER_COMPLETED ) {
             return;
         }
         settlementService.createSettlement(event.payload());
@@ -32,7 +33,7 @@ public class SettlementEventConsumer {
 
     @KafkaListener(topics = "order-event.dlq", groupId = "settlement-service")
     public void handleOrderDLQ(KafkaEventEnvelope<OrderEvent> event) {
-        if ( !event.payload().orderEventType().toString().equals("ORDER_COMPLETED") ) {
+        if ( event.payload().orderEventType() != OrderEventType.ORDER_COMPLETED ) {
             return;
         }
     }

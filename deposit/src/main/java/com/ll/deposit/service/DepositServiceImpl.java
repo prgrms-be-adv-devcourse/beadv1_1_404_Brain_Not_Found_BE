@@ -2,7 +2,6 @@ package com.ll.deposit.service;
 
 import com.ll.deposit.model.entity.Deposit;
 import com.ll.deposit.model.entity.DepositHistory;
-import com.ll.deposit.model.enums.DepositHistoryType;
 import com.ll.deposit.model.exception.DepositNotFoundException;
 import com.ll.deposit.model.exception.DuplicateDepositTransactionException;
 import com.ll.deposit.model.exception.RefundTargetNotFoundException;
@@ -42,31 +41,46 @@ public class DepositServiceImpl implements DepositService {
 
     @Override
     public DepositDeleteResponse deleteDepositByUserCode(String userCode, DepositDeleteRequest request) {
-        return DepositDeleteResponse.from(depositRepository.save(findDepositByUserCode(userCode).setClosed()), request.closedReason());
+        Deposit deposit = findDepositByUserCode(userCode);
+        Deposit saved = depositRepository.save(deposit.setClosed());
+        return DepositDeleteResponse.from(saved, request.closedReason());
     }
 
     // TODO: 트랜잭션 처리 로직 개선 필요
     @Override
     @Transactional
     public DepositTransactionResponse chargeDeposit(String userCode, DepositTransactionRequest request) {
-        return processDepositTransaction(userCode, request, DepositHistoryType.CHARGE);
+        isDuplicateTransaction(request.referenceCode());
+        Deposit deposit = findDepositByUserCode(userCode);
+        DepositHistory history = deposit.charge(request.amount(), request.referenceCode());
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
     }
 
     @Override
     @Transactional
     public DepositTransactionResponse withdrawDeposit(String userCode, DepositTransactionRequest request) {
-        return processDepositTransaction(userCode, request, DepositHistoryType.WITHDRAW);
+        isDuplicateTransaction(request.referenceCode());
+        Deposit deposit = findDepositByUserCode(userCode);
+        DepositHistory history = deposit.withdraw(request.amount(), request.referenceCode());
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
     }
 
     @Override
     @Transactional
     public DepositTransactionResponse paymentDeposit(String userCode, DepositTransactionRequest request) {
-        return processDepositTransaction(userCode, request, DepositHistoryType.PAYMENT);
+        isDuplicateTransaction(request.referenceCode());
+        Deposit deposit = findDepositByUserCode(userCode);
+        DepositHistory history = deposit.payment(request.amount(), request.referenceCode());
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
     }
 
     @Override
+    @Transactional
     public DepositTransactionResponse refundDeposit(String userCode, DepositTransactionRequest request) {
-        return processDepositTransactionForRefund(userCode, request);
+        isDuplicateTransactionForRefund(request.referenceCode());
+        Deposit deposit = findDepositByUserCode(userCode);
+        DepositHistory history = deposit.refund(request.amount(), request.referenceCode());
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
     }
 
     @Override
@@ -92,20 +106,6 @@ public class DepositServiceImpl implements DepositService {
         if (!depositHistoryRepository.existsByReferenceCode(referenceCode)) {
             throw new RefundTargetNotFoundException();
         }
-    }
-
-    private DepositTransactionResponse processDepositTransaction(String userCode, DepositTransactionRequest request, DepositHistoryType type) {
-        isDuplicateTransaction(request.referenceCode());
-        Deposit deposit = findDepositByUserCode(userCode);
-        DepositHistory depositHistory = depositHistoryRepository.save(deposit.applyTransaction(request.amount(), request.referenceCode(), type));
-        return DepositTransactionResponse.from(deposit.getCode(), depositHistory);
-    }
-
-    private DepositTransactionResponse processDepositTransactionForRefund(String userCode, DepositTransactionRequest request) {
-        isDuplicateTransactionForRefund(request.referenceCode());
-        Deposit deposit = findDepositByUserCode(userCode);
-        DepositHistory depositHistory = depositHistoryRepository.save(deposit.applyTransaction(request.amount(), refundCode(request.referenceCode()), DepositHistoryType.REFUND));
-        return DepositTransactionResponse.from(deposit.getCode(), depositHistory);
     }
 
     public static String refundCode(String ref) {
