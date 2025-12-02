@@ -55,6 +55,7 @@ public class KafkaCommonConfiguration {
     ) {
         KafkaTemplate<String, Object> kafkaTemplate = new KafkaTemplate<>(factory);
         kafkaTemplate.setProducerListener(listener);
+        kafkaTemplate.setObservationEnabled(true);
         log.info("KafkaTemplate started");
         return kafkaTemplate;
     }
@@ -116,6 +117,7 @@ public class KafkaCommonConfiguration {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
         factory.setCommonErrorHandler(errorHandler);
+        factory.getContainerProperties().setObservationEnabled(true);
 //        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE); // 수동 커밋 모드 설정
         return factory;
     }
