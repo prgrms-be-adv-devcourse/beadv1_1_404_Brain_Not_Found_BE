@@ -26,11 +26,11 @@ public class OrderEventOutboxScheduler {
                 return;
             }
 
-            log.info("스케줄러 실행 - 재발행 대상 이벤트: {}개", republishableCount);
+            log.debug("스케줄러 실행 - 재발행 대상 이벤트: {}개", republishableCount);
             
             int successCount = orderEventOutboxService.republishFailedEvents();
             
-            log.info("스케줄러 완료 - 재발행 성공: {}개", successCount);
+            log.debug("스케줄러 완료 - 재발행 성공: {}개", successCount);
         } catch (Exception e) {
             log.error("스케줄러 실행 중 오류 발생", e);
         }

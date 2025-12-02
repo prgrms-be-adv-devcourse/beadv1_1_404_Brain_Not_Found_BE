@@ -38,7 +38,7 @@ public class OrderEventOutboxService {
             return 0;
         }
 
-        log.info("실패한 이벤트 재발행 시작 - 대상: {}개", failedEvents.size());
+        log.debug("실패한 이벤트 재발행 시작 - 대상: {}개", failedEvents.size());
 
         int successCount = 0;
         int failureCount = 0;
@@ -54,7 +54,7 @@ public class OrderEventOutboxService {
             }
         }
 
-        log.info("이벤트 재발행 완료 - 성공: {}개, 실패: {}개", successCount, failureCount);
+        log.debug("이벤트 재발행 완료 - 성공: {}개, 실패: {}개", successCount, failureCount);
         return successCount;
     }
 
@@ -76,7 +76,7 @@ public class OrderEventOutboxService {
             outbox.markAsPublished();
             orderEventOutboxRepository.save(outbox);
 
-            log.info("이벤트 재발행 성공 - outboxId: {}, referenceCode: {}, retryCount: {}",
+            log.debug("이벤트 재발행 성공 - outboxId: {}, referenceCode: {}, retryCount: {}",
                     outbox.getId(), outbox.getReferenceCode(), outbox.getRetryCount());
 
         } catch (Exception e) {

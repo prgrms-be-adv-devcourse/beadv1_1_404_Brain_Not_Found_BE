@@ -32,19 +32,19 @@ public class InventoryEventConsumer {
         String referenceCode = inventoryEvent.referenceCode();
         int quantity = inventoryEvent.quantity();
 
-        log.info("재고 이벤트 수신 - eventType: {}, productCode: {}, quantity: {}, referenceCode: {}", 
+        log.debug("재고 이벤트 수신 - eventType: {}, productCode: {}, quantity: {}, referenceCode: {}", 
                 eventType, productCode, quantity, referenceCode);
 
         try {
             if (eventType == InventoryEventType.STOCK_DECREMENT) {
                 // 재고 차감: quantity를 음수로 전달, referenceCode도 함께 전달 (중복 방지)
                 productService.updateInventory(productCode, -quantity, referenceCode);
-                log.info("재고 차감 완료 - productCode: {}, quantity: {}, referenceCode: {}", 
+                log.debug("재고 차감 완료 - productCode: {}, quantity: {}, referenceCode: {}", 
                         productCode, quantity, referenceCode);
             } else if (eventType == InventoryEventType.STOCK_ROLLBACK) {
                 // 재고 복구: quantity를 양수로 전달, referenceCode도 함께 전달 (중복 방지)
                 productService.updateInventory(productCode, quantity, referenceCode);
-                log.info("재고 복구 완료 - productCode: {}, quantity: {}, referenceCode: {}", 
+                log.debug("재고 복구 완료 - productCode: {}, quantity: {}, referenceCode: {}", 
                         productCode, quantity, referenceCode);
             } else {
                 log.warn("알 수 없는 재고 이벤트 타입 - eventType: {}, productCode: {}", eventType, productCode);
@@ -78,7 +78,7 @@ public class InventoryEventConsumer {
         
         inventoryDlqEventRepository.save(dlqEvent);
         
-        log.info("DLQ 이벤트 저장 완료 - id: {}, productCode: {}, referenceCode: {}", 
+        log.debug("DLQ 이벤트 저장 완료 - id: {}, productCode: {}, referenceCode: {}", 
                 dlqEvent.getId(), dlqEvent.getProductCode(), dlqEvent.getReferenceCode());
         
         // TODO: 알림 발송 (Slack, Email 등)

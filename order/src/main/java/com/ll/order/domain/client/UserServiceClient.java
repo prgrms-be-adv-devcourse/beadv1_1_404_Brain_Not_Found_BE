@@ -29,7 +29,7 @@ public class UserServiceClient {
     @CircuitBreaker(name = "userService", fallbackMethod = "getUserByCodeFallback")
     @Retry(name = "userService")
     public UserResponse getUserByCode(String userCode) {
-        log.info("userServiceUrl = {}", userServiceUrl);
+        log.debug("userServiceUrl = {}", userServiceUrl);
         BaseResponse<UserResponse> response = restClient.get()
                 .uri(userServiceUrl + "/api/users/info")
                 .header("X-User-Code", userCode)
