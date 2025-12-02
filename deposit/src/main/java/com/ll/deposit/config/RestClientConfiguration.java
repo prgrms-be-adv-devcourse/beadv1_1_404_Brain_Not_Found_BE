@@ -8,8 +8,8 @@ import org.springframework.web.client.RestClient;
 public class RestClientConfiguration {
 
     @Bean
-    public RestClient restTemplate() {
-        return RestClient.builder()
+    public RestClient restTemplate(RestClient.Builder builder) {
+        return builder
                 // 추가적인 설정이 필요하면 여기서 설정
                 .build();
     }
