@@ -5,22 +5,16 @@ import com.ll.core.config.kafka.KafkaEventPublisher;
 import com.ll.core.model.vo.kafka.InventoryEvent;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
-import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class OrderEventProducer {
 
     private final KafkaEventPublisher kafkaEventPublisher;
 
-    @Retry(name = "orderEventProducer")
     public void sendOrder(OrderEvent event) {
-        log.debug("주문 이벤트 발행 시도 - orderItemCode: {}, referenceCode: {}", 
-                event.orderItemCode(), event.referenceCode());
         kafkaEventPublisher.publish("order-event", event);
     }
 
