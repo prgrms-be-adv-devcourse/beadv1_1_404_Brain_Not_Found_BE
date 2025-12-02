@@ -53,7 +53,6 @@ public class JWTProvider {
                 .signWith(key)  // 서명
                 .compact();
         String refreshToken = Jwts.builder()
-                .claims(claims)  // 커스텀 클레임// 사용자 ID
                 .issuedAt(now)
                 .issuer("Gooream")  // 앱 식별자
                 .expiration(refreshExpirationDate)
