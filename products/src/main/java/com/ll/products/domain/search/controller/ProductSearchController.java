@@ -29,10 +29,10 @@ public class ProductSearchController {
             @RequestParam(required = false) String status,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        log.info("상품 검색 API 호출: keyword={}, categoryId={}, price={}-{}, status={}, pageable={}",
+        log.debug("상품 검색 API 호출: keyword={}, categoryId={}, price={}-{}, status={}, pageable={}",
                 keyword, categoryId, minPrice, maxPrice, status, pageable);
         Page<ProductSearchResponse> result = productSearchService.search(keyword, categoryId, minPrice, maxPrice, status, pageable);
-        log.info("검색 결과: totalElements={}, totalPages={}, currentPage={}, size={}",
+        log.debug("검색 결과: totalElements={}, totalPages={}, currentPage={}, size={}",
                 result.getTotalElements(), result.getTotalPages(), result.getNumber(), result.getSize());
         return BaseResponse.ok(result);
     }

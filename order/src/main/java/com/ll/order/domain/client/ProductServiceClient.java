@@ -34,17 +34,8 @@ public class ProductServiceClient {
         return response.getData();
     }
 
-    public void restoreInventory(String productCode, Integer quantity) {
-        log.info("재고 복구 요청 - productCode: {}, quantity: {}", productCode, quantity);
-         restClient.patch()
-                 .uri(productServiceUrl + "/api/products/{productCode}/inventory/restore", productCode)
-                 .body(Map.of("quantity", quantity)) // 양수니까 재고 증가 ( == 복구 )
-                 .retrieve()
-                 .toBodilessEntity();
-    }
-
     public void decreaseInventory(String productCode, Integer quantity) {
-        log.info("재고 차감 요청 - productCode: {}, quantity: {}", productCode, quantity);
+        log.debug("재고 차감 요청 - productCode: {}, quantity: {}", productCode, quantity);
         restClient.patch()
                 .uri(productServiceUrl + "/api/products/{productCode}/inventory", productCode)
                 .body(Map.of("quantity", -quantity)) // 음수로 전달하여 차감

@@ -40,7 +40,7 @@ public class ProductSearchService {
             String status,
             Pageable pageable
     ) {
-        log.info("상품 검색 요청: keyword={}, categoryId={}, price={}-{}, status={}, pageable={}",
+        log.debug("상품 검색 요청: keyword={}, categoryId={}, price={}-{}, status={}, pageable={}",
                 keyword, categoryId, minPrice, maxPrice, status, pageable);
         pageable = applyDefaultSort(keyword, pageable);
         Query query = buildDynamicQuery(keyword, categoryId, minPrice, maxPrice, status);
@@ -57,7 +57,7 @@ public class ProductSearchService {
                 pageable,
                 searchHits.getTotalHits()
         );
-        log.info("검색 결과: totalElements={}, totalPages={}, currentPage={}, size={}",
+        log.debug("검색 결과: totalElements={}, totalPages={}, currentPage={}, size={}",
                 documents.getTotalElements(), documents.getTotalPages(), documents.getNumber(), documents.getSize());
         return documents.map(d -> ProductSearchResponse.from(d, s3BaseUrl));
     }
