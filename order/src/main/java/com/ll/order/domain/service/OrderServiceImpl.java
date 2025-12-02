@@ -1,5 +1,6 @@
 package com.ll.order.domain.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
@@ -9,6 +10,7 @@ import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
+import com.ll.order.domain.model.entity.OrderEventOutbox;
 import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
@@ -20,6 +22,7 @@ import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
 import com.ll.order.domain.model.vo.response.order.*;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
+import com.ll.order.domain.repository.OrderEventOutboxRepository;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
@@ -44,6 +47,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
     private final OrderHistoryJpaRepository orderHistoryJpaRepository;
+    private final OrderEventOutboxRepository orderEventOutboxRepository;
 
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
@@ -52,6 +56,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderEventProducer orderEventProducer;
     private final OrderValidator orderValidator;
+    private final ObjectMapper objectMapper;
 
     @Override
     public OrderPageResponse findAllOrders(String userCode, String keyword, Pageable pageable) {
@@ -743,8 +748,36 @@ public class OrderServiceImpl implements OrderService {
                     order.getCode(),
                     (long) orderItem.getPrice() * orderItem.getQuantity()
             );
-            orderEventProducer.sendOrder(orderEvent);
-            log.info("주문 완료 이벤트 발행 - orderCode: {}, orderItemCode: {}", order.getCode(), orderItem.getCode());
+            
+            try {
+                orderEventProducer.sendOrder(orderEvent);
+                log.info("주문 완료 이벤트 발행 성공 - orderCode: {}, orderItemCode: {}, referenceCode: {}", 
+                        order.getCode(), orderItem.getCode(), orderEvent.referenceCode());
+            } catch (Exception e) {
+                // Resilience4j Retry를 모두 시도했지만 실패한 경우 Outbox에 저장
+                log.error("주문 완료 이벤트 발행 실패 (재시도 모두 실패) - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}", 
+                        order.getCode(), orderItem.getCode(), orderEvent.referenceCode(), e.getMessage(), e);
+                // Outbox에 저장하여 나중에 재발행할 수 있도록 함
+                saveToOutbox(orderEvent, order.getCode(), orderItem.getCode(), e.getMessage());
+            }
+        }
+    }
+
+    // 이벤트 발행 실패 시 Outbox에 저장
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode, String errorMessage) {
+        try {
+            OrderEventOutbox outbox = OrderEventOutbox.from(orderEvent, objectMapper);
+            outbox.incrementRetryCount(errorMessage);
+            outbox.markAsFailed(errorMessage);
+            orderEventOutboxRepository.save(outbox);
+            
+            log.info("주문 이벤트 Outbox 저장 완료 - orderCode: {}, orderItemCode: {}, referenceCode: {}, outboxId: {}", 
+                    orderCode, orderItemCode, orderEvent.referenceCode(), outbox.getId());
+        } catch (Exception e) {
+            log.error("주문 이벤트 Outbox 저장 실패 - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}", 
+                    orderCode, orderItemCode, orderEvent.referenceCode(), e.getMessage(), e);
+            // Outbox 저장 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
         }
     }
 
