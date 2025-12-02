@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.Optional;
 
@@ -21,12 +22,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class AuthServiceTest {
+    @ExtendWith(MockitoExtension.class)
+    class AuthServiceTest {
 
     @Mock private AuthRepository authRepository;
     @Mock private JWTProvider jWTProvider;
-
     @InjectMocks private AuthService authService;
 
     private static final String USER_CODE = "USER_001";
