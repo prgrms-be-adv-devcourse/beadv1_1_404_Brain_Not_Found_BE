@@ -228,35 +228,6 @@ public class PaymentServiceImpl implements PaymentService {
         );
         paymentJpaRepository.save(payment);
 
-        // boolean isMockPaymentKey = paymentKey != null && paymentKey.startsWith("tgen_test_");
-        // if (isMockPaymentKey) {
-        //     log.info("더미 paymentKey 사용 중. Toss 승인 API 호출을 건너뜁니다. paymentKey: {}", paymentKey);
-        //     payment.markSuccess(
-        //             finalStatus,
-        //             LocalDateTime.now()
-        //     );
-        //     paymentJpaRepository.save(payment);
-
-        //     // 결제 성공 이력 저장
-        //     PaymentHistoryEntity successHistory = PaymentHistoryEntity.create(
-        //             payment.getId(),
-        //             PaymentHistoryActionType.SUCCESS,
-        //             finalStatus,
-        //             "TOSS",
-        //             paymentKey,
-        //             null, // transactionId
-        //             request.paidAmount(),
-        //             null, // failCode
-        //             null, // failMessage
-        //             null, // metadata
-        //             LocalDateTime.now(), // approvedAt
-        //             null  // refundedAt
-        //     );
-        //     paymentHistoryJpaRepository.save(successHistory);
-
-        //     return payment;
-        // }
-
         // 3) 실제 Toss 승인 요청
         TossPaymentRequest tossRequest = TossPaymentRequest.from(
                 paymentKey,

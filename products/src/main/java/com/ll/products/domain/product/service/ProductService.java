@@ -24,12 +24,17 @@ import com.ll.products.domain.product.model.dto.request.ProductUpdateStatusReque
 import com.ll.products.domain.product.model.dto.request.ProductUpdateRequest;
 import com.ll.products.domain.product.model.dto.response.ProductListResponse;
 import com.ll.products.domain.product.model.dto.response.ProductResponse;
+import com.ll.products.domain.product.model.entity.InventoryHistory;
+import com.ll.products.domain.product.model.entity.InventoryHistoryStatus;
 import com.ll.products.domain.product.model.entity.Product;
 import com.ll.products.domain.product.model.entity.ProductStatus;
+import com.ll.products.domain.product.repository.InventoryHistoryRepository;
 import com.ll.products.domain.product.repository.ProductRepository;
 import com.ll.products.global.client.UserClient;
+import com.ll.core.model.vo.kafka.enums.InventoryEventType;
 
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -37,9 +42,12 @@ import java.util.List;
 public class ProductService {
     // TODO : 모든 재고 차감 성공 확인 / 차감 실패 시 결제 취소 / 재고 차감 성공 "후" 주문 완료 <- 이 부분 처리 필요
 
+    private final UserClient userClient;
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-    private final UserClient userClient;
+    private final InventoryHistoryRepository inventoryHistoryRepository;
+
     private final ApplicationEventPublisher eventPublisher;
     private final S3Service s3Service;
 
@@ -135,14 +143,57 @@ public class ProductService {
 
     // 7. 재고 수정
     @Transactional
-    public void updateInventory(String code, Integer quantity) {
-        // 비관적 락으로 상품 조회 (재고 차감 시 Race Condition 방지)
+    public void updateInventory(String code, Integer quantity) { // 기존 api에서는 referenceCode가 없음
+        updateInventory(code, quantity, null);
+    }
+
+    // 7-1. 재고 수정 (referenceCode 포함 - Kafka 이벤트에서 사용)
+    @Transactional
+    public void updateInventory(String code, Integer quantity, String referenceCode) {
+        if (referenceCode != null && !referenceCode.isBlank()) { // 이벤트 수신된게 이력으로 남아있으면 (중복 수신이면)
+            Optional<InventoryHistory> existing = inventoryHistoryRepository.findByReferenceCode(referenceCode);
+
+            if (existing.isPresent()) {
+                log.warn("이미 처리된 이벤트 - referenceCode: {}, productCode: {}, quantity: {}, 기존 처리 시간: {}",
+                        referenceCode, code, quantity, existing.get().getProcessedAt());
+                return;
+            }
+        }
+
         Product product = productRepository.findByCodeWithLock(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
-        
+
+        // 재고 변동 전 수량 저장
+        Integer beforeQuantity = product.getQuantity();
+
+        // 재고 수정
         product.updateQuantity(quantity);
-        log.info("재고 수정 완료: {}, 변경량: {}, 남은재고: {}", 
-                product.getName(), quantity, product.getQuantity());
+
+        // 재고 변동 후 수량 저장
+        Integer afterQuantity = product.getQuantity();
+
+        InventoryEventType transactionType = quantity < 0 ?
+                InventoryEventType.STOCK_DECREMENT : InventoryEventType.STOCK_ROLLBACK;
+
+        InventoryHistory history = InventoryHistory.builder()
+                .productCode(code)
+                .quantity(quantity)
+                .transactionType(transactionType)
+                .status(InventoryHistoryStatus.SUCCESS)
+                .beforeQuantity(beforeQuantity)
+                .afterQuantity(afterQuantity)
+                .build();
+        if (referenceCode != null && !referenceCode.isBlank()) { // 이벤트 수신으로 referenceCode가 있으면 set
+            history.setReferenceCode(referenceCode);
+        }
+
+        history.markAsSuccess(beforeQuantity, afterQuantity);
+        inventoryHistoryRepository.save(history);
+
+        log.info("재고 수정 완료: {}, 변경량: {}, 남은재고: {}",
+                product.getName(), quantity, afterQuantity);
+        log.info("재고 이력 저장 완료 - id: {}, productCode: {}, beforeQuantity: {}, afterQuantity: {}",
+                history.getId(), code, beforeQuantity, afterQuantity);
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
     }
 
@@ -170,7 +221,7 @@ public class ProductService {
             );
         }
     }
-    
+
     // 상품 조회(code 기반)
     private Product getProductByCode(String code) {
         Product product = productRepository.findByCodeAndIsDeletedFalse(code)
