@@ -23,7 +23,7 @@ public class DepositServiceClient {
 
     public DepositInfoResponse getDepositInfo(String userCode) {
         String url = depositServiceUrl + "/api/deposits?userCode=" + userCode;
-        log.info("예치금 조회 요청 - userCode: {}", userCode);
+        log.debug("예치금 조회 요청 - userCode: {}", userCode);
         
         try {
             BaseResponse<DepositInfoResponse> response = restClient.get()
@@ -32,7 +32,7 @@ public class DepositServiceClient {
                     .body(new ParameterizedTypeReference<>() {});
             
             if (response != null && response.getData() != null) {
-                log.info("예치금 조회 성공 - userCode: {}, balance: {}", userCode, response.getData().balance());
+                log.debug("예치금 조회 성공 - userCode: {}, balance: {}", userCode, response.getData().balance());
                 return response.getData();
             } else {
                 log.warn("예치금 조회 결과 없음 - userCode: {}", userCode);
@@ -46,7 +46,7 @@ public class DepositServiceClient {
 
     public void chargeDeposit(String userCode, Long amount, String referenceCode) {
         String url = depositServiceUrl + "/api/deposits/charge";
-        log.info("예치금 충전 요청 - userCode: {}, amount: {}, referenceCode: {}", userCode, amount, referenceCode);
+        log.debug("예치금 충전 요청 - userCode: {}, amount: {}, referenceCode: {}", userCode, amount, referenceCode);
         
         try {
             restClient.post()
@@ -56,7 +56,7 @@ public class DepositServiceClient {
                     .body(new DepositTransactionRequest(amount, referenceCode))
                     .retrieve()
                     .toBodilessEntity();
-            log.info("예치금 충전 성공 - userCode: {}, amount: {}", userCode, amount);
+            log.debug("예치금 충전 성공 - userCode: {}, amount: {}", userCode, amount);
         } catch (Exception e) {
             log.error("예치금 충전 실패 - userCode: {}, amount: {}, error: {}", userCode, amount, e.getMessage(), e);
             throw e;
@@ -71,7 +71,7 @@ public class DepositServiceClient {
     // 출금
     public void withdraw(String userCode, Long amount, String referenceCode) {
         String url = depositServiceUrl + "/api/deposits/withdraw";
-        log.info("예치금 출금 요청 - userCode: {}, amount: {}, referenceCode: {}", userCode, amount, referenceCode);
+        log.debug("예치금 출금 요청 - userCode: {}, amount: {}, referenceCode: {}", userCode, amount, referenceCode);
         
         try {
             restClient.post()
@@ -81,7 +81,7 @@ public class DepositServiceClient {
                     .body(new DepositTransactionRequest(amount, referenceCode))
                     .retrieve()
                     .toBodilessEntity();
-            log.info("예치금 출금 성공 - userCode: {}, amount: {}", userCode, amount);
+            log.debug("예치금 출금 성공 - userCode: {}, amount: {}", userCode, amount);
         } catch (Exception e) {
             log.error("예치금 출금 실패 - userCode: {}, amount: {}, error: {}", userCode, amount, e.getMessage(), e);
             throw e;

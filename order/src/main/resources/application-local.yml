@@ -48,3 +48,84 @@ payment:
   widgetClientKey: ${PAYMENT_WIDGET_CLIENT_KEY}
   successUrl: http://localhost:8082/api/orders/payment/success
   failUrl: http://localhost:8082/api/orders/payment/fail
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentService:
+        slidingWindowSize: 20           # 최근 20개 호출 기준
+        failureRateThreshold: 50        # 실패율 50% 이상이면 Open
+        waitDurationInOpenState: 30s    # 30초 동안 Open 유지
+        permittedNumberOfCallsInHalfOpenState: 3
+      productService:
+        slidingWindowSize: 20           # 최근 20개 호출 기준
+        failureRateThreshold: 50        # 실패율 50% 이상이면 Open
+        waitDurationInOpenState: 30s    # 30초 동안 Open 유지
+        permittedNumberOfCallsInHalfOpenState: 3
+      userService:
+        slidingWindowSize: 20           # 최근 20개 호출 기준
+        failureRateThreshold: 50        # 실패율 50% 이상이면 Open
+        waitDurationInOpenState: 30s    # 30초 동안 Open 유지
+        permittedNumberOfCallsInHalfOpenState: 3
+      cartService:
+        slidingWindowSize: 20           # 최근 20개 호출 기준
+        failureRateThreshold: 50        # 실패율 50% 이상이면 Open
+        waitDurationInOpenState: 30s    # 30초 동안 Open 유지
+        permittedNumberOfCallsInHalfOpenState: 3
+  retry:
+    instances:
+      paymentService:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격 (지수 backoff는 필요 시 추가 설정)
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - com.ll.core.model.exception.BaseException
+      productService:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - com.ll.core.model.exception.BaseException
+      userService:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - com.ll.core.model.exception.BaseException
+      cartService:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - com.ll.core.model.exception.BaseException
+      orderEventProducer:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격
+        retryExceptions:
+          - org.apache.kafka.common.errors.TimeoutException
+          - org.apache.kafka.common.errors.NetworkException
+          - org.apache.kafka.common.errors.RetriableException
+          - org.springframework.kafka.KafkaException
+        ignoreExceptions:
+          - com.ll.core.model.exception.BaseException
+
+# Order Event Outbox 설정
+order:
+  outbox:
+    max-retry-count: 5                    # 최대 재시도 횟수
+    republish-delay-minutes: 5             # 재발행 지연 시간 (분)
+    scheduler:
+      enabled: true                        # 스케줄러 활성화 여부
+      cron: "0 */5 * * * ?"                # 실행 주기 (5분마다, cron 표현식)

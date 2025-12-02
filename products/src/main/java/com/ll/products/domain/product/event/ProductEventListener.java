@@ -38,11 +38,11 @@ public class ProductEventListener {
         try {
             if (eventType == ProductEvent.EventType.DELETED) {
                 productSearchRepository.deleteById(product.getId());
-                log.info("Elasticsearch 삭제 완료 - productId: {}", product.getId());
+                log.debug("Elasticsearch 삭제 완료 - productId: {}", product.getId());
             } else {
                 ProductDocument document = ProductDocument.from(product);
                 productSearchRepository.save(document);
-                log.info("Elasticsearch 동기화 완료 - eventType: {}, productId: {}", eventType, product.getId());
+                log.debug("Elasticsearch 동기화 완료 - eventType: {}, productId: {}", eventType, product.getId());
             }
         } catch (Exception e) {
             log.warn("Elasticsearch 동기화 시도 실패 - eventType: {}, error: {}", eventType, e.getMessage());

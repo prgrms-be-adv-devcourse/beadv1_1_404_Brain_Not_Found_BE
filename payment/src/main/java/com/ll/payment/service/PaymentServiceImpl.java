@@ -91,18 +91,18 @@ public class PaymentServiceImpl implements PaymentService {
             paymentHistoryJpaRepository.save(requestHistory);
 
             Payment depositPayment = completeDepositPayment(payment, requestedAmount);
-            log.info("예치금 결제 완료 - orderId: {}, amount: {}", payment.orderId(), requestedAmount);
+            log.debug("예치금 결제 완료 - orderId: {}, amount: {}", payment.orderId(), requestedAmount);
             return new PaymentProcessResult(depositPayment, null);
         }
 
         // 예치금이 부족한 경우 : 토스 결제로 금액 충전 + 예치금으로 전체 결제
         int shortageAmount = requestedAmount - currentBalance;
-        log.info("예치금 부족 - 현재 잔액: {}, 요청 금액: {}, 부족 금액: {}", 
+        log.debug("예치금 부족 - 현재 잔액: {}, 요청 금액: {}, 부족 금액: {}", 
                 currentBalance, requestedAmount, shortageAmount);
         // 복합 결제 처리 (토스 충전 + 예치금 결제)
         Payment chargeTossPayment = processDepositPaymentWithCharge(payment, shortageAmount, requestedAmount);
         Payment depositPayment = completeDepositPayment(payment, requestedAmount);
-        log.info("예치금 결제 완료 - orderId: {}, amount: {}", payment.orderId(), requestedAmount);
+        log.debug("예치금 결제 완료 - orderId: {}, amount: {}", payment.orderId(), requestedAmount);
 
         return new PaymentProcessResult(depositPayment, chargeTossPayment);
     }
@@ -117,7 +117,7 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             // 토스 결제로 예치금 충전
             chargeTossPayment = chargeDepositWithToss(payment, shortageAmount);
-            log.info("복합 결제 처리 완료 - 토스 충전: {}, 예치금 결제 대기: {}", 
+            log.debug("복합 결제 처리 완료 - 토스 충전: {}, 예치금 결제 대기: {}", 
                     shortageAmount, requestedAmount);
         } catch (Exception e) {
             log.error("복합 결제 처리 실패 - orderId: {}, shortageAmount: {}, error: {}", 
@@ -127,7 +127,7 @@ public class PaymentServiceImpl implements PaymentService {
             if (chargeTossPayment != null && chargeTossPayment.getPaymentStatus() == PaymentStatus.CHARGE) {
                 try {
                     processTossRefundForCharge(chargeTossPayment, shortageAmount);
-                    log.info("예치금 충전 실패로 인한 토스 결제 환불 완료 - paymentId: {}", chargeTossPayment.getId());
+                    log.debug("예치금 충전 실패로 인한 토스 결제 환불 완료 - paymentId: {}", chargeTossPayment.getId());
                 } catch (Exception refundException) {
                     log.error("토스 결제 환불 실패 - paymentId: {}, error: {}", 
                             chargeTossPayment.getId(), refundException.getMessage(), refundException);
@@ -147,7 +147,7 @@ public class PaymentServiceImpl implements PaymentService {
         // 토스 결제
         PaymentRequest chargeTossRequest = payment.withAmountAndType(chargeAmount, PaidType.TOSS_PAYMENT);
         Payment chargeTossPayment = tossPayment(chargeTossRequest, PaymentStatus.CHARGE);
-        log.info("충전용 토스 결제 완료 - paymentId: {}, amount: {}", 
+        log.debug("충전용 토스 결제 완료 - paymentId: {}, amount: {}", 
                 chargeTossPayment.getId(), chargeAmount);
 
         // 토스 결제 성공 후 예치금 충전
@@ -157,7 +157,7 @@ public class PaymentServiceImpl implements PaymentService {
                 (long) chargeAmount, 
                 chargeReferenceCode
         );
-        log.info("예치금 충전 완료 - buyerCode: {}, amount: {}", 
+        log.debug("예치금 충전 완료 - buyerCode: {}, amount: {}", 
                 payment.buyerCode(), chargeAmount);
 
         return chargeTossPayment;
@@ -228,35 +228,6 @@ public class PaymentServiceImpl implements PaymentService {
         );
         paymentJpaRepository.save(payment);
 
-        // boolean isMockPaymentKey = paymentKey != null && paymentKey.startsWith("tgen_test_");
-        // if (isMockPaymentKey) {
-        //     log.info("더미 paymentKey 사용 중. Toss 승인 API 호출을 건너뜁니다. paymentKey: {}", paymentKey);
-        //     payment.markSuccess(
-        //             finalStatus,
-        //             LocalDateTime.now()
-        //     );
-        //     paymentJpaRepository.save(payment);
-
-        //     // 결제 성공 이력 저장
-        //     PaymentHistoryEntity successHistory = PaymentHistoryEntity.create(
-        //             payment.getId(),
-        //             PaymentHistoryActionType.SUCCESS,
-        //             finalStatus,
-        //             "TOSS",
-        //             paymentKey,
-        //             null, // transactionId
-        //             request.paidAmount(),
-        //             null, // failCode
-        //             null, // failMessage
-        //             null, // metadata
-        //             LocalDateTime.now(), // approvedAt
-        //             null  // refundedAt
-        //     );
-        //     paymentHistoryJpaRepository.save(successHistory);
-
-        //     return payment;
-        // }
-
         // 3) 실제 Toss 승인 요청
         TossPaymentRequest tossRequest = TossPaymentRequest.from(
                 paymentKey,
@@ -322,7 +293,7 @@ public class PaymentServiceImpl implements PaymentService {
     private String createPayment(Long orderId, String orderName, String customerName, Integer amount) {
         if (useMockPaymentKey) {
             String mockPaymentKey = "tgen_test_" + System.currentTimeMillis() + "_" + orderId;
-            log.info("테스트용 더미 paymentKey 생성: {}", mockPaymentKey);
+            log.debug("테스트용 더미 paymentKey 생성: {}", mockPaymentKey);
             return mockPaymentKey;
         }
 
@@ -337,7 +308,7 @@ public class PaymentServiceImpl implements PaymentService {
         );
 
         try {
-            log.info("Toss 결제 생성 요청 - orderId: {}, orderName: {}, amount: {}, successUrl: {}, failUrl: {}",
+            log.debug("Toss 결제 생성 요청 - orderId: {}, orderName: {}, amount: {}, successUrl: {}, failUrl: {}",
                     "ORDER-" + orderId, orderName, amount, successUrl, failUrl);
 
             String response = restClient.post()
@@ -361,7 +332,7 @@ public class PaymentServiceImpl implements PaymentService {
                     })
                     .body(String.class);
 
-            log.info("Toss 결제 생성 응답: {}", response);
+            log.debug("Toss 결제 생성 응답: {}", response);
             TossPaymentCreateResponse createResponse = objectMapper.readValue(response, TossPaymentCreateResponse.class);
             return createResponse.paymentKey();
         } catch (Exception e) {
@@ -369,7 +340,7 @@ public class PaymentServiceImpl implements PaymentService {
             log.warn("Toss Payments API 호출 실패. 테스트용 더미 paymentKey를 생성합니다.");
             // API 호출 실패 시 더미 paymentKey 생성
             String mockPaymentKey = "tgen_test_" + System.currentTimeMillis() + "_" + orderId;
-            log.info("테스트용 더미 paymentKey 생성: {}", mockPaymentKey);
+            log.debug("테스트용 더미 paymentKey 생성: {}", mockPaymentKey);
             return mockPaymentKey;
         }
     }
@@ -583,7 +554,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .body(cancelRequest)
                     .retrieve()
                     .toBodilessEntity();
-            log.info("충전 실패로 인한 토스 결제 환불 성공 - paymentKey: {}, refundAmount: {}", 
+            log.debug("충전 실패로 인한 토스 결제 환불 성공 - paymentKey: {}, refundAmount: {}", 
                     paymentKey, refundAmount);
         } catch (Exception e) {
             log.error("충전 실패로 인한 토스 결제 환불 요청에 실패했습니다. paymentKey: {}, refundAmount: {}", 
@@ -615,7 +586,7 @@ public class PaymentServiceImpl implements PaymentService {
                     .body(cancelRequest)
                     .retrieve()
                     .body(String.class);
-            log.info("토스 결제 환불 성공 - paymentKey: {}, refundAmount: {}", paymentKey, refundAmount);
+            log.debug("토스 결제 환불 성공 - paymentKey: {}, refundAmount: {}", paymentKey, refundAmount);
             return refundResponse;
         } catch (Exception e) {
             log.error("토스 결제 환불 요청에 실패했습니다. paymentKey: {}, refundAmount: {}", 

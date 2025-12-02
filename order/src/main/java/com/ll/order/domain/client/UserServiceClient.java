@@ -20,7 +20,7 @@ public class UserServiceClient {
     private String userServiceUrl;
 
     public UserResponse getUserByCode(String userCode) {
-        log.info("userServiceUrl = {}", userServiceUrl);
+        log.debug("userServiceUrl = {}", userServiceUrl);
         BaseResponse<UserResponse> response = restClient.get()
                 .uri(userServiceUrl + "/api/users/info")
                 .header("X-User-Code", userCode)
