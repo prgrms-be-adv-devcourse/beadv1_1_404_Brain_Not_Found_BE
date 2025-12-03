@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-config-dev
+data:
+  prometheus-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        # 위에서 정의한 Prometheus Service의 ClusterIP 주소를 사용합니다.
+        url: http://prometheus-svc-dev.dev.svc.cluster.local:9090
+        access: proxy
+        isDefault: true
+        editable: true

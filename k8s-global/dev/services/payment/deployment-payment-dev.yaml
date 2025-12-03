@@ -2,30 +2,32 @@ apiVersion: apps/v1
 kind: Deployment
 #이 파일 정의
 metadata:
-  name: auth-dpy-dev
+  name: payment-dpy-dev
 #동작 정의
 spec:
   replicas: 1
 #  제어할 라벨
   selector:
     matchLabels:
-      app: auth-dev
+      app: payment-dev
 #      pod 정의
   template:
     metadata:
       labels:
-        app: auth-dev
+        app: payment-dev
 #        컨테이너 정의
     spec:
       containers:
-        - name: auth-pod-dev
-          image: auth:0.0.1-SNAPSHOT
+        - name: payment-pod-dev
+          image: payment:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8084
+            - containerPort: 8087
           envFrom:
             - configMapRef:
-                name: auth-config-dev
+                name: payment-config-dev
             - secretRef:
-                name: auth-secret-dev
+                name: payment-secret-dev
+#            - secretRef:
+#                name: payment-secret-key-dev
       restartPolicy: Always

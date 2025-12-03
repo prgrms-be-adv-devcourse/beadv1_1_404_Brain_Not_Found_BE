@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config-dev
+data:
+  prometheus.yml: |
+    global:
+      # 15초마다 타겟을 스크랩(Scrape)합니다.
+      scrape_interval: 15s
+    
+    scrape_configs:
+      # 1. 자신(프로메테우스 서버)을 모니터링합니다.
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      
+      # 2. 쿠버네티스 노드와 Pod의 상태를 모니터링합니다. 
+      # 이 예시는 간단한 테스트를 위해 Kubelet을 타겟으로 설정합니다.
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/$1/proxy/metrics
+        scheme: https
+        tls_config:
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token

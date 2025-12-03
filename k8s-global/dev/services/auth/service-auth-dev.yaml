@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: auth-svc-dev
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: auth-dev
   ports:

@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: auth-db-svc-dev
+  name: payment-db-svc-dev
 spec:
   type: ClusterIP
   selector:
-    app: auth-db-dev
+    app: payment-db-dev
   ports:
     - protocol: TCP
-      port: 3308
-      targetPort: 3308
+      port: 3315
+      targetPort: 3306

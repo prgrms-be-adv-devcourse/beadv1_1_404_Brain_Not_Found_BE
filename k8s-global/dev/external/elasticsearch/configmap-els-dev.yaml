@@ -1,0 +1,14 @@
+apiVersion: v1
+
+kind: ConfigMap
+
+metadata:
+  name: els-config-dev
+
+data:
+  node.name: "elasticsearch-1"
+  cluster.name: "cluster-1"
+  discovery.type: "single-node"
+  xpack.security.enabled: "false"
+  xpack.security.http.ssl.enabled: "false"
+  ES_JAVA_OPTS: "-Xms512m -Xmx512m"
