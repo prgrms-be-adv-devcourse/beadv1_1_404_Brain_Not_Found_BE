@@ -9,11 +9,14 @@ import com.ll.auth.model.vo.request.TokenValidRequest;
 import com.ll.auth.oAuth2.JWTProvider;
 import com.ll.auth.repository.AuthRepository;
 import com.ll.auth.util.CookieUtil;
+import com.ll.user.model.vo.response.UserResponse;
+import com.ll.user.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,20 +30,9 @@ public class AuthService {
     private final AuthRepository authRepository;
     private final JWTProvider jWTProvider;
     private final RedisService redisService;
+    private final UserService userService;
+    private final AuthAsyncService authAsyncService;
 
-    public void save(Auth auth){
-        authRepository.save(auth);
-    }
-
-    public void update(String userCode, String deviceCode, String refreshToken){
-        Auth auth = authRepository.findByUserCodeAndDeviceCode(userCode,deviceCode).orElseThrow(TokenNotFoundException::new);
-        auth.updateRefreshToken(refreshToken);
-        save(auth);
-    }
-
-    public void delete(String userCode, String deviceCode){
-        authRepository.deleteByUserCodeAndDeviceCode(userCode,deviceCode);
-    }
 
     public List<Auth> findAllValid(){
         return authRepository.findByExpiredAtAfter((LocalDateTime.now()));
@@ -55,33 +47,36 @@ public class AuthService {
             throw new DeviceCodeNotProvidedException();
         }
 
-        String storedToken = redisService.getRefreshToken(request.userCode(), request.deviceCode());
-        if (!request.refreshToken().equals(storedToken)) {
+
+        if (!redisService.validRefreshToken(request.refreshToken(),request.deviceCode())) {
             // 연속적인 Redis 갱신 보호
             if(!redisService.checkUpdateRedisLimit()){
                 updateRedis();
                 redisService.setUpdateRedisLimit();
             }
-            storedToken = redisService.getRefreshToken(request.userCode(), request.deviceCode());
         }
-        if (request.refreshToken().equals(storedToken)) {
-            issuedToken(request.userCode(),request.deviceCode(),request.role(),response);
+        if (redisService.validRefreshToken(request.refreshToken(),request.deviceCode())) {
+            String userCode = redisService.getUserCode(request.refreshToken(),request.deviceCode());
+            UserResponse user = userService.getUserByUserCode(userCode);
+            redisService.deleteRefreshToken(request.refreshToken(),request.deviceCode());
+            issuedToken(user.code(),request.deviceCode(),user.role().name(),response);
             return;
         }
         throw new TokenNotFoundException();
     }
-    public void issuedToken(String userCode,String deviceCode,String role,HttpServletResponse response){
 
+    public void issuedToken(String userCode,String deviceCode,String role,HttpServletResponse response){
         Tokens tokens = jWTProvider.createToken(userCode, role);
         redisService.saveRefreshToken(userCode, deviceCode, tokens.refreshToken());
-        asyncUpdate(userCode, deviceCode, tokens.refreshToken());
+        redisService.invalidateOldRefreshToken(userCode, deviceCode, tokens.refreshToken());
+        redisService.saveUserDeviceMapping(userCode,deviceCode,tokens.refreshToken());
+        authAsyncService.asyncSave(userCode, deviceCode, tokens.refreshToken());
         CookieUtil.setTokenCookie(response,tokens.accessToken(),tokens.refreshToken());
-
     }
 
-    public void logoutUser(String userCode , HttpServletResponse response , String deviceCode){
-        redisService.deleteRefreshToken(userCode,deviceCode);
-        asyncDelete(userCode,deviceCode);
+    public void logoutUser(String refreshToken , HttpServletResponse response , String deviceCode){
+        redisService.deleteRefreshToken(refreshToken,deviceCode);
+        authAsyncService.asyncDelete(refreshToken);
         CookieUtil.expiredCookie(response);
     }
 
@@ -91,33 +86,4 @@ public class AuthService {
         }
     }
 
-    @Async
-    public void asyncUpdate(String userCode, String deviceCode, String refreshToken){
-        update(userCode, deviceCode, refreshToken);
-        log.info("Async DB update 완료: userCode={}, deviceCode={}", userCode, deviceCode);
-    }
-
-    @Async
-    public void asyncDelete(String userCode, String deviceCode){
-        delete(userCode, deviceCode);
-        log.info("Async DB delete 완료: userCode={}, deviceCode={}", userCode, deviceCode);
-    }
-
-    @Async
-    public void asyncSave(String userCode, String deviceCode, String refreshToken){
-
-        Optional<Auth> auth = authRepository.findByUserCodeAndDeviceCode(userCode,deviceCode);
-
-        if(auth.isPresent()){
-            update(userCode, deviceCode, refreshToken);
-        }
-        else{
-            save(Auth.builder()
-                    .userCode(userCode)
-                    .deviceCode(deviceCode)
-                    .refreshToken(refreshToken)
-                    .build());
-        }
-        log.info("Async DB Save 완료");
-    }
 }

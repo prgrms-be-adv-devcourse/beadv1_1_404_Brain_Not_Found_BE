@@ -13,6 +13,7 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
 
     Optional<Auth> findByUserCodeAndDeviceCode(String userCode, String deviceCode);
 
-    void deleteByUserCodeAndDeviceCode(String userCode, String deviceCode);
     List<Auth> findByExpiredAtAfter(LocalDateTime expiredAtAfter);
+
+    void deleteByRefreshToken(String refreshToken);
 }

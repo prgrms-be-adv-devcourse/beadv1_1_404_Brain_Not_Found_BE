@@ -6,6 +6,7 @@ import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.request.TokenValidRequest;
 import com.ll.auth.oAuth2.JWTProvider;
 import com.ll.auth.repository.AuthRepository;
+import com.ll.auth.service.AuthAsyncService;
 import com.ll.auth.service.AuthService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,6 +29,7 @@ import static org.mockito.BDDMockito.*;
     @Mock private AuthRepository authRepository;
     @Mock private JWTProvider jWTProvider;
     @InjectMocks private AuthService authService;
+    @InjectMocks private AuthAsyncService authAsyncService;
 
     private static final String USER_CODE = "USER_001";
     private static final String ROLE = "ROLE_USER";
@@ -45,7 +47,7 @@ import static org.mockito.BDDMockito.*;
                 .build();
 
         // when
-        authService.save(auth);
+        authAsyncService.save(auth);
 
         // then
         then(authRepository).should().save(auth);

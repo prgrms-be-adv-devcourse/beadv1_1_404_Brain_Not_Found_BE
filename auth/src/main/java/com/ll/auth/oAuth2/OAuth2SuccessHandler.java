@@ -3,6 +3,7 @@ package com.ll.auth.oAuth2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.uuid.Generators;
 import com.ll.auth.model.vo.dto.Tokens;
+import com.ll.auth.service.AuthAsyncService;
 import com.ll.auth.service.AuthService;
 import com.ll.auth.service.RedisService;
 import com.ll.auth.util.CookieUtil;
@@ -32,6 +33,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private final UserService userService;
     private final RedisService redisService;
     private final AuthService authService;
+    private final AuthAsyncService authAsyncService;
 
     @Override
     public void onAuthenticationSuccess(
@@ -42,22 +44,11 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         UserLoginRequest loginRequest = oAuth2UserFactory.getOAuth2UserInfo(authentication);
         UserLoginResponse user = userService.createOrUpdateUser(loginRequest);
-
-        // JWT 발급
-        Tokens tokens = jwtProvider.createToken(user.code(),user.role().name());
-        String accessToken = tokens.accessToken().trim();
-        String refreshToken = tokens.refreshToken().trim();
-
-        // Cookie 생성
-        CookieUtil.setTokenCookie(response,accessToken,refreshToken);
         String deviceCode = getDeviceCode(request);
         Cookie deviceCodeCookie = new Cookie("deviceCode",deviceCode);
         deviceCodeCookie.setPath("/");
         response.addCookie(deviceCodeCookie);
-
-        //RefreshToken 저장
-        redisService.saveRefreshToken(user.code(),deviceCode,refreshToken);
-        authService.asyncSave(user.code(),deviceCode,refreshToken);
+        authService.issuedToken(user.code(),deviceCode,user.role().name(),response);
         //User 정보 Client에 제공
         Map<String, Object> body = Map.of(
                 "user", Map.of(
