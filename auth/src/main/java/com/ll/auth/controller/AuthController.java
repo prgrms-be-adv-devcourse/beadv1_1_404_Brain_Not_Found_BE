@@ -22,14 +22,16 @@ public class AuthController {
     private final RedisService redisService;
 
     @PostMapping
-    public ResponseEntity<BaseResponse<Tokens>> refreshToken(
+    public ResponseEntity<Void> refreshToken(
             @CookieValue(name = "refreshToken", required = false) String refreshToken,
             @CookieValue(name = "deviceCode", required = false) String deviceCode,
             @RequestHeader(value="X-User-Code") String userCode,
-            @RequestHeader(value="X-Role") String role
+            @RequestHeader(value="X-Role") String role,
+            HttpServletResponse response
     ){
         TokenValidRequest validRequest = new TokenValidRequest(userCode,role,refreshToken,deviceCode);
-        return BaseResponse.ok(authService.refreshToken(validRequest));
+        authService.refreshToken(validRequest,response);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/logout")
@@ -40,29 +42,5 @@ public class AuthController {
     ){
         authService.logoutUser(userCode,response,deviceCode);
         return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/test")
-    public ResponseEntity<Void> test(
-            HttpServletResponse response
-    ){
-        int accessTokenMaxAge = 60 * 15; // 15분
-        int refreshTokenMaxAge = 60 * 60 * 24 * 7; // 7일
-        ResponseCookie accessTokenCookie = CookieUtil.generateCookie("accessToken","test",accessTokenMaxAge);
-        ResponseCookie refreshTokenCookie = CookieUtil.generateCookie("refreshToken","test",refreshTokenMaxAge);
-        response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
-        Cookie deviceCodeCookie = new Cookie("deviceCode","test");
-        deviceCodeCookie.setPath("/");
-        response.addCookie(deviceCodeCookie);
-
-        //RefreshToken 저장
-        redisService.saveRefreshToken("test","test","test");
-        return ResponseEntity.ok().build();
-    }
-    @GetMapping("/ping")
-    public ResponseEntity<BaseResponse<String>> pong(){
-
-        return  BaseResponse.ok("Ok");
     }
 }

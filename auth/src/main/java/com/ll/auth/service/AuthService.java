@@ -48,7 +48,7 @@ public class AuthService {
         return authRepository.findByExpiredAtAfter((LocalDateTime.now()));
     }
 
-    public Tokens refreshToken(TokenValidRequest request){
+    public void refreshToken(TokenValidRequest request,HttpServletResponse response){
 
         if(request.refreshToken() == null || request.refreshToken().isEmpty()){
             throw new TokenNotProvidedException();
@@ -58,37 +58,33 @@ public class AuthService {
         }
 
         String storedToken = redisService.getRefreshToken(request.userCode(), request.deviceCode());
-
         if (!request.refreshToken().equals(storedToken)) {
-
             // 연속적인 Redis 갱신 보호
             if(!redisService.checkUpdateRedisLimit()){
                 updateRedis();
                 redisService.setUpdateRedisLimit();
             }
-
             storedToken = redisService.getRefreshToken(request.userCode(), request.deviceCode());
         }
-
         if (request.refreshToken().equals(storedToken)) {
-            Tokens tokens = jWTProvider.createToken(request.userCode(), request.role());
-            redisService.saveRefreshToken(request.userCode(), request.deviceCode(), tokens.refreshToken());
-            asyncUpdate(request.userCode(), request.deviceCode(), tokens.refreshToken());
-            return tokens;
+            issuedToken(request.userCode(),request.deviceCode(),request.role(),response);
+            return;
         }
-
         throw new TokenNotFoundException();
+    }
+    public void issuedToken(String userCode,String deviceCode,String role,HttpServletResponse response){
+
+        Tokens tokens = jWTProvider.createToken(userCode, role);
+        redisService.saveRefreshToken(userCode, deviceCode, tokens.refreshToken());
+        asyncUpdate(userCode, deviceCode, tokens.refreshToken());
+        CookieUtil.setTokenCookie(response,tokens.accessToken(),tokens.refreshToken());
+
     }
 
     public void logoutUser(String userCode , HttpServletResponse response , String deviceCode){
         redisService.deleteRefreshToken(userCode,deviceCode);
         asyncDelete(userCode,deviceCode);
-        ResponseCookie accessTokenCookie = CookieUtil.expiredCookie("accessToken");
-        ResponseCookie refreshTokenCookie = CookieUtil.expiredCookie("refreshToken");
-        ResponseCookie deviceCodeCookie =  CookieUtil.expiredCookie("deviceCode");
-        response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE,deviceCodeCookie.toString());
+        CookieUtil.expiredCookie(response);
     }
 
     private void updateRedis(){

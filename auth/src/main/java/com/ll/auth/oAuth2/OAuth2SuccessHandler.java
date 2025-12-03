@@ -50,15 +50,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = tokens.accessToken().trim();
         String refreshToken = tokens.refreshToken().trim();
 
-        int accessTokenMaxAge = 60 * 15; // 15분
-        int refreshTokenMaxAge = 60 * 60 * 24 * 7; // 7일
-
         // Cookie 생성
-        ResponseCookie accessTokenCookie = CookieUtil.generateCookie("accessToken",accessToken,accessTokenMaxAge);
-        ResponseCookie refreshTokenCookie = CookieUtil.generateCookie("refreshToken",refreshToken,refreshTokenMaxAge);
+        CookieUtil.setTokenCookie(response,accessToken,refreshToken);
         String deviceCode = getDeviceCode(request);
-        response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
         Cookie deviceCodeCookie = new Cookie("deviceCode",deviceCode);
         deviceCodeCookie.setPath("/");
         response.addCookie(deviceCodeCookie);

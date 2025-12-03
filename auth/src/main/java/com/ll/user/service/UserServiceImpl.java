@@ -1,5 +1,6 @@
 package com.ll.user.service;
 
+import com.ll.auth.service.AuthService;
 import com.ll.user.exception.UserNotFoundException;
 import com.ll.user.producer.UserEventProducer;
 import com.ll.user.model.entity.User;
@@ -8,6 +9,7 @@ import com.ll.user.model.vo.request.UserPatchRequest;
 import com.ll.common.model.vo.response.UserLoginResponse;
 import com.ll.user.model.vo.response.UserResponse;
 import com.ll.user.repository.UserRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -23,6 +25,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
+    private final AuthService authService;
     private final UserEventProducer userEventProducer;
 
     @Override
@@ -35,8 +38,8 @@ public class UserServiceImpl implements UserService {
         return UserResponse.from(findUserByCodeOrThrow(userCode));
     }
 
-    @Override
     @Transactional
+    @Override
     public UserResponse updateUser(UserPatchRequest request, String userCode) {
         User user = findUserByCodeOrThrow(userCode);
         modelMapper.map(request,user);
@@ -86,8 +89,8 @@ public class UserServiceImpl implements UserService {
                 .name(request.name())
                 .build());
 
-        userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
-        userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
+        //userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
+        //userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
         return savedUser;
     }
 }
