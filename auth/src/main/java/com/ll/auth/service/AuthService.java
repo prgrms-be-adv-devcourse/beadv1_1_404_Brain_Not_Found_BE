@@ -12,8 +12,6 @@ import com.ll.auth.util.CookieUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 

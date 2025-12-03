@@ -1,15 +1,9 @@
 package com.ll.auth.controller;
 import com.ll.auth.service.RedisService;
-import com.ll.auth.util.CookieUtil;
-import com.ll.core.model.response.BaseResponse;
-import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.request.TokenValidRequest;
 import com.ll.auth.service.AuthService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final RedisService redisService;
 
     @PostMapping
     public ResponseEntity<Void> refreshToken(
