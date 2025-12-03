@@ -27,6 +27,39 @@ public class OrderEventOutboxService {
     @Value("${order.outbox.max-retry-count:5}")
     private Integer maxRetryCount;
 
+    // PENDING 상태의 이벤트를 Kafka에 발행
+    @Transactional
+    public int publishPendingEvents() {
+        // 발행 대상 조회: PENDING 상태인 이벤트
+        List<OrderEventOutbox> pendingEvents = orderEventOutboxRepository
+                .findByStatusAndRetryCountLessThan(OutboxStatus.PENDING, maxRetryCount);
+
+        if (pendingEvents.isEmpty()) {
+            log.debug("발행할 PENDING 상태의 이벤트가 없습니다.");
+            return 0;
+        }
+
+        log.debug("PENDING 상태의 이벤트 발행 시작 - 대상: {}개", pendingEvents.size());
+
+        int successCount = 0;
+        int failureCount = 0;
+
+        for (OrderEventOutbox outbox : pendingEvents) {
+            try {
+                publishEvent(outbox);
+                successCount++;
+            } catch (Exception e) {
+                failureCount++;
+                log.error("이벤트 발행 실패 - outboxId: {}, referenceCode: {}, error: {}",
+                        outbox.getId(), outbox.getReferenceCode(), e.getMessage(), e);
+            }
+        }
+
+        log.debug("이벤트 발행 완료 - 성공: {}개, 실패: {}개", successCount, failureCount);
+        return successCount;
+    }
+
+    // FAILED 상태의 이벤트를 재발행
     @Transactional
     public int republishFailedEvents() {
         // 재발행 대상 조회: FAILED 상태이고, 재시도 횟수가 최대값 미만인 것
@@ -45,7 +78,7 @@ public class OrderEventOutboxService {
 
         for (OrderEventOutbox outbox : failedEvents) {
             try {
-                republishEvent(outbox);
+                publishEvent(outbox);
                 successCount++;
             } catch (Exception e) {
                 failureCount++;
@@ -58,8 +91,9 @@ public class OrderEventOutboxService {
         return successCount;
     }
 
+    // 이벤트를 Kafka에 발행 (PENDING 또는 FAILED 상태의 이벤트 처리)
     @Transactional
-    public void republishEvent(OrderEventOutbox outbox) {
+    public void publishEvent(OrderEventOutbox outbox) {
         try {
             // JSON을 OrderEvent로 역직렬화
             OrderEvent orderEvent;
@@ -69,30 +103,39 @@ public class OrderEventOutboxService {
                 throw new RuntimeException("OrderEvent 역직렬화 실패 - outboxId: " + outbox.getId(), e);
             }
 
-            // 이벤트 재발행 시도
+            // 이벤트 발행 시도
             orderEventProducer.sendOrder(orderEvent);
 
-            // 재발행 성공 시 상태 변경
+            // 발행 성공 시 상태 변경
             outbox.markAsPublished();
             orderEventOutboxRepository.save(outbox);
 
-            log.debug("이벤트 재발행 성공 - outboxId: {}, referenceCode: {}, retryCount: {}",
+            log.debug("이벤트 발행 성공 - outboxId: {}, referenceCode: {}, retryCount: {}",
                     outbox.getId(), outbox.getReferenceCode(), outbox.getRetryCount());
 
         } catch (Exception e) {
-            // 재발행 실패 시 재시도 횟수 증가
+            // 발행 실패 시 재시도 횟수 증가
             outbox.incrementRetryCount(e.getMessage());
 
-            // 최대 재시도 횟수 초과 시 상태 유지 (FAILED)
+            // 최대 재시도 횟수 초과 시 상태를 FAILED로 변경
             if (outbox.getRetryCount() >= maxRetryCount) {
                 outbox.markAsFailed("최대 재시도 횟수 초과: " + e.getMessage());
-                log.warn("이벤트 재발행 최대 재시도 횟수 초과 - outboxId: {}, referenceCode: {}, retryCount: {}",
+                log.warn("이벤트 발행 최대 재시도 횟수 초과 - outboxId: {}, referenceCode: {}, retryCount: {}",
                         outbox.getId(), outbox.getReferenceCode(), outbox.getRetryCount());
+            } else {
+                // 재시도 횟수가 최대값 미만이면 상태를 FAILED로 변경 (다음 스케줄러 실행 시 재시도)
+                outbox.markAsFailed(e.getMessage());
             }
 
             orderEventOutboxRepository.save(outbox);
             throw e; // 상위로 예외 전파
         }
+    }
+
+    public long countPublishableEvents() {
+        return orderEventOutboxRepository
+                .findByStatusAndRetryCountLessThan(OutboxStatus.PENDING, maxRetryCount)
+                .size();
     }
 
     public long countRepublishableEvents() {

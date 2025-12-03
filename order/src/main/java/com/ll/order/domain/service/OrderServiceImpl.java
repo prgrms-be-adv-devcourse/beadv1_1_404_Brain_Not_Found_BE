@@ -748,12 +748,6 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    // 재고 롤백 (명시적 롤백 - 각 재고 차감이 별도 트랜잭션으로 커밋되었기 때문)
-    // Kafka 이벤트로 발행하여 비동기 처리
-    private void rollbackInventory(List<InventoryDeduction> successfulDeductions) {
-        rollbackInventory(successfulDeductions, null);
-    }
-
     // 재고 롤백 (orderCode를 받아서 TransactionTracing 업데이트 가능)
     private void rollbackInventory(List<InventoryDeduction> successfulDeductions, String orderCode) {
         log.warn("재고 차감 실패로 인한 재고 롤백 시작 - 롤백 대상: {}개", successfulDeductions.size());
@@ -780,11 +774,6 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    // 주문의 재고 롤백 (결제 실패 시 사용)
-    private void rollbackInventoryForOrder(List<OrderItem> orderItems) {
-        rollbackInventoryForOrder(orderItems, null);
-    }
-
     // 주문의 재고 롤백 (orderCode를 받아서 TransactionTracing 업데이트 가능)
     private void rollbackInventoryForOrder(List<OrderItem> orderItems, String orderCode) {
         log.warn("결제 실패로 인한 재고 롤백 시작 - orderItems: {}개", orderItems.size());
@@ -796,7 +785,7 @@ public class OrderServiceImpl implements OrderService {
         rollbackInventory(deductions, orderCode);
     }
 
-    // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때만)
+    // 주문 완료 이벤트를 Outbox에 저장 (트랜잭션과 이벤트 발행의 원자성 보장)
     private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             OrderEvent orderEvent = OrderEvent.of(
@@ -807,30 +796,21 @@ public class OrderServiceImpl implements OrderService {
                     (long) orderItem.getPrice() * orderItem.getQuantity()
             );
 
-            try {
-                orderEventProducer.sendOrder(orderEvent);
-                log.debug("주문 완료 이벤트 발행 성공 - orderCode: {}, orderItemCode: {}, referenceCode: {}",
-                        order.getCode(), orderItem.getCode(), orderEvent.referenceCode());
-            } catch (Exception e) {
-                // Resilience4j Retry를 모두 시도했지만 실패한 경우 Outbox에 저장
-                log.error("주문 완료 이벤트 발행 실패 (재시도 모두 실패) - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}",
-                        order.getCode(), orderItem.getCode(), orderEvent.referenceCode(), e.getMessage(), e);
-                // Outbox에 저장하여 나중에 재발행할 수 있도록 함
-                saveToOutbox(orderEvent, order.getCode(), orderItem.getCode(), e.getMessage());
-            }
+            // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
+            // 별도 프로세스가 Outbox를 읽어서 Kafka에 발행
+            saveToOutbox(orderEvent, order.getCode(), orderItem.getCode());
         }
     }
 
-    // 이벤트 발행 실패 시 Outbox에 저장
+    // 이벤트를 Outbox에 저장 (PENDING 상태로 저장하여 스케줄러가 발행)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode, String errorMessage) {
+    public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode) {
         try {
             OrderEventOutbox outbox = OrderEventOutbox.from(orderEvent, objectMapper);
-            outbox.incrementRetryCount(errorMessage);
-            outbox.markAsFailed(errorMessage);
+            // PENDING 상태로 저장 (기본값이므로 명시적으로 설정하지 않아도 됨)
             orderEventOutboxRepository.save(outbox);
 
-            log.debug("주문 이벤트 Outbox 저장 완료 - orderCode: {}, orderItemCode: {}, referenceCode: {}, outboxId: {}",
+            log.debug("주문 이벤트 Outbox 저장 완료 (PENDING) - orderCode: {}, orderItemCode: {}, referenceCode: {}, outboxId: {}",
                     orderCode, orderItemCode, orderEvent.referenceCode(), outbox.getId());
         } catch (Exception e) {
             log.error("주문 이벤트 Outbox 저장 실패 - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}",
@@ -838,6 +818,4 @@ public class OrderServiceImpl implements OrderService {
             // Outbox 저장 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
         }
     }
-
-    // 도메인 별 규칙에 맞는 검증 로직이 필요하면 추가 작성할 것.
 }
