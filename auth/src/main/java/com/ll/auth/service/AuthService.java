@@ -14,7 +14,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -29,6 +34,20 @@ public class AuthService {
         authRepository.save(auth);
     }
 
+    public void update(String userCode, String deviceCode, String refreshToken){
+        Auth auth = authRepository.findByUserCodeAndDeviceCode(userCode,deviceCode).orElseThrow(TokenNotFoundException::new);
+        auth.updateRefreshToken(refreshToken);
+        save(auth);
+    }
+
+    public void delete(String userCode, String deviceCode){
+        authRepository.deleteByUserCodeAndDeviceCode(userCode,deviceCode);
+    }
+
+    public List<Auth> findAllValid(){
+        return authRepository.findByExpiredAtAfter((LocalDateTime.now()));
+    }
+
     public Tokens refreshToken(TokenValidRequest request){
 
         if(request.refreshToken() == null || request.refreshToken().isEmpty()){
@@ -37,19 +56,33 @@ public class AuthService {
         if(request.deviceCode() == null || request.deviceCode().isEmpty()){
             throw new DeviceCodeNotProvidedException();
         }
-        if(redisService.getRefreshToken(request.userCode(),request.deviceCode()).equals(request.refreshToken())){
-            Tokens tokens = jWTProvider.createToken(request.userCode(),request.role());
-            redisService.saveRefreshToken(request.userCode(),request.deviceCode(),tokens.refreshToken());
+
+        String storedToken = redisService.getRefreshToken(request.userCode(), request.deviceCode());
+
+        if (!request.refreshToken().equals(storedToken)) {
+
+            // 연속적인 Redis 갱신 보호
+            if(!redisService.checkUpdateRedisLimit()){
+                updateRedis();
+                redisService.setUpdateRedisLimit();
+            }
+
+            storedToken = redisService.getRefreshToken(request.userCode(), request.deviceCode());
+        }
+
+        if (request.refreshToken().equals(storedToken)) {
+            Tokens tokens = jWTProvider.createToken(request.userCode(), request.role());
+            redisService.saveRefreshToken(request.userCode(), request.deviceCode(), tokens.refreshToken());
+            asyncUpdate(request.userCode(), request.deviceCode(), tokens.refreshToken());
             return tokens;
         }
-        else{
-            throw new TokenNotFoundException();
-        }
+
+        throw new TokenNotFoundException();
     }
 
     public void logoutUser(String userCode , HttpServletResponse response , String deviceCode){
-
         redisService.deleteRefreshToken(userCode,deviceCode);
+        asyncDelete(userCode,deviceCode);
         ResponseCookie accessTokenCookie = CookieUtil.expiredCookie("accessToken");
         ResponseCookie refreshTokenCookie = CookieUtil.expiredCookie("refreshToken");
         ResponseCookie deviceCodeCookie =  CookieUtil.expiredCookie("deviceCode");
@@ -58,4 +91,39 @@ public class AuthService {
         response.addHeader(HttpHeaders.SET_COOKIE,deviceCodeCookie.toString());
     }
 
+    private void updateRedis(){
+        for (Auth auth : findAllValid()) {
+            redisService.saveRefreshToken(auth.getUserCode(), auth.getDeviceCode(), auth.getRefreshToken());
+        }
+    }
+
+    @Async
+    public void asyncUpdate(String userCode, String deviceCode, String refreshToken){
+        update(userCode, deviceCode, refreshToken);
+        log.info("Async DB update 완료: userCode={}, deviceCode={}", userCode, deviceCode);
+    }
+
+    @Async
+    public void asyncDelete(String userCode, String deviceCode){
+        delete(userCode, deviceCode);
+        log.info("Async DB delete 완료: userCode={}, deviceCode={}", userCode, deviceCode);
+    }
+
+    @Async
+    public void asyncSave(String userCode, String deviceCode, String refreshToken){
+
+        Optional<Auth> auth = authRepository.findByUserCodeAndDeviceCode(userCode,deviceCode);
+
+        if(auth.isPresent()){
+            update(userCode, deviceCode, refreshToken);
+        }
+        else{
+            save(Auth.builder()
+                    .userCode(userCode)
+                    .deviceCode(deviceCode)
+                    .refreshToken(refreshToken)
+                    .build());
+        }
+        log.info("Async DB Save 완료");
+    }
 }
