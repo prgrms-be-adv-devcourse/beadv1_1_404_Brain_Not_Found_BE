@@ -43,28 +43,26 @@ spring:
 
   kafka:
     bootstrap-servers:
-      - ${KAFKA_1_CONTAINER_NAME}:9090
+      - http://kafka-svc-dev.dev.svc.cluster.local:9090
     consumer:
       group-id: user-service
       properties:
         allow.auto.create.topics: false
 
+#  redis 설정
+  data:
+    redis:
+      host: redis-svc-dev.dev.svc.cluster.local
+      port: 6379
+      timeout: 60000ms
 
-
-
-eureka:
-  client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: ${DISCOVERY_URL}
-
-external:
-  user-service:
-    url: http://user:8083
+#external:
+#  user-service:
+#    url: http://auth-svc-dev.dev.svc.cluster.local:8084
 
 logging:
   level:
     org.springframework.security: INFO
     org.springframework.security.oauth2: INFO
     com.ll.auth.handler: INFO
+

@@ -18,11 +18,11 @@ spring:
 
   # Elasticsearch 설정
   elasticsearch:
-    uris: http://elasticsearch-1:9200
+    uris: http://els-svc-dev.dev.svc.cluster.local:9200
 
   kafka:
     bootstrap-servers:
-      - ${KAFKA_1_CONTAINER_NAME}:9090
+      - http://kafka-svc-dev.dev.svc.cluster.local:9090
     consumer:
       group-id: product-service
       properties:
@@ -32,14 +32,22 @@ spring:
 
 api:
   user:
-    base-url: http://user:8083
+    base-url: http://auth-svc-dev.dev.svc.cluster.local:8084
 
-eureka:
-  client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: ${DISCOVERY_URL}
+
 logging:
   level:
     root: info
+
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET}
+      base-url: https://${AWS_S3_BUCKET}.s3.${AWS_REGION:ap-northeast-2}.amazonaws.com
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    region:
+      static: ${AWS_REGION:ap-northeast-2}
+    stack:
+      auto: false
