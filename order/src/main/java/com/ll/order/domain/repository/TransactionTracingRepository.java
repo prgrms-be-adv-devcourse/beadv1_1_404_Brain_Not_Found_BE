@@ -1,7 +1,7 @@
 package com.ll.order.domain.repository;
 
 import com.ll.order.domain.model.entity.TransactionTracing;
-import com.ll.order.domain.model.entity.TransactionTracing.CompensationStatus;
+import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,9 +14,9 @@ public interface TransactionTracingRepository extends JpaRepository<TransactionT
     Optional<TransactionTracing> findByOrderCode(String orderCode);
     
     @Query("""
-        SELECT t FROM TransactionTracing t 
-        WHERE t.compensationStatus = :compensationStatus 
-        AND t.compensationRetryCount < :maxRetryCount 
+        SELECT t FROM TransactionTracing t
+        WHERE t.compensationStatus = :compensationStatus
+        AND t.compensationRetryCount < :maxRetryCount
         AND t.status = 'COMPENSATING'
         """)
     List<TransactionTracing> findFailedCompensationsForRetry(

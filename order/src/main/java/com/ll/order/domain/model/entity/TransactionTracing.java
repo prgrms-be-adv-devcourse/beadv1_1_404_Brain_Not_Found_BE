@@ -1,6 +1,9 @@
 package com.ll.order.domain.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
+import com.ll.order.domain.model.enums.transaction.CompensationStatus;
+import com.ll.order.domain.model.enums.transaction.TransactionStatus;
+import com.ll.order.domain.model.enums.transaction.TransactionStep;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -53,36 +56,6 @@ public class TransactionTracing extends BaseEntity {
     @Column(name = "compensation_completed_at")
     private LocalDateTime compensationCompletedAt;
 
-    // 상태 변경 메서드들
-    public void markInventoryDeductionStarted() {
-        this.currentStep = TransactionStep.INVENTORY_DEDUCTION;
-        this.status = TransactionStatus.IN_PROGRESS;
-    }
-
-    public void markInventoryDeductionCompleted() {
-        this.currentStep = TransactionStep.PAYMENT;
-    }
-
-    public void markPaymentStarted() {
-        this.currentStep = TransactionStep.PAYMENT;
-    }
-
-    public void markPaymentCompleted() {
-        this.currentStep = TransactionStep.ORDER_COMPLETION;
-    }
-
-    public void markOrderCompletionCompleted() {
-        this.status = TransactionStatus.COMPLETED;
-        this.currentStep = TransactionStep.ORDER_COMPLETION;
-        this.completedAt = LocalDateTime.now();
-    }
-
-    public void markAsFailed(String errorMessage) {
-        this.status = TransactionStatus.FAILED;
-        this.errorMessage = errorMessage;
-        this.failedAt = LocalDateTime.now();
-    }
-
     public void startCompensation() {
         this.status = TransactionStatus.COMPENSATING;
         this.compensationStatus = CompensationStatus.IN_PROGRESS;
@@ -98,30 +71,6 @@ public class TransactionTracing extends BaseEntity {
         this.compensationStatus = CompensationStatus.FAILED;
         this.errorMessage = errorMessage;
         this.compensationRetryCount++;
-    }
-
-    public void incrementCompensationRetryCount() {
-        this.compensationRetryCount++;
-    }
-
-    public enum TransactionStatus {
-        IN_PROGRESS,    // 진행 중
-        COMPLETED,      // 완료
-        FAILED,         // 실패
-        COMPENSATING    // 보상 중
-    }
-
-    public enum TransactionStep {
-        INVENTORY_DEDUCTION,   // 재고 차감
-        PAYMENT,               // 결제
-        ORDER_COMPLETION       // 주문 완료
-    }
-
-    public enum CompensationStatus {
-        NONE,           // 보상 없음
-        IN_PROGRESS,    // 보상 진행 중
-        COMPLETED,      // 보상 완료
-        FAILED          // 보상 실패
     }
 }
 

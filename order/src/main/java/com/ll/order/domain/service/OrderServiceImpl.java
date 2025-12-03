@@ -14,6 +14,7 @@ import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.entity.OrderEventOutbox;
 import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
+import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
 import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.vo.InventoryDeduction;
@@ -34,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
@@ -599,7 +601,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
 //     보상 로직 실패 시 TransactionTracing에 실패 상태를 저장합니다.
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markCompensationFailed(String orderCode, String errorMessage) {
         try {
             TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
@@ -607,7 +609,7 @@ public class OrderServiceImpl implements OrderService {
 
             if (tracing != null) {
                 // 보상 시작 상태로 변경 (아직 시작하지 않았다면)
-                if (tracing.getCompensationStatus() == TransactionTracing.CompensationStatus.NONE) {
+                if (tracing.getCompensationStatus() == CompensationStatus.NONE) {
                     tracing.startCompensation();
                 }
                 // 보상 실패 상태로 변경
@@ -820,7 +822,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     // 이벤트 발행 실패 시 Outbox에 저장
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode, String errorMessage) {
         try {
             OrderEventOutbox outbox = OrderEventOutbox.from(orderEvent, objectMapper);

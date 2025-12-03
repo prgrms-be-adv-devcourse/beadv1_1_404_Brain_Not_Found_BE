@@ -7,7 +7,7 @@ import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.TransactionTracing;
-import com.ll.order.domain.model.entity.TransactionTracing.CompensationStatus;
+import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
