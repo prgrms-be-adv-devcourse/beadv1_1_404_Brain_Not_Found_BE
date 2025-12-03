@@ -40,4 +40,7 @@ spring:
 external:
   user-service:
     url: http://localhost:8083
-
+management:
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans

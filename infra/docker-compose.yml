@@ -5,7 +5,14 @@ networks:
 
 services:
   #module <--
-
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    restart: unless-stopped
+    ports:
+      - "9411:9411"   # Zipkin UI 및 API
+    networks:
+      - ${NETWORK_NAME}
 
 #  prometheus:
 #    image: prom/prometheus:latest

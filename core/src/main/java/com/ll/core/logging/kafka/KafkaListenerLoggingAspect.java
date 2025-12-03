@@ -17,7 +17,7 @@ public class KafkaListenerLoggingAspect {
     @Around("@annotation(org.springframework.kafka.annotation.KafkaListener)")
     public Object logKafkaListener(ProceedingJoinPoint pjp) throws Throwable {
         Object[] args = pjp.getArgs();
-        log.info("[KafkaListener called: {} args={}", pjp.getSignature().getName(), Arrays.toString(args));
+        log.debug("[KafkaListener called: {} args={}", pjp.getSignature().getName(), Arrays.toString(args));
 
         long start = System.currentTimeMillis();
         try {

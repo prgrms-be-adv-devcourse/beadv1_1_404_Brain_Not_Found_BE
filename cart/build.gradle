@@ -30,6 +30,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	compileOnly 'org.projectlombok:lombok'
 
+	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+	implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+
     implementation 'org.springframework.kafka:spring-kafka'
 
 	runtimeOnly 'com.h2database:h2'

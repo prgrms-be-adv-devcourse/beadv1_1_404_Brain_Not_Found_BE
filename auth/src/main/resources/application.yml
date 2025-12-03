@@ -18,6 +18,12 @@ management:
       show-details: always                           # 헬스체크 상세 정보
     info:
       enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      consume: b3
+      produce: b3_multi
 
 jwt:
   secret: ${JWT_SECRET}
