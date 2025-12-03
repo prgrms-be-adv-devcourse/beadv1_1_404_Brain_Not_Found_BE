@@ -29,8 +29,6 @@ dependencies {
     implementation 'io.github.resilience4j:resilience4j-circuitbreaker'
     implementation 'io.github.resilience4j:resilience4j-retry'
 
-    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     
     // Lombok for tests
