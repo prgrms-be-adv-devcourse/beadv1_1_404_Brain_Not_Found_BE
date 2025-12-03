@@ -125,7 +125,6 @@ public class ProductService {
         );
         Category category = getCategory(request.categoryId());
         product.updateCategory(category);
-        setImages(request.images(), product);
         log.debug("상품 수정 완료: {} (ID: {})", product.getName(), product.getId());
         eventPublisher.publishEvent(ProductEvent.updated(this, product));
         return ProductResponse.from(product, s3BaseUrl);
