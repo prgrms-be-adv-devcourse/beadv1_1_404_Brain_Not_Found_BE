@@ -102,50 +102,6 @@ public class OrderServiceImpl implements OrderService {
         return cartOrderCreationStrategy.createOrder(request, userCode);
     }
 
-    @Transactional
-    public void processDepositPayment(Order order, List<OrderItem> orderItems, OrderCartItemRequest request) {
-        OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
-                order,
-                order.getBuyerCode(),
-                request.paidType(),
-                request.paymentKey()
-        );
-
-        try {
-            paymentApiClient.requestDepositPayment(orderPaymentRequest);
-
-            order.changeStatus(OrderStatus.COMPLETED);
-            orderJpaRepository.save(order);
-
-            // 주문 상태 변경 이력 저장 (결제 성공)
-            OrderHistoryEntity successHistory = OrderHistoryBuilder.createPaymentSuccessHistory(
-                    order, orderItems, order.getOrderStatus(), "예치금");
-            orderHistoryJpaRepository.save(successHistory);
-
-            // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
-            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
-
-            log.debug("예치금 결제 완료 - orderCode: {}, amount: {}",
-                    order.getCode(), order.getTotalPrice());
-        } catch (Exception e) {
-            order.changeStatus(OrderStatus.FAILED);
-            orderJpaRepository.save(order);
-
-            // 주문 상태 변경 이력 저장 (결제 실패)
-            OrderHistoryEntity failHistory = OrderHistoryBuilder.createPaymentFailHistory(
-                    order, orderItems, order.getOrderStatus(), "예치금", e.getMessage());
-            orderHistoryJpaRepository.save(failHistory);
-
-            // 결제 실패 시 재고 롤백 (재고 차감이 결제 전에 이루어졌기 때문)
-            cartOrderCreationStrategy.rollbackInventoryForOrder(orderItems, order.getCode());
-
-            log.error("결제 처리 실패 - orderCode: {}, error: {}",
-                    order.getCode(), e.getMessage(), e);
-
-            throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
-        }
-    }
-
     @Override
     public OrderCreateResponse createDirectOrder(OrderDirectRequest request, String userCode) {
         return directOrderCreationStrategy.createOrder(request, userCode);
@@ -236,7 +192,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public String getOrderCodeById(Long orderId) {
         Order order = orderJpaRepository.findById(orderId)
                 .orElseThrow(() -> {
@@ -335,7 +290,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-//     보상 로직 실패 시 TransactionTracing에 실패 상태를 저장합니다.
+    //     보상 로직 실패 시 TransactionTracing에 실패 상태를 저장합니다.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markCompensationFailed(String orderCode, String errorMessage) {
         try {
@@ -384,7 +339,6 @@ public class OrderServiceImpl implements OrderService {
                     return new BaseException(OrderErrorCode.ORDER_NOT_FOUND);
                 });
     }
-
 
     // 주문 완료 이벤트를 Outbox에 저장 (트랜잭션과 이벤트 발행의 원자성 보장)
     private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {

@@ -3,30 +3,25 @@ package com.ll.order.domain.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.vo.kafka.OrderEvent;
-import com.ll.order.domain.client.*;
+import com.ll.order.domain.client.CartServiceClient;
+import com.ll.order.domain.client.PaymentServiceClient;
+import com.ll.order.domain.client.ProductServiceClient;
+import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
+import com.ll.order.domain.model.entity.OrderEventOutbox;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.TransactionTracing;
-import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
-import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
-import com.ll.order.domain.model.entity.OrderEventOutbox;
-import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
-import com.ll.order.domain.model.enums.order.OrderStatus;
-import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
+import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import com.ll.order.domain.model.vo.InventoryDeduction;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
 import com.ll.order.domain.model.vo.response.order.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.order.OrderCreationResult;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
-import com.ll.order.domain.repository.OrderEventOutboxRepository;
-import com.ll.order.domain.repository.OrderHistoryJpaRepository;
-import com.ll.order.domain.repository.OrderItemJpaRepository;
-import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.order.domain.repository.TransactionTracingRepository;
+import com.ll.order.domain.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Propagation;
@@ -68,7 +63,7 @@ public abstract class AbstractOrderCreationService {
         List<OrderItem> orderItems = creationResult.orderItems();
 
         // 3. 재고 차감 (주문 생성 후, 결제 전)
-        updateProductInventory(savedOrder, orderItems, userInfo.code());
+        updateProductInventory(savedOrder, orderItems);
 
         // 4. 결제 처리 (별도 트랜잭션)
         PaidType paidType = extractPaidType(request);
@@ -146,7 +141,7 @@ public abstract class AbstractOrderCreationService {
         return OrderCreateResponse.from(order, orderItems);
     }
 
-    protected void updateProductInventory(Order order, List<OrderItem> orderItems, String buyerCode) {
+    protected void updateProductInventory(Order order, List<OrderItem> orderItems) {
         List<String> failedProducts = new ArrayList<>();
         List<InventoryDeduction> successfulDeductions = new ArrayList<>();
 
@@ -273,18 +268,5 @@ public abstract class AbstractOrderCreationService {
         }
     }
 
-    protected void saveOrderHistory(Order order, List<OrderItem> orderItems, OrderHistoryActionType actionType,
-                                   OrderStatus previousStatus, String reason, String errorMessage, String createdBy) {
-        OrderHistoryEntity orderHistory = OrderHistoryBuilder.builder()
-                .order(order)
-                .orderItems(orderItems)
-                .actionType(actionType)
-                .previousStatus(previousStatus)
-                .reason(reason)
-                .errorMessage(errorMessage)
-                .createdBy(createdBy)
-                .build();
-        orderHistoryJpaRepository.save(orderHistory);
-    }
 }
 
