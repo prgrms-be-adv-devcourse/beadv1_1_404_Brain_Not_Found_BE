@@ -1,6 +1,5 @@
 package com.ll.user.service;
 
-import com.ll.auth.service.AuthService;
 import com.ll.user.exception.UserNotFoundException;
 import com.ll.user.producer.UserEventProducer;
 import com.ll.user.model.entity.User;
@@ -87,8 +86,8 @@ public class UserServiceImpl implements UserService {
                 .name(request.name())
                 .build());
 
-        //userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
-        //userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
+        userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
+        userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
         return savedUser;
     }
 }

@@ -15,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.Optional;
 
@@ -32,6 +31,7 @@ import static org.mockito.BDDMockito.*;
     @InjectMocks private AuthAsyncService authAsyncService;
 
     private static final String USER_CODE = "USER_001";
+    private static final String DEVICE_CODE = "DEVICE_001";
     private static final String ROLE = "ROLE_USER";
     private static final String EXIST_REFRESH = "exist-refresh-token";
     private static final String NEW_ACCESS = "new-access-token";
@@ -58,7 +58,7 @@ import static org.mockito.BDDMockito.*;
     class RefreshTokenTest {
 
         private TokenValidRequest validRequest() {
-            return new TokenValidRequest(USER_CODE, ROLE, EXIST_REFRESH);
+            return new TokenValidRequest(EXIST_REFRESH,DEVICE_CODE );
         }
 
         private Tokens newTokens() {
@@ -124,7 +124,7 @@ import static org.mockito.BDDMockito.*;
             given(authRepository.findByUserCode(USER_CODE))
                     .willReturn(Optional.of(authWithDifferentToken));
 
-            TokenValidRequest request = new TokenValidRequest(USER_CODE, EXIST_REFRESH, ROLE);
+            TokenValidRequest request = new TokenValidRequest(EXIST_REFRESH,DEVICE_CODE);
 
             // when & then
             assertThatThrownBy(() -> authService.refreshToken(request))

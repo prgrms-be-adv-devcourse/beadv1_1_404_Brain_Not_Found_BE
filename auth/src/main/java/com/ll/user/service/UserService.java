@@ -4,8 +4,6 @@ import com.ll.common.model.vo.request.UserLoginRequest;
 import com.ll.user.model.vo.request.UserPatchRequest;
 import com.ll.common.model.vo.response.UserLoginResponse;
 import com.ll.user.model.vo.response.UserResponse;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 

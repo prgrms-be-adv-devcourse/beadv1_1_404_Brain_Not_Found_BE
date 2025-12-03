@@ -1,6 +1,8 @@
 package com.ll.user.controller;
 
+import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.service.AuthService;
+import com.ll.auth.util.CookieUtil;
 import com.ll.user.model.vo.request.UserPatchRequest;
 import com.ll.common.model.vo.request.UserLoginRequest;
 import com.ll.common.model.vo.response.UserLoginResponse;
@@ -45,7 +47,8 @@ public class UserController {
             HttpServletResponse response
     ){
             UserResponse user = userService.updateUser(request,userCode);
-            authService.issuedToken(userCode,deviceCode, user.role().name(),response);
+            Tokens tokens = authService.issuedToken(userCode,deviceCode, user.role().name());
+            CookieUtil.setTokenCookie(response,tokens.accessToken(),tokens.refreshToken());
             return BaseResponse.ok(user);
     }
 

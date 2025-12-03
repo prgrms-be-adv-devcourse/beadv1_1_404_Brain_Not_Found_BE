@@ -1,15 +1,11 @@
 package com.ll.auth.controller;
-import com.ll.auth.service.RedisService;
 import com.ll.auth.util.CookieUtil;
 import com.ll.core.model.response.BaseResponse;
 import com.ll.auth.model.vo.dto.Tokens;
 import com.ll.auth.model.vo.request.TokenValidRequest;
 import com.ll.auth.service.AuthService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final RedisService redisService;
 
     @PostMapping
     public ResponseEntity<BaseResponse<Tokens>> refreshToken(
@@ -28,8 +23,9 @@ public class AuthController {
             HttpServletResponse response
     ){
         TokenValidRequest validRequest = new TokenValidRequest(refreshToken,deviceCode);
-        authService.refreshToken(validRequest,response);
-        return ResponseEntity.ok().build();
+        Tokens tokens = authService.refreshToken(validRequest);
+        CookieUtil.setTokenCookie(response, tokens.accessToken(),  tokens.refreshToken());
+        return BaseResponse.ok(tokens);
     }
 
     @PostMapping("/logout")
@@ -38,7 +34,8 @@ public class AuthController {
             @CookieValue(name ="deviceCode", required = false) String deviceCode,
             HttpServletResponse response
     ){
-        authService.logoutUser(refreshToken,response,deviceCode);
+        authService.logoutUser(refreshToken,deviceCode);
+        CookieUtil.expiredCookie(response);
         return ResponseEntity.ok().build();
     }
 }

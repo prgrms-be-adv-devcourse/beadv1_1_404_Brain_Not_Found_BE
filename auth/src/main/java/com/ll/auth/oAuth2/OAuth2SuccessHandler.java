@@ -3,9 +3,7 @@ package com.ll.auth.oAuth2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.uuid.Generators;
 import com.ll.auth.model.vo.dto.Tokens;
-import com.ll.auth.service.AuthAsyncService;
 import com.ll.auth.service.AuthService;
-import com.ll.auth.service.RedisService;
 import com.ll.auth.util.CookieUtil;
 import com.ll.common.model.vo.request.UserLoginRequest;
 import com.ll.common.model.vo.response.UserLoginResponse;
@@ -27,13 +25,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
-    private final JWTProvider jwtProvider;
     private final ObjectMapper objectMapper;
     private final OAuth2UserFactory oAuth2UserFactory;
     private final UserService userService;
-    private final RedisService redisService;
     private final AuthService authService;
-    private final AuthAsyncService authAsyncService;
 
     @Override
     public void onAuthenticationSuccess(
@@ -48,7 +43,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         Cookie deviceCodeCookie = new Cookie("deviceCode",deviceCode);
         deviceCodeCookie.setPath("/");
         response.addCookie(deviceCodeCookie);
-        authService.issuedToken(user.code(),deviceCode,user.role().name(),response);
+        Tokens tokens = authService.issuedToken(user.code(),deviceCode,user.role().name());
+        CookieUtil.setTokenCookie(response,tokens.accessToken(),tokens.refreshToken());
         //User 정보 Client에 제공
         Map<String, Object> body = Map.of(
                 "user", Map.of(
