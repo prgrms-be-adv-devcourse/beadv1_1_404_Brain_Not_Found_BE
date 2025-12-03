@@ -45,7 +45,7 @@ public class UserController {
             HttpServletResponse response
     ){
             UserResponse user = userService.updateUser(request,userCode);
-            authService.issuedToken(userCode,deviceCode, String.valueOf(user.role()),response);
+            authService.issuedToken(userCode,deviceCode, user.role().name(),response);
             return BaseResponse.ok(user);
     }
 

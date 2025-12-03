@@ -12,10 +12,7 @@ import java.util.List;
 public interface UserService {
 
     UserResponse getUserById(Long id);
-
-    @Transactional
     UserResponse updateUser(UserPatchRequest request, String userCode);
-
     List<UserResponse> getUserList();
     UserLoginResponse createOrUpdateUser(UserLoginRequest request);
     UserResponse getUserByUserCode(String userCode);
