@@ -25,7 +25,6 @@ dependencies {
 
     // settlement 에서 추가
     implementation 'org.springframework.boot:spring-boot-starter-batch'
-    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 
     // Resilience4j for Circuit Breaker & Retry
     implementation 'io.github.resilience4j:resilience4j-spring-boot3'
