@@ -2,22 +2,23 @@ package com.ll.payment.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.exception.BaseException;
-import com.ll.payment.payment.client.DepositServiceClient;
+import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
+import com.ll.payment.deposit.model.vo.response.DepositResponse;
+import com.ll.payment.deposit.service.DepositService;
 import com.ll.payment.payment.client.OrderServiceClient;
 import com.ll.payment.payment.exception.PaymentErrorCode;
-import com.ll.payment.payment.model.vo.response.DepositInfoResponse;
-import com.ll.payment.payment.model.vo.PaymentProcessResult;
-import com.ll.payment.payment.model.vo.response.TossPaymentResponse;
 import com.ll.payment.payment.model.entity.Payment;
 import com.ll.payment.payment.model.entity.history.PaymentHistoryEntity;
 import com.ll.payment.payment.model.enums.PaidType;
 import com.ll.payment.payment.model.enums.PaymentHistoryActionType;
 import com.ll.payment.payment.model.enums.PaymentStatus;
+import com.ll.payment.payment.model.vo.PaymentProcessResult;
 import com.ll.payment.payment.model.vo.request.PaymentRefundRequest;
 import com.ll.payment.payment.model.vo.request.PaymentRequest;
-import com.ll.payment.payment.model.vo.request.TossPaymentRequest;
 import com.ll.payment.payment.model.vo.request.TossPaymentCreateRequest;
+import com.ll.payment.payment.model.vo.request.TossPaymentRequest;
 import com.ll.payment.payment.model.vo.response.TossPaymentCreateResponse;
+import com.ll.payment.payment.model.vo.response.TossPaymentResponse;
 import com.ll.payment.payment.repository.PaymentHistoryJpaRepository;
 import com.ll.payment.payment.repository.PaymentJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -42,12 +43,13 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
+    private final DepositService depositService;
+
     private final PaymentJpaRepository paymentJpaRepository;
     private final PaymentHistoryJpaRepository paymentHistoryJpaRepository;
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
-    private final DepositServiceClient depositServiceClient;
     private final OrderServiceClient orderServiceClient;
     private final PaymentValidator paymentValidator;
 
@@ -66,9 +68,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public PaymentProcessResult depositPayment(PaymentRequest payment) {
-        int currentBalance = Optional.ofNullable(depositServiceClient.getDepositInfo(payment.buyerCode()))
-                .map(DepositInfoResponse::balance)
-                .orElse(0);
+        DepositResponse depositInfo = depositService.getDepositByUserCode(payment.buyerCode());
+
+        int currentBalance = depositInfo.balance().intValue();
         int requestedAmount = payment.paidAmount();
 
         // 예치금이 충분한 경우 바로 예치금 결제
@@ -152,10 +154,10 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 토스 결제 성공 후 예치금 충전
         String chargeReferenceCode = "CHARGE-" + payment.orderId() + "-" + System.currentTimeMillis();
-        depositServiceClient.chargeDeposit(
+
+        depositService.chargeDeposit(
                 payment.buyerCode(), 
-                (long) chargeAmount, 
-                chargeReferenceCode
+                new DepositTransactionRequest((long) chargeAmount, chargeReferenceCode)
         );
         log.debug("예치금 충전 완료 - buyerCode: {}, amount: {}", 
                 payment.buyerCode(), chargeAmount);
@@ -476,8 +478,11 @@ public class PaymentServiceImpl implements PaymentService {
         }
         
         // 2. 예치금 차감 (락 유지 중)
-        depositServiceClient.withdraw(payment.buyerCode(), (long) amount, createReferenceCode(payment.orderId()));
-        
+        depositService.withdrawDeposit(
+                payment.buyerCode(),
+                new DepositTransactionRequest((long) amount, createReferenceCode(payment.orderId())
+                ));
+
         // 3. Payment 엔티티 생성 및 저장 (락 유지 중)
         Payment depositPayment = Payment.createDepositPayment(
                 payment.orderId(),
@@ -529,7 +534,10 @@ public class PaymentServiceImpl implements PaymentService {
             log.warn("예치금 환불에는 buyerCode가 필요합니다.");
             throw new BaseException(PaymentErrorCode.BUYER_CODE_REQUIRED);
         }
-        depositServiceClient.chargeDeposit(buyerCode, (long) refundAmount, createReferenceCode(payment.getOrderId()));
+        depositService.chargeDeposit(
+                buyerCode,
+                new DepositTransactionRequest((long) refundAmount, createReferenceCode(payment.getOrderId()))
+        );
     }
 
 //     충전 실패 시 토스 결제 환불용 메서드 (PaymentRefundRequest 없이 호출)
