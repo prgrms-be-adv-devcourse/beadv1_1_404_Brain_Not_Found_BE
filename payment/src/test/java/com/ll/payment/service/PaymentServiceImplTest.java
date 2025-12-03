@@ -3,16 +3,22 @@ package com.ll.payment.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.ll.payment.client.DepositServiceClient;
-import com.ll.payment.client.OrderServiceClient;
-import com.ll.payment.model.vo.response.DepositInfoResponse;
-import com.ll.payment.model.vo.PaymentProcessResult;
-import com.ll.payment.model.entity.Payment;
-import com.ll.payment.model.enums.PaidType;
-import com.ll.payment.model.enums.PaymentStatus;
-import com.ll.payment.model.vo.request.PaymentRefundRequest;
-import com.ll.payment.model.vo.request.PaymentRequest;
-import com.ll.payment.repository.PaymentJpaRepository;
+import com.ll.payment.deposit.model.enums.DepositStatus;
+import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
+import com.ll.payment.deposit.model.vo.response.DepositResponse;
+import com.ll.payment.deposit.model.vo.response.DepositTransactionResponse;
+import com.ll.payment.deposit.service.DepositService;
+import com.ll.payment.global.client.OrderServiceClient;
+import com.ll.payment.payment.model.vo.PaymentProcessResult;
+import com.ll.payment.payment.model.entity.Payment;
+import com.ll.payment.payment.model.enums.PaidType;
+import com.ll.payment.payment.model.enums.PaymentStatus;
+import com.ll.payment.payment.model.vo.request.PaymentRefundRequest;
+import com.ll.payment.payment.model.vo.request.PaymentRequest;
+import com.ll.payment.payment.repository.PaymentHistoryJpaRepository;
+import com.ll.payment.payment.repository.PaymentJpaRepository;
+import com.ll.payment.payment.service.PaymentServiceImpl;
+import com.ll.payment.payment.service.PaymentValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,13 +42,16 @@ import static org.mockito.Mockito.*;
 class PaymentServiceImplTest {
 
     @Mock
+    private DepositService depositService;
+
+    @Mock
     private PaymentJpaRepository paymentJpaRepository;
 
     @Mock
-    private RestClient restClient;
+    private PaymentHistoryJpaRepository paymentHistoryJpaRepository;
 
     @Mock
-    private DepositServiceClient depositServiceClient;
+    private RestClient restClient;
 
     @Mock
     private OrderServiceClient orderServiceClient;
@@ -73,19 +82,25 @@ class PaymentServiceImplTest {
                 "PAY-KEY"
         );
 
-        when(depositServiceClient.getDepositInfo("USER-001"))
-                .thenReturn(new DepositInfoResponse("USER-001", 7_000));
+        when(depositService.getDepositByUserCode("USER-001"))
+                .thenReturn(new DepositResponse("USER-001", "DEP-001", 7_000L, DepositStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now()));
         when(paymentJpaRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentHistoryJpaRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(depositService.withdrawDeposit(eq("USER-001"), any(DepositTransactionRequest.class)))
+                .thenReturn(mock(DepositTransactionResponse.class));
 
-        ArgumentCaptor<String> referenceCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<DepositTransactionRequest> transactionRequestCaptor = ArgumentCaptor.forClass(DepositTransactionRequest.class);
         ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
 
         PaymentProcessResult result = service.depositPayment(paymentRequest);
         assertThat(result).isNotNull();
 
-        verify(depositServiceClient).withdraw(eq("USER-001"), eq(5_000L), referenceCaptor.capture());
-        assertThat(referenceCaptor.getValue()).startsWith("ORDER-1-");
+        verify(depositService).withdrawDeposit(eq("USER-001"), transactionRequestCaptor.capture());
+        DepositTransactionRequest withdrawRequest = transactionRequestCaptor.getValue();
+        assertThat(withdrawRequest.amount()).isEqualTo(5_000L);
+        assertThat(withdrawRequest.referenceCode()).startsWith("ORDER-1-");
 
         verify(service, never()).tossPayment(any(PaymentRequest.class), PaymentStatus.CHARGE);
 
@@ -114,15 +129,19 @@ class PaymentServiceImplTest {
                 "PAY-KEY"
         );
 
-        when(depositServiceClient.getDepositInfo("USER-001"))
-                .thenReturn(new DepositInfoResponse("USER-001", 3_000));
+        when(depositService.getDepositByUserCode("USER-001"))
+                .thenReturn(new DepositResponse("USER-001", "DEP-001", 3_000L, DepositStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now()));
         when(paymentJpaRepository.save(any(Payment.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentHistoryJpaRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(depositService.withdrawDeposit(eq("USER-001"), any(DepositTransactionRequest.class)))
+                .thenReturn(mock(DepositTransactionResponse.class));
 
         Payment tossResult = mock(Payment.class);
         doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class), PaymentStatus.CHARGE);
 
-        ArgumentCaptor<String> referenceCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<DepositTransactionRequest> transactionRequestCaptor = ArgumentCaptor.forClass(DepositTransactionRequest.class);
         // 토스 결제 요청이 어떤 PaymentRequest로 호출되었는지 검증하기 위한 캡처
         ArgumentCaptor<PaymentRequest> tossRequestCaptor = ArgumentCaptor.forClass(PaymentRequest.class);
         ArgumentCaptor<Payment> paymentCaptor = ArgumentCaptor.forClass(Payment.class);
@@ -130,8 +149,10 @@ class PaymentServiceImplTest {
         PaymentProcessResult result = service.depositPayment(paymentRequest);
         assertThat(result).isNotNull();
 
-        verify(depositServiceClient).withdraw(eq("USER-001"), eq(3_000L), referenceCaptor.capture());
-        assertThat(referenceCaptor.getValue()).startsWith("ORDER-1-");
+        verify(depositService).withdrawDeposit(eq("USER-001"), transactionRequestCaptor.capture());
+        DepositTransactionRequest withdrawRequest = transactionRequestCaptor.getValue();
+        assertThat(withdrawRequest.amount()).isEqualTo(3_000L);
+        assertThat(withdrawRequest.referenceCode()).startsWith("ORDER-1-");
 
         verify(paymentJpaRepository, times(1)).save(paymentCaptor.capture());
         Payment savedPayment = paymentCaptor.getValue();
@@ -165,8 +186,8 @@ class PaymentServiceImplTest {
                 "PAY-KEY"
         );
 
-        when(depositServiceClient.getDepositInfo("USER-001"))
-                .thenReturn(new DepositInfoResponse("USER-001", 0));
+        when(depositService.getDepositByUserCode("USER-001"))
+                .thenReturn(new DepositResponse("USER-001", "DEP-001", 0L, DepositStatus.ACTIVE, LocalDateTime.now(), LocalDateTime.now()));
         Payment tossResult = mock(Payment.class);
         doReturn(tossResult).when(service).tossPayment(any(PaymentRequest.class), PaymentStatus.CHARGE);
 
@@ -175,7 +196,7 @@ class PaymentServiceImplTest {
         PaymentProcessResult result = service.depositPayment(paymentRequest);
         assertThat(result).isNotNull();
 
-        verify(depositServiceClient, never()).withdraw(anyString(), anyLong(), anyString());
+        verify(depositService, never()).withdrawDeposit(anyString(), any(DepositTransactionRequest.class));
         verify(paymentJpaRepository, never()).save(any(Payment.class));
 
         verify(service).tossPayment(tossRequestCaptor.capture(), PaymentStatus.CHARGE);
@@ -188,10 +209,11 @@ class PaymentServiceImplTest {
 
     private PaymentServiceImpl createServiceSpy() {
         PaymentServiceImpl service = new PaymentServiceImpl(
+                depositService,
                 paymentJpaRepository,
+                paymentHistoryJpaRepository,
                 restClient,
                 objectMapper,
-                depositServiceClient,
                 orderServiceClient,
                 paymentValidator
         );
@@ -230,14 +252,23 @@ class PaymentServiceImplTest {
                 "USER-001"
         );
 
-        when(paymentJpaRepository.findById(10L)).thenReturn(java.util.Optional.of(payment));
+        when(paymentJpaRepository.findByOrderIdAndPaymentStatus(eq(1L), eq(PaymentStatus.COMPLETED)))
+                .thenReturn(java.util.Optional.of(payment));
         when(paymentValidator.validateRefundEligibility(any(Payment.class), any(PaymentRefundRequest.class)))
                 .thenReturn(5000);
+        when(paymentHistoryJpaRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(depositService.chargeDeposit(eq("USER-001"), any(DepositTransactionRequest.class)))
+                .thenReturn(mock(DepositTransactionResponse.class));
         PaymentServiceImpl service = createServiceSpy();
 
         Payment result = service.refundPayment(request);
 
-        verify(depositServiceClient).chargeDeposit(eq("USER-001"), eq(5_000L), startsWith("ORDER-1-"));
+        ArgumentCaptor<DepositTransactionRequest> transactionRequestCaptor = ArgumentCaptor.forClass(DepositTransactionRequest.class);
+        verify(depositService).chargeDeposit(eq("USER-001"), transactionRequestCaptor.capture());
+        DepositTransactionRequest chargeRequest = transactionRequestCaptor.getValue();
+        assertThat(chargeRequest.amount()).isEqualTo(5_000L);
+        assertThat(chargeRequest.referenceCode()).startsWith("ORDER-1-");
         verify(payment).markRefund(any(LocalDateTime.class));
         verify(paymentJpaRepository).save(payment);
         verify(orderServiceClient).updateOrderStatus("ORD-1", "REFUNDED");
