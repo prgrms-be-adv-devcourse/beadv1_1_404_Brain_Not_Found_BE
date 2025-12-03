@@ -34,17 +34,8 @@ public class OrderValidator {
 
             ProductResponse productInfo = getProductInfo(productRequest.productCode());
 
-            if (productInfo.quantity() < productRequest.quantity()) {
-                log.warn("재고가 부족합니다. productCode: {}, 요청 수량: {}, 재고: {}",
-                        productRequest.productCode(), productRequest.quantity(), productInfo.quantity());
-                throw new BaseException(OrderErrorCode.INSUFFICIENT_INVENTORY);
-            }
-
-            if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
-                log.warn("판매 중이 아닌 상품입니다. productCode: {}, status: {}",
-                        productRequest.productCode(), productInfo.status());
-                throw new BaseException(OrderErrorCode.PRODUCT_NOT_ON_SALE);
-            }
+            // 재고 및 판매 상태 검증 (공통 메서드 사용)
+            validateProductInventory(productInfo, productRequest.quantity());
 
             if (productRequest.price() != productInfo.price()) {
                 log.warn("요청한 상품 가격이 실제 가격과 일치하지 않습니다. productCode: {}, 요청 가격: {}, 실제 가격: {}",
@@ -66,6 +57,27 @@ public class OrderValidator {
         if (!current.canTransitionTo(target)) {
             log.warn("해당 상태로 전환할 수 없습니다. current: {}, target: {}", current, target);
             throw new BaseException(OrderErrorCode.INVALID_ORDER_STATUS_TRANSITION);
+        }
+    }
+
+    public void validateProductInventory(String productCode, int requestedQuantity) {
+        ProductResponse productInfo = getProductInfo(productCode);
+        validateProductInventory(productInfo, requestedQuantity);
+    }
+
+    public void validateProductInventory(ProductResponse productInfo, int requestedQuantity) {
+        // 재고 부족 체크
+        if (productInfo.quantity() < requestedQuantity) {
+            log.warn("재고가 부족합니다. productCode: {}, 요청 수량: {}, 재고: {}",
+                    productInfo.code(), requestedQuantity, productInfo.quantity());
+            throw new BaseException(OrderErrorCode.INSUFFICIENT_INVENTORY);
+        }
+
+        // 판매 중인지 체크
+        if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
+            log.warn("판매 중이 아닌 상품입니다. productCode: {}, status: {}",
+                    productInfo.code(), productInfo.status());
+            throw new BaseException(OrderErrorCode.PRODUCT_NOT_ON_SALE);
         }
     }
 

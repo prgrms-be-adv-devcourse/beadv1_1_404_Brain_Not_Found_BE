@@ -42,11 +42,4 @@ public interface OrderService {
     // 결제 타입에 따라 리다이렉트 URL을 생성합니다. 리다이렉트가 필요하지 않은 경우 Optional.empty()를 반환합니다.
     Optional<String> buildPaymentRedirectUrl(OrderCreateResponse response, PaidType paidType);
 
-    OrderCreationResult createOrderWithItems(OrderCartItemRequest request, UserResponse userInfo);
-
-    void processDepositPayment(Order order, List<OrderItem> orderItems, OrderCartItemRequest request);
-
-    OrderCreationResult createDirectOrderWithItem(OrderDirectRequest request, UserResponse userInfo);
-
-    void processDirectDepositPayment(Order order, List<OrderItem> orderItems, OrderDirectRequest request);
 }
