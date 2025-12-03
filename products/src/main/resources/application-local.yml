@@ -20,7 +20,7 @@ spring:
 
   # Elasticsearch 설정
   elasticsearch:
-    uris: http://localhost:9200
+    uris: http://localhost:9202
 
   kafka:
     bootstrap-servers:
@@ -44,7 +44,7 @@ eureka:
 #현재 user 포트 8083번이라 일단 수정해놓았는데 이부분 이상있으시면 알려주세요
 api:
   user:
-    base-url: http://localhost:8083
+    base-url: http://localhost:8084
 #    base-url: http://localhost:8080
 
 # AWS S3 설정

@@ -34,4 +34,18 @@ public class UserClient {
             return null;
         }
     }
+
+    public UserResponse getUserByCode(String userCode) {
+        BaseResponse<UserResponse> response = userRestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/users/info")
+                        .build())
+                .header("X-User-Code", userCode)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+        if (response == null || response.getData() == null) {
+            return null;
+        }
+        return response.getData();
+    }
 }
