@@ -9,10 +9,12 @@ import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
+import com.ll.order.domain.model.entity.TransactionTracing;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.entity.OrderEventOutbox;
 import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
+import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
 import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.vo.InventoryDeduction;
@@ -26,12 +28,14 @@ import com.ll.order.domain.repository.OrderEventOutboxRepository;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
+import com.ll.order.domain.repository.TransactionTracingRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
@@ -48,6 +52,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderItemJpaRepository orderItemJpaRepository;
     private final OrderHistoryJpaRepository orderHistoryJpaRepository;
     private final OrderEventOutboxRepository orderEventOutboxRepository;
+    private final TransactionTracingRepository transactionTracingRepository;
 
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
@@ -232,7 +237,7 @@ public class OrderServiceImpl implements OrderService {
             orderHistoryJpaRepository.save(failHistory);
 
             // 결제 실패 시 재고 롤백 (재고 차감이 결제 전에 이루어졌기 때문)
-            rollbackInventoryForOrder(orderItems);
+            rollbackInventoryForOrder(orderItems, order.getCode());
 
             log.error("결제 처리 실패 - orderCode: {}, error: {}",
                     order.getCode(), e.getMessage(), e);
@@ -376,7 +381,7 @@ public class OrderServiceImpl implements OrderService {
             orderHistoryJpaRepository.save(failHistory);
 
             // 결제 실패 시 재고 롤백 (재고 차감이 결제 전에 이루어졌기 때문)
-            rollbackInventoryForOrder(orderItems);
+            rollbackInventoryForOrder(orderItems, order.getCode());
 
             log.error("결제 처리 실패 - orderCode: {}, error: {}",
                     order.getCode(), e.getMessage(), e);
@@ -488,7 +493,7 @@ public class OrderServiceImpl implements OrderService {
             orderHistoryJpaRepository.save(failHistory);
 
             // 결제 실패 시 재고 롤백 (재고 차감이 주문 생성 시점에 이루어졌기 때문)
-            rollbackInventoryForOrder(orderItems);
+            rollbackInventoryForOrder(orderItems, order.getCode());
 
             log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderCode, paymentKey, e.getMessage(), e);
             throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
@@ -557,7 +562,11 @@ public class OrderServiceImpl implements OrderService {
                 );
                 log.debug("환불 처리 완료 - orderCode: {}, amount: {}", order.getCode(), order.getTotalPrice());
             } catch (Exception e) {
-                log.error("환불 처리 실패 - orderCode: {}, error: {}", order.getCode(), e.getMessage(), e);
+                String errorMessage = String.format("환불 처리 실패 - orderCode: %s, error: %s",
+                        order.getCode(), e.getMessage());
+                log.error(errorMessage, e);
+                // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
+                markCompensationFailed(order.getCode(), errorMessage);
                 throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
             }
         }
@@ -582,10 +591,38 @@ public class OrderServiceImpl implements OrderService {
                 log.debug("재고 복구 이벤트 발행 완료 - productCode: {}, quantity: {}",
                         orderItem.getProductCode(), orderItem.getQuantity());
             } catch (Exception e) {
-                log.error("재고 복구 이벤트 발행 실패 - productCode: {}, quantity: {}, error: {}",
-                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
-                // 이벤트 발행 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
+                String errorMessage = String.format("재고 복구 이벤트 발행 실패 - productCode: %s, quantity: %d, error: %s",
+                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage());
+                log.error(errorMessage, e);
+                // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
+                markCompensationFailed(order.getCode(), errorMessage);
             }
+        }
+    }
+
+//     보상 로직 실패 시 TransactionTracing에 실패 상태를 저장합니다.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markCompensationFailed(String orderCode, String errorMessage) {
+        try {
+            TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
+                    .orElse(null);
+
+            if (tracing != null) {
+                // 보상 시작 상태로 변경 (아직 시작하지 않았다면)
+                if (tracing.getCompensationStatus() == CompensationStatus.NONE) {
+                    tracing.startCompensation();
+                }
+                // 보상 실패 상태로 변경
+                tracing.markCompensationFailed(errorMessage);
+
+                log.debug("보상 로직 실패 상태 저장 완료 - orderCode: {}, retryCount: {}",
+                        orderCode, tracing.getCompensationRetryCount());
+            } else {
+                log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
+            }
+        } catch (Exception e) {
+            log.error("보상 로직 실패 상태 저장 실패 - orderCode: {}, error: {}",
+                    orderCode, e.getMessage(), e);
         }
     }
 
@@ -627,17 +664,17 @@ public class OrderServiceImpl implements OrderService {
 
     private void validateInventoryAvailability(OrderCartItemRequest request) {
         CartItemsResponse cartInfo = getCartInfo(request.cartCode());
-        
+
         for (CartItemInfo item : cartInfo.items()) {
             ProductResponse productInfo = getProductInfo(item.productCode());
-            
+
             // 재고 부족 체크
             if (productInfo.quantity() < item.quantity()) {
                 log.warn("재고가 부족합니다. productCode: {}, 요청 수량: {}, 재고: {}",
                         item.productCode(), item.quantity(), productInfo.quantity());
                 throw new BaseException(OrderErrorCode.INSUFFICIENT_INVENTORY);
             }
-            
+
             // 판매 중인지 체크
             if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
                 log.warn("판매 중이 아닌 상품입니다. productCode: {}, status: {}",
@@ -649,14 +686,14 @@ public class OrderServiceImpl implements OrderService {
 
     private void validateDirectOrderInventoryAvailability(OrderDirectRequest request) {
         ProductResponse productInfo = getProductInfo(request.productCode());
-        
+
         // 재고 부족 체크
         if (productInfo.quantity() < request.quantity()) {
             log.warn("재고가 부족합니다. productCode: {}, 요청 수량: {}, 재고: {}",
                     request.productCode(), request.quantity(), productInfo.quantity());
             throw new BaseException(OrderErrorCode.INSUFFICIENT_INVENTORY);
         }
-        
+
         // 판매 중인지 체크
         if (productInfo.status() == null || productInfo.status() != ProductStatus.ON_SALE) {
             log.warn("판매 중이 아닌 상품입니다. productCode: {}, status: {}",
@@ -677,12 +714,12 @@ public class OrderServiceImpl implements OrderService {
     private void updateProductInventory(Order order, List<OrderItem> orderItems, String buyerCode) {
         List<String> failedProducts = new ArrayList<>();
         List<InventoryDeduction> successfulDeductions = new ArrayList<>();
-        
+
         for (OrderItem orderItem : orderItems) {
             // 재고 감소 (동기 API 호출) <- 비관적 락 적용 시점
             try {
                 productServiceClient.decreaseInventory(orderItem.getProductCode(), orderItem.getQuantity());
-                log.debug("재고 차감 완료 - productCode: {}, quantity: {}", 
+                log.debug("재고 차감 완료 - productCode: {}, quantity: {}",
                         orderItem.getProductCode(), orderItem.getQuantity());
                 // 성공한 재고 차감 정보 저장 (롤백용)
                 successfulDeductions.add(new InventoryDeduction(
@@ -690,55 +727,63 @@ public class OrderServiceImpl implements OrderService {
                         orderItem.getQuantity()
                 ));
             } catch (Exception e) {
-                log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}", 
+                log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}",
                         orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
                 failedProducts.add(orderItem.getProductCode());
             }
         }
-        
+
         // 재고 차감 실패 시 성공한 재고 차감 롤백
         if (!failedProducts.isEmpty()) {
             log.error("재고 차감 실패 - orderCode: {}, failedProducts: {}", order.getCode(), failedProducts);
-            
+
             // 성공한 재고 차감 롤백
             if (!successfulDeductions.isEmpty()) {
-                rollbackInventory(successfulDeductions);
+                rollbackInventory(successfulDeductions, order.getCode());
             }
-            
+
             throw new BaseException(OrderErrorCode.INVENTORY_DEDUCTION_FAILED);
         }
     }
 
-    // 재고 롤백 (명시적 롤백 - 각 재고 차감이 별도 트랜잭션으로 커밋되었기 때문)
-    // Kafka 이벤트로 발행하여 비동기 처리
-    private void rollbackInventory(List<InventoryDeduction> successfulDeductions) {
+    // 재고 롤백 (orderCode를 받아서 TransactionTracing 업데이트 가능)
+    private void rollbackInventory(List<InventoryDeduction> successfulDeductions, String orderCode) {
         log.warn("재고 차감 실패로 인한 재고 롤백 시작 - 롤백 대상: {}개", successfulDeductions.size());
-        
+
+        boolean hasFailure = false;
+        String lastErrorMessage = null;
+
         for (InventoryDeduction deduction : successfulDeductions) {
             try {
                 orderEventProducer.sendInventoryRollback(deduction.productCode(), deduction.quantity());
-                log.debug("재고 롤백 이벤트 발행 완료 - productCode: {}, quantity: {}", 
+                log.debug("재고 롤백 이벤트 발행 완료 - productCode: {}, quantity: {}",
                         deduction.productCode(), deduction.quantity());
             } catch (Exception e) {
-                log.error("재고 롤백 이벤트 발행 실패 - productCode: {}, quantity: {}, error: {}", 
-                        deduction.productCode(), deduction.quantity(), e.getMessage(), e);
-                // 롤백 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
+                hasFailure = true;
+                lastErrorMessage = String.format("재고 롤백 이벤트 발행 실패 - productCode: %s, quantity: %d, error: %s",
+                        deduction.productCode(), deduction.quantity(), e.getMessage());
+                log.error(lastErrorMessage, e);
             }
+        }
+
+        // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
+        if (hasFailure && orderCode != null) {
+            markCompensationFailed(orderCode, lastErrorMessage);
         }
     }
 
-    // 주문의 재고 롤백 (결제 실패 시 사용)
-    private void rollbackInventoryForOrder(List<OrderItem> orderItems) {
+    // 주문의 재고 롤백 (orderCode를 받아서 TransactionTracing 업데이트 가능)
+    private void rollbackInventoryForOrder(List<OrderItem> orderItems, String orderCode) {
         log.warn("결제 실패로 인한 재고 롤백 시작 - orderItems: {}개", orderItems.size());
-        
+
         List<InventoryDeduction> deductions = orderItems.stream()
                 .map(item -> new InventoryDeduction(item.getProductCode(), item.getQuantity()))
                 .toList();
-        
-        rollbackInventory(deductions);
+
+        rollbackInventory(deductions, orderCode);
     }
 
-    // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때만)
+    // 주문 완료 이벤트를 Outbox에 저장 (트랜잭션과 이벤트 발행의 원자성 보장)
     private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             OrderEvent orderEvent = OrderEvent.of(
@@ -748,38 +793,27 @@ public class OrderServiceImpl implements OrderService {
                     order.getCode(),
                     (long) orderItem.getPrice() * orderItem.getQuantity()
             );
-            
-            try {
-                orderEventProducer.sendOrder(orderEvent);
-                log.debug("주문 완료 이벤트 발행 성공 - orderCode: {}, orderItemCode: {}, referenceCode: {}", 
-                        order.getCode(), orderItem.getCode(), orderEvent.referenceCode());
-            } catch (Exception e) {
-                // Resilience4j Retry를 모두 시도했지만 실패한 경우 Outbox에 저장
-                log.error("주문 완료 이벤트 발행 실패 (재시도 모두 실패) - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}", 
-                        order.getCode(), orderItem.getCode(), orderEvent.referenceCode(), e.getMessage(), e);
-                // Outbox에 저장하여 나중에 재발행할 수 있도록 함
-                saveToOutbox(orderEvent, order.getCode(), orderItem.getCode(), e.getMessage());
-            }
+
+            // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
+            // 별도 프로세스가 Outbox를 읽어서 Kafka에 발행
+            saveToOutbox(orderEvent, order.getCode(), orderItem.getCode());
         }
     }
 
-    // 이벤트 발행 실패 시 Outbox에 저장
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode, String errorMessage) {
+    // 이벤트를 Outbox에 저장 (PENDING 상태로 저장하여 스케줄러가 발행)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode) {
         try {
             OrderEventOutbox outbox = OrderEventOutbox.from(orderEvent, objectMapper);
-            outbox.incrementRetryCount(errorMessage);
-            outbox.markAsFailed(errorMessage);
+            // PENDING 상태로 저장 (기본값이므로 명시적으로 설정하지 않아도 됨)
             orderEventOutboxRepository.save(outbox);
-            
-            log.debug("주문 이벤트 Outbox 저장 완료 - orderCode: {}, orderItemCode: {}, referenceCode: {}, outboxId: {}", 
+
+            log.debug("주문 이벤트 Outbox 저장 완료 (PENDING) - orderCode: {}, orderItemCode: {}, referenceCode: {}, outboxId: {}",
                     orderCode, orderItemCode, orderEvent.referenceCode(), outbox.getId());
         } catch (Exception e) {
-            log.error("주문 이벤트 Outbox 저장 실패 - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}", 
+            log.error("주문 이벤트 Outbox 저장 실패 - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}",
                     orderCode, orderItemCode, orderEvent.referenceCode(), e.getMessage(), e);
             // Outbox 저장 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
         }
     }
-
-    // 도메인 별 규칙에 맞는 검증 로직이 필요하면 추가 작성할 것.
 }
