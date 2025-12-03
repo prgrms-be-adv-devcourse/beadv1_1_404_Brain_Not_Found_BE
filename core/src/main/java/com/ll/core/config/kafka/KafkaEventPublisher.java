@@ -1,7 +1,6 @@
 package com.ll.core.config.kafka;
 
 import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
-import com.ll.core.tracing.CorrelationContext;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,14 +19,13 @@ public class KafkaEventPublisher {
     private String moduleName;
 
     public <T> void publish(String topic, T payload) {
-        KafkaEventEnvelope<T> envelope = KafkaEventEnvelope.wrap(moduleName, CorrelationContext.get(), payload);
+        KafkaEventEnvelope<T> envelope = KafkaEventEnvelope.wrap(moduleName, payload);
 
         ProducerRecord<String, Object> record = new ProducerRecord<>(topic, envelope);
 
         // 분석용 중복 헤더 추가
         record.headers().add("eventId", envelope.eventId().getBytes(StandardCharsets.UTF_8));
         record.headers().add("eventType", envelope.eventType().getBytes(StandardCharsets.UTF_8));
-        record.headers().add("correlationId", envelope.correlationId().getBytes(StandardCharsets.UTF_8));
 
         kafkaTemplate.send(record);
     }

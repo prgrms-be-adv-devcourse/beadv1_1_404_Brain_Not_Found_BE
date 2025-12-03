@@ -19,7 +19,6 @@ public class EnvelopeDeserializer implements Deserializer<KafkaEventEnvelope<?>>
         int eventVersion;
         long timestamp;
         String producerService;
-        String correlationId;
         String payloadType;
         Object payload;
     }
@@ -44,7 +43,6 @@ public class EnvelopeDeserializer implements Deserializer<KafkaEventEnvelope<?>>
                     f.eventVersion,
                     f.timestamp,
                     f.producerService,
-                    f.correlationId,
                     f.payloadType,
                     f.payload
             );
@@ -75,7 +73,6 @@ public class EnvelopeDeserializer implements Deserializer<KafkaEventEnvelope<?>>
             case "eventVersion" -> f.eventVersion = parser.getIntValue();
             case "timestamp" -> f.timestamp = parser.getLongValue();
             case "producerService" -> f.producerService = parser.getValueAsString();
-            case "correlationId" -> f.correlationId = parser.getValueAsString();
             case "payloadType" -> f.payloadType = parser.getValueAsString();
             case "payload" -> f.payload = getObject(f.payloadType, parser);
             default -> parser.skipChildren();

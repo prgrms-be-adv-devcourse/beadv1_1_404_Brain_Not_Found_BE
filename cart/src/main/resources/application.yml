@@ -18,3 +18,9 @@ management:
       show-details: always
     info:
       enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      consume: b3
+      produce: b3_multi

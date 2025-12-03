@@ -22,5 +22,10 @@ management:
   health:                                             # products 모듈 안의 elasticsearch 헬스체크 끄기
     elasticsearch:
       enabled: false
-
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      consume: b3
+      produce: b3_multi
 
