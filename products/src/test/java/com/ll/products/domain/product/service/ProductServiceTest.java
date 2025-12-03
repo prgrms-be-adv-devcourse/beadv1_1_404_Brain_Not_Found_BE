@@ -77,12 +77,12 @@ class ProductServiceTest {
 
         List<ProductImageDto> images = List.of(
                 ProductImageDto.builder()
-                        .url("https://example.com/image1.jpg")
+                        .fileKey("https://example.com/image1.jpg")
                         .sequence(0)
                         .isMain(true)
                         .build(),
                 ProductImageDto.builder()
-                        .url("https://example.com/image2.jpg")
+                        .fileKey("https://example.com/image2.jpg")
                         .sequence(1)
                         .isMain(false)
                         .build()

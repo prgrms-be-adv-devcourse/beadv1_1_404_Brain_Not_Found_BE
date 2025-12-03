@@ -59,7 +59,7 @@ class ProductSearchServiceTest {
                 .categoryName("아이돌 굿즈")
                 .status("APPROVED")
                 .isDeleted(false)
-                .mainImageUrl("https://example.com/image1.jpg")
+                .mainImageFileKey("https://example.com/image1.jpg")
                 .createdAt(LocalDateTime.now().minusDays(1))
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -77,7 +77,7 @@ class ProductSearchServiceTest {
                 .categoryName("아이돌 굿즈")
                 .status("APPROVED")
                 .isDeleted(false)
-                .mainImageUrl("https://example.com/image2.jpg")
+                .mainImageFileKey("https://example.com/image2.jpg")
                 .createdAt(LocalDateTime.now().minusDays(2))
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -95,7 +95,7 @@ class ProductSearchServiceTest {
                 .categoryName("방탄소년단")
                 .status("APPROVED")
                 .isDeleted(false)
-                .mainImageUrl("https://example.com/image3.jpg")
+                .mainImageFileKey("https://example.com/image3.jpg")
                 .createdAt(LocalDateTime.now().minusDays(3))
                 .updatedAt(LocalDateTime.now())
                 .build();
