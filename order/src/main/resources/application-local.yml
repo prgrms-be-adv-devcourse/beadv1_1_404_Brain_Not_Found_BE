@@ -129,3 +129,8 @@ order:
     scheduler:
       enabled: true                        # 스케줄러 활성화 여부
       cron: "0 */5 * * * ?"                # 실행 주기 (5분마다, cron 표현식)
+
+management:
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans

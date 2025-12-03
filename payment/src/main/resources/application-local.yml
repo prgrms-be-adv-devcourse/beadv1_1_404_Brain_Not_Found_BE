@@ -39,3 +39,8 @@ external:
     url: http://localhost:8082
   deposit-service:
     url: http://localhost:8086
+
+management:
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
