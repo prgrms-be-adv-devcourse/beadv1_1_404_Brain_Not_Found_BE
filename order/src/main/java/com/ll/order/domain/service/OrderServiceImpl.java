@@ -614,7 +614,6 @@ public class OrderServiceImpl implements OrderService {
                 }
                 // 보상 실패 상태로 변경
                 tracing.markCompensationFailed(errorMessage);
-                transactionTracingRepository.save(tracing);
 
                 log.debug("보상 로직 실패 상태 저장 완료 - orderCode: {}, retryCount: {}",
                         orderCode, tracing.getCompensationRetryCount());
@@ -624,7 +623,6 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception e) {
             log.error("보상 로직 실패 상태 저장 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
-            // TransactionTracing 저장 실패는 로그만 남기고 계속 진행
         }
     }
 

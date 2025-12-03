@@ -73,11 +73,10 @@ public class CompensationRetryService {
     public void retryCompensation(TransactionTracing tracing) {
         String orderCode = tracing.getOrderCode();
         
-        // 보상 시작 상태로 변경 - 별도 트랜잭션으로 저장 (롤백 방지)
-        saveCompensationStartedStatus(orderCode);
+        // 보상 시작 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
+        updateCompensationStartedStatus(orderCode);
 
         try {
-            // Order 조회
             Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
                     .orElseThrow(() -> {
                         log.warn("주문을 찾을 수 없습니다. orderCode: {}", orderCode);
@@ -90,21 +89,21 @@ public class CompensationRetryService {
             boolean compensationSuccess = executeCompensation(order, orderItems, tracing);
 
             if (compensationSuccess) {
-                // 보상 완료 상태로 변경 - 별도 트랜잭션으로 저장 (롤백 방지)
-                saveCompensationCompletedStatus(orderCode);
+                // 보상 완료 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
+                updateCompensationCompletedStatus(orderCode);
                 
                 log.debug("보상 로직 재시도 성공 - orderCode: {}", orderCode);
             } else {
-                // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 저장
-                saveCompensationFailedStatus(orderCode, "보상 로직 실행 중 일부 실패");
+                // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
+                updateCompensationFailedStatus(orderCode, "보상 로직 실행 중 일부 실패");
                 
                 log.warn("보상 로직 재시도 부분 실패 - orderCode: {}", orderCode);
                 throw new RuntimeException("보상 로직 실행 중 일부 실패");
             }
 
         } catch (Exception e) {
-            // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 저장
-            saveCompensationFailedStatus(orderCode, e.getMessage());
+            // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
+            updateCompensationFailedStatus(orderCode, e.getMessage());
             
             log.error("보상 로직 재시도 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
@@ -178,51 +177,49 @@ public class CompensationRetryService {
                 .size();
     }
 
-    // 보상 시작 상태를 별도 트랜잭션으로 저장 (롤백 방지)
+    // 보상 시작 상태를 별도 트랜잭션으로 업데이트 (롤백 방지)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveCompensationStartedStatus(String orderCode) {
+    public void updateCompensationStartedStatus(String orderCode) {
         try {
             TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
                     .orElse(null);
 
             if (tracing != null) {
                 tracing.startCompensation();
-                transactionTracingRepository.save(tracing);
 
-                log.debug("보상 시작 상태 저장 완료 - orderCode: {}", orderCode);
+                log.debug("보상 시작 상태 업데이트 완료 - orderCode: {}", orderCode);
             } else {
                 log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
             }
         } catch (Exception e) {
-            log.error("보상 시작 상태 저장 실패 - orderCode: {}, error: {}",
+            log.error("보상 시작 상태 업데이트 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
         }
     }
 
-    // 보상 완료 상태를 별도 트랜잭션으로 저장 (롤백 방지)
+    // 보상 완료 상태를 별도 트랜잭션으로 업데이트 (롤백 방지)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveCompensationCompletedStatus(String orderCode) {
+    public void updateCompensationCompletedStatus(String orderCode) {
         try {
             TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
                     .orElse(null);
 
             if (tracing != null) {
                 tracing.markCompensationCompleted();
-                transactionTracingRepository.save(tracing);
 
-                log.debug("보상 완료 상태 저장 완료 - orderCode: {}", orderCode);
+                log.debug("보상 완료 상태 업데이트 완료 - orderCode: {}", orderCode);
             } else {
                 log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
             }
         } catch (Exception e) {
-            log.error("보상 완료 상태 저장 실패 - orderCode: {}, error: {}",
+            log.error("보상 완료 상태 업데이트 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
         }
     }
 
-    // 보상 실패 상태를 별도 트랜잭션으로 저장 (롤백 방지)
+    // 보상 실패 상태를 별도 트랜잭션으로 업데이트 (롤백 방지)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveCompensationFailedStatus(String orderCode, String errorMessage) {
+    public void updateCompensationFailedStatus(String orderCode, String errorMessage) {
         try {
             TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
                     .orElse(null);
@@ -234,15 +231,14 @@ public class CompensationRetryService {
                 }
                 // 보상 실패 상태로 변경 (재시도 횟수 증가)
                 tracing.markCompensationFailed(errorMessage);
-                transactionTracingRepository.save(tracing);
 
-                log.debug("보상 실패 상태 저장 완료 - orderCode: {}, retryCount: {}",
+                log.debug("보상 실패 상태 업데이트 완료 - orderCode: {}, retryCount: {}",
                         orderCode, tracing.getCompensationRetryCount());
             } else {
                 log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
             }
         } catch (Exception e) {
-            log.error("보상 실패 상태 저장 실패 - orderCode: {}, error: {}",
+            log.error("보상 실패 상태 업데이트 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
         }
     }
