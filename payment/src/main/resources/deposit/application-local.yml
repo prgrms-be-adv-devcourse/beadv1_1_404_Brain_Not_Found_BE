@@ -40,3 +40,13 @@ spring:
 external:
   user-service:
     url: http://localhost:8083
+
+logging:
+  level:
+    org.springframework.boot.actuate.autoconfigure.tracing.zipkin: DEBUG
+    zipkin2.reporter: DEBUG
+
+management:
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
