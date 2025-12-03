@@ -8,7 +8,7 @@ import com.ll.payment.deposit.service.DepositService;
 import com.ll.payment.global.client.OrderServiceClient;
 import com.ll.payment.payment.exception.PaymentErrorCode;
 import com.ll.payment.payment.model.entity.Payment;
-import com.ll.payment.payment.model.entity.history.PaymentHistoryEntity;
+import com.ll.payment.payment.model.entity.PaymentHistoryEntity;
 import com.ll.payment.payment.model.enums.PaidType;
 import com.ll.payment.payment.model.enums.PaymentHistoryActionType;
 import com.ll.payment.payment.model.enums.PaymentStatus;

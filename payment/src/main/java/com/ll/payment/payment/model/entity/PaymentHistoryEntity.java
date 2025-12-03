@@ -1,4 +1,4 @@
-package com.ll.payment.payment.model.entity.history;
+package com.ll.payment.payment.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
 import com.ll.payment.payment.model.enums.PaymentHistoryActionType;
