@@ -1,6 +1,6 @@
-package com.ll.payment.deposit.config;
+package com.ll.payment.global.config;
 
-import com.ll.payment.deposit.client.UserServiceClient;
+import com.ll.payment.global.client.UserServiceClient;
 import com.ll.payment.deposit.model.entity.Deposit;
 import com.ll.payment.deposit.model.vo.response.UserInfoResponse;
 import com.ll.payment.deposit.repository.DepositRepository;

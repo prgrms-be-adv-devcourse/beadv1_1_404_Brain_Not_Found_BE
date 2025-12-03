@@ -1,4 +1,4 @@
-package com.ll.payment.deposit.client;
+package com.ll.payment.global.client;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;

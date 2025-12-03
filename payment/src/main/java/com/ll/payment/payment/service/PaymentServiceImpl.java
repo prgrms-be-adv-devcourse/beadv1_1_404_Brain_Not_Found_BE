@@ -5,7 +5,7 @@ import com.ll.core.model.exception.BaseException;
 import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.payment.deposit.model.vo.response.DepositResponse;
 import com.ll.payment.deposit.service.DepositService;
-import com.ll.payment.payment.client.OrderServiceClient;
+import com.ll.payment.global.client.OrderServiceClient;
 import com.ll.payment.payment.exception.PaymentErrorCode;
 import com.ll.payment.payment.model.entity.Payment;
 import com.ll.payment.payment.model.entity.history.PaymentHistoryEntity;

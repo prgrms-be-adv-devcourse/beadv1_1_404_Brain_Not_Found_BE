@@ -1,4 +1,4 @@
-package com.ll.payment.payment.client;
+package com.ll.payment.global.client;
 
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.response.BaseResponse;

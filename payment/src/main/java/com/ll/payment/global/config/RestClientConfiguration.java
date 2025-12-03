@@ -1,4 +1,4 @@
-package com.ll.payment.deposit.config;
+package com.ll.payment.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
