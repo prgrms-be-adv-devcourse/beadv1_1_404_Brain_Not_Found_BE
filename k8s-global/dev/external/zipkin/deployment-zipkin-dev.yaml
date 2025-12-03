@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipkin-dpy-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zipkin-dev
+  template:
+    metadata:
+      labels:
+        app: zipkin-dev
+    spec:
+      containers:
+        - name: zipkin-pod-dev
+          image: openzipkin/zipkin
+          ports:
+            - containerPort: 9411
+          # In-Memory 저장소이므로 별도의 환경 변수 설정은 필요하지 않습니다.
+          # 운영 환경에서는 STORAGE_TYPE 등을 추가해야 합니다.
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+          envFrom:
+            - configMapRef:
+                name: zipkin-config-dev
+

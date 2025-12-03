@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: nginx-dpy-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-dev
+  template:
+    metadata:
+      labels:
+        app: nginx-dev
+    spec:
+      containers:
+        - name: nginx-pod-dev
+          image: jc21/nginx-proxy-manager:latest
+          ports:
+            - containerPort: 80
+              name: http
+            - containerPort: 81
+              name: admin
+            - containerPort: 443
+              name: https
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: letsencrypt
+              mountPath: /etc/letsencrypt
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: letsencrypt
+          emptyDir: {}

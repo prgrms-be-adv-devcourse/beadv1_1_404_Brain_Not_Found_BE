@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-dpy-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana-dev
+  template:
+    metadata:
+      labels:
+        app: grafana-dev
+    spec:
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+          - 0
+      containers:
+        - name: grafana-pod-dev
+          image: grafana/grafana:10.4.0 # 안정적인 버전 사용 권장
+          ports:
+            - containerPort: 3000
+          # 자동으로 데이터 소스를 등록하기 위해 ConfigMap을 마운트합니다.
+          volumeMounts:
+            - name: grafana-datasource-volume
+              mountPath: /etc/grafana/provisioning/datasources
+          env:
+            # Grafana의 기본 관리자 계정 정보 (운영 환경에서는 Secret 사용 권장)
+            - name: GF_SECURITY_ADMIN_USER
+              value: admin
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: pass
+          resources:
+            limits:
+              cpu: "300m"
+              memory: "300Mi"
+      volumes:
+        # 데이터 소스 설정 ConfigMap을 볼륨으로 사용
+        - name: grafana-datasource-volume
+          configMap:
+            name: grafana-config-dev

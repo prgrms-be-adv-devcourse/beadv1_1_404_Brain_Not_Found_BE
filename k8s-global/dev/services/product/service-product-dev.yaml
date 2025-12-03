@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-svc-dev
+spec:
+  type: ClusterIP
+  selector:
+    app: product-dev
+  ports:
+    - protocol: TCP
+      port: 8085       # 내부 서비스 포트
+      targetPort: 8085 # 컨테이너 포트
