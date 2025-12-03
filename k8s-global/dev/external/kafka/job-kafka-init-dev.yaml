@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-init-job-dev
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: kafka-init
+          image: apache/kafka
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              # Kafka가 준비될 때까지 대기
+              until nc -z kafka-svc-dev 9090; do
+                echo "Waiting for Kafka..."
+                sleep 5
+              done
+
+              echo "Kafka is ready! Initializing topics..."
+              /scripts/init-topics.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: logs
+              mountPath: /scripts/logs
+      volumes:
+        - name: scripts
+          configMap:
+            name: kafka-init-config-dev
+            defaultMode: 0755
+        - name: logs
+          emptyDir: {}

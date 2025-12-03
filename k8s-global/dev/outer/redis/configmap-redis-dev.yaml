@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config-dev
+data:
+  # redis.conf 파일의 내용을 여기에 정의합니다.
+  redis.conf: |
+    # 최대 메모리 정책 설정: 메모리가 가득 찼을 때 만료 시간이 없는 키를 제거합니다.
+    maxmemory-policy allkeys-lru
+    # Redis가 사용할 수 있는 최대 메모리 (예시: 256MB)
+    maxmemory 256mb
+    # Redis의 기본 포트
+    port 6379
+    # 보호 모드 비활성화 (운영 환경에서는 권장되지 않음)
+    protected-mode no

@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+#이 파일 정의
+metadata:
+  name: product-dpy-dev
+#동작 정의
+spec:
+  replicas: 1
+#  제어할 라벨
+  selector:
+    matchLabels:
+      app: product-dev
+#      pod 정의
+  template:
+    metadata:
+      labels:
+        app: product-dev
+#        컨테이너 정의
+    spec:
+      containers:
+        - name: product-pod-dev
+          image: product:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8085
+          envFrom:
+            - configMapRef:
+                name: product-config-dev
+            - secretRef:
+                name: product-secret-dev
+      restartPolicy: Always

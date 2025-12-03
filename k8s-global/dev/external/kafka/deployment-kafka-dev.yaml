@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: kafka-dpy-dev
+
+spec:
+  selector:
+    matchLabels:
+      app: kafka-dev
+
+  template:
+    metadata:
+      labels:
+        app: kafka-dev
+
+    spec:
+      containers:
+        - name: kafka-1-pod-dev
+          image: apache/kafka
+          ports:
+            - containerPort: 9090
+          envFrom:
+            - configMapRef:
+                name: kafka-config-dev
+      volumes:
+        - name: script-volume
+          configMap:
+            name: kafka-init-config-dev
