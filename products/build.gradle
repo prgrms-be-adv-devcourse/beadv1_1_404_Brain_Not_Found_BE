@@ -1,3 +1,6 @@
+ext {
+    springAiVersion = "1.1.0"
+}
 description = 'products'
 
 
@@ -18,6 +21,9 @@ dependencies {
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
 
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+
     runtimeOnly 'com.h2database:h2'
     runtimeOnly "mysql:mysql-connector-java:${mysqlVersion}"
 
@@ -30,7 +36,25 @@ dependencies {
     // AWS S3
     implementation "software.amazon.awssdk:s3:2.39.3"
 
+    // Qdrant
+    implementation 'io.qdrant:client:1.13.0'
+
+    // gRPC
+    implementation 'io.grpc:grpc-netty-shaded:1.68.1'
+    implementation 'io.grpc:grpc-protobuf:1.68.1'
+    implementation 'io.grpc:grpc-stub:1.68.1'
+
+    // env 파일 읽기
+    implementation 'io.github.cdimascio:java-dotenv:5.2.2'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 }
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
+}
+
 tasks.register("prepareKotlinBuildScriptModel"){}
