@@ -46,7 +46,7 @@ public class AuthService {
         try {
             if (!redisService.validRefreshToken(request.refreshToken(), request.deviceCode())) {
                 // 연속적인 Redis 갱신 보호
-                if (!redisService.checkUpdateRedis()) {
+                if (!redisService.checkUpdateRedis() && authRepository.findByRefreshToken(request.refreshToken()).isPresent()) {
                     redisService.setUpdateRedisPending();
                     updateRedis();
                     redisService.setUpdateRedisCompleted();
