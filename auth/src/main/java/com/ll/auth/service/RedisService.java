@@ -1,6 +1,7 @@
 package com.ll.auth.service;
 
 import com.ll.auth.exception.TokenNotFoundException;
+import com.ll.auth.model.enums.RedisUpdateState;
 import com.ll.auth.util.HashUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,11 +58,15 @@ public class RedisService {
 
     // 연속적인 Redis 갱신 보호
 
-    public void setUpdateRedisLimit(){
-        redisTemplate.opsForValue().set("refresh:update","1",Duration.ofMinutes(1));
+    public void setUpdateRedisCompleted(){
+        redisTemplate.opsForValue().set("refresh:update","COMPLETED",Duration.ofMinutes(1));
     }
 
-    public boolean checkUpdateRedisLimit(){
+    public void setUpdateRedisPending(){
+        redisTemplate.opsForValue().set("refresh:update","PENDING");
+    }
+
+    public boolean checkUpdateRedis(){
         return redisTemplate.hasKey("refresh:update");
     }
 
