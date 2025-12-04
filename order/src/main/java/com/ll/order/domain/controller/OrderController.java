@@ -22,13 +22,6 @@ import java.util.Map;
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
 public class OrderController implements OrderControllerSwagger {
-    /*
-    3. 예치금 부족 → 충전 → 결제까지 흐름이 너무 길다 << @Transactional tossPayment  ← 여기서 트랜잭션 유지된 채 외부 API 호출됨 (위험)
-        tossPayment()는 트랜잭션 없이 수행해야 함.
-    4. REQUIRES_NEW가 과하게 사용됨 → 트랜잭션 단위 추적이 어려움 << 결제 승인, Toss 결제 API 호출 트랜잭션 제거
-    5. “예치금 부족 → Toss 결제 → 예치금 충전” 흐름이 ACID 보장이 없다 << 중간 단계 실패 시 데이터 일관성이 깨질 수 있음.
-    6. 재고 감소 트랜잭션이 없다면 도입해야 함 (비관적 락 or atomic update)
-    * */
 
     private final OrderService orderService;
 

@@ -121,7 +121,6 @@ class OrderServiceImplTest { // BDD, nested test, slice test
         // given
         String userCode = "USER-001";
         OrderCartItemRequest request = new OrderCartItemRequest(
-                "USER-001",
                 "CART-001",
                 "홍길동",
                 "서울시 강남구",
@@ -236,7 +235,6 @@ class OrderServiceImplTest { // BDD, nested test, slice test
                 .build();
 
         OrderCartItemRequest request = new OrderCartItemRequest(
-                "USER-001",
                 "CART-002",
                 "홍길동",
                 "서울시 강남구",
@@ -307,7 +305,6 @@ class OrderServiceImplTest { // BDD, nested test, slice test
     void createDirectOrder_Success() {
         // given
         OrderDirectRequest request = new OrderDirectRequest(
-                "USER-001",
                 "PROD-001",
                 2,
                 "서울시 강남구",

@@ -7,26 +7,36 @@ spring:
       enabled: false   # Eureka 클라이언트 비활성화
   # Database Configuration
   datasource:
-    url: jdbc:h2:mem:orderdb
-    driver-class-name: org.h2.Driver
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    # MySQL 컨테이너 연결 설정 (docker-compose.yml의 order-mysql 컨테이너 사용)
+    # 컨테이너 실행: docker-compose up -d
+    url: jdbc:mysql://localhost:3307/orderdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: kissmyass
+    password: dickhead
+    
+    # H2 인메모리 DB를 사용하려면 아래 설정으로 변경
+    # url: jdbc:h2:mem:orderdb
+    # driver-class-name: org.h2.Driver
+    # username: ${DB_USER:sa}
+    # password: ${DB_PASSWORD:}
 
-  # H2 Console
+  # H2 Console (H2 사용 시에만 활성화)
   h2:
     console:
-      enabled: true
+      enabled: false  # MySQL 사용 시 false로 설정
       path: /h2-console
 
   # JPA Configuration
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: create-drop  # 개발 환경에서는 create-drop, 운영에서는 update 또는 validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
+        dialect: org.hibernate.dialect.MySQLDialect  # MySQL 사용
+        # H2를 사용하는 경우 아래로 변경
+        # dialect: org.hibernate.dialect.H2Dialect
 
   kafka:
     bootstrap-servers:
