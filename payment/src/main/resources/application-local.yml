@@ -27,7 +27,7 @@ payment:
   # 위젯용 클라이언트 키 (Toss Payments 개발자 센터에서 발급받은 위젯용 키를 사용하세요)
   widgetClientKey: ${PAYMENT_WIDGET_CLIENT_KEY}
   # API용 시크릿 키 (서버에서 API 호출 시 사용)
-  secretKey: ${PAYMENT_SECRET_KEY}
+  secretKey: ${PAYMENT_SECRET_KEY} # 로컬에서 안되면 하드코딩해봐
   successUrl: http://localhost:8082/api/orders/payment/success
   failUrl: http://localhost:8082/api/orders/payment/fail
   # 테스트 환경에서 Toss Payments API 호출 실패 시 더미 paymentKey 사용 여부

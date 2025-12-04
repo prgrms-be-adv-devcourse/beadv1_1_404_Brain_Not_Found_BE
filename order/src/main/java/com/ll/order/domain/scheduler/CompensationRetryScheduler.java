@@ -1,6 +1,6 @@
 package com.ll.order.domain.scheduler;
 
-import com.ll.order.domain.service.CompensationRetryService;
+import com.ll.order.domain.service.compensation.CompensationRetryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
