@@ -57,6 +57,7 @@ public class ProductService {
     private static final int MAX_IMAGE_COUNT = 5;
 
     // 1. 상품 생성
+    @Transactional
     public ProductResponse createProduct(ProductCreateRequest request, String sellerCode, String role) {
         validateRole(role);
         Category category = getCategory(request.categoryId());
@@ -80,12 +81,14 @@ public class ProductService {
     }
 
     // 2. 상품 상세조회(code 기반)
+    @Transactional(readOnly = true)
     public ProductResponse getProduct(String code) {
         Product product = getProductByCode(code);
         return ProductResponse.from(product, s3BaseUrl);
     }
 
     // 3. 상품 목록조회
+    @Transactional(readOnly = true)
     public Page<ProductListResponse> getProducts(
             String sellerCode,
             Long categoryId,
