@@ -19,6 +19,9 @@ public class Auth {
     private Long id;
 
     @Column(nullable = false)
+    private String refreshToken;
+
+    @Column(nullable = false)
     private String userCode;
 
     @Column(nullable = false)
@@ -28,8 +31,7 @@ public class Auth {
     @Builder.Default
     private LocalDateTime expiredAt = LocalDateTime.now().plusDays(7);
 
-    @Column(nullable = false)
-    private String refreshToken;
+
 
     public void updateRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;

@@ -35,8 +35,8 @@ public class UserServiceImpl implements UserService {
         return UserResponse.from(findUserByCodeOrThrow(userCode));
     }
 
-    @Override
     @Transactional
+    @Override
     public UserResponse updateUser(UserPatchRequest request, String userCode) {
         User user = findUserByCodeOrThrow(userCode);
         modelMapper.map(request,user);
@@ -86,8 +86,8 @@ public class UserServiceImpl implements UserService {
                 .name(request.name())
                 .build());
 
-        userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
-        userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
+        //userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
+        //userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
         return savedUser;
     }
 }
