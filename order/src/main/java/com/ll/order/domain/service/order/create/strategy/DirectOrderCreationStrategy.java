@@ -1,4 +1,4 @@
-package com.ll.order.domain.service.strategy;
+package com.ll.order.domain.service.order.create.strategy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.exception.BaseException;
@@ -14,10 +14,8 @@ import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
-import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
+import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderPaymentRequest;
-import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
-import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
 import com.ll.order.domain.model.vo.response.order.OrderCreationResult;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
@@ -25,122 +23,111 @@ import com.ll.order.domain.repository.OrderEventOutboxRepository;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.order.domain.repository.TransactionTracingRepository;
-import com.ll.order.domain.service.AbstractOrderCreationService;
-import com.ll.order.domain.service.OrderValidator;
+import com.ll.order.domain.service.order.create.AbstractOrderCreationService;
+import com.ll.order.domain.service.compensation.CompensationService;
+import com.ll.order.domain.service.event.OrderEventOutboxService;
+import com.ll.order.domain.service.order.OrderValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
 @Component
-public class CartOrderCreationStrategy extends AbstractOrderCreationService {
+public class DirectOrderCreationStrategy extends AbstractOrderCreationService {
 
-    public CartOrderCreationStrategy(
+    public DirectOrderCreationStrategy(
             OrderJpaRepository orderJpaRepository,
             OrderItemJpaRepository orderItemJpaRepository,
             OrderHistoryJpaRepository orderHistoryJpaRepository,
             OrderEventOutboxRepository orderEventOutboxRepository,
-            TransactionTracingRepository transactionTracingRepository,
             UserServiceClient userServiceClient,
             ProductServiceClient productServiceClient,
             CartServiceClient cartServiceClient,
             PaymentServiceClient paymentApiClient,
             OrderEventProducer orderEventProducer,
             ObjectMapper objectMapper,
-            OrderValidator orderValidator
+            OrderValidator orderValidator,
+            OrderEventOutboxService orderEventOutboxService,
+            CompensationService compensationService
     ) {
         super(orderJpaRepository, orderItemJpaRepository, orderHistoryJpaRepository,
-                orderEventOutboxRepository, transactionTracingRepository,
+                orderEventOutboxRepository,
                 userServiceClient, productServiceClient, cartServiceClient,
-                paymentApiClient, orderEventProducer, objectMapper, orderValidator);
+                paymentApiClient, orderEventProducer, objectMapper, orderValidator,
+                orderEventOutboxService, compensationService);
     }
 
     @Override
     protected void validateInventory(Object request) {
-        if (!(request instanceof OrderCartItemRequest cartRequest)) {
-            throw new IllegalArgumentException("OrderCartItemRequest 타입이 아닙니다.");
+        if (!(request instanceof OrderDirectRequest directRequest)) {
+            throw new IllegalArgumentException("OrderDirectRequest 타입이 아닙니다.");
         }
 
-        CartItemsResponse cartInfo = getCartInfo(cartRequest.cartCode());
-
-        for (CartItemInfo item : cartInfo.items()) {
-            // 재고 및 판매 상태 검증 (OrderValidator의 공통 메서드 사용)
-            orderValidator.validateProductInventory(item.productCode(), item.quantity());
-        }
+        // 재고 및 판매 상태 검증 (OrderValidator의 공통 메서드 사용)
+        orderValidator.validateProductInventory(directRequest.productCode(), directRequest.quantity());
     }
 
-    //     주문 및 주문 상품 생성 (독립 트랜잭션)
-    //     결제 실패와 무관하게 주문은 항상 저장됨
     @Override
     @Transactional
     protected OrderCreationResult createOrderWithItems(Object request, UserResponse userInfo) {
-        if (!(request instanceof OrderCartItemRequest cartRequest)) {
-            throw new IllegalArgumentException("OrderCartItemRequest 타입이 아닙니다.");
+        if (!(request instanceof OrderDirectRequest directRequest)) {
+            throw new IllegalArgumentException("OrderDirectRequest 타입이 아닙니다.");
         }
 
-        CartItemsResponse cartInfo = getCartInfo(cartRequest.cartCode());
+        ProductResponse productInfo = getProductInfo(directRequest.productCode());
 
-        List<ProductResponse> productList = new ArrayList<>();
-        for (CartItemInfo item : cartInfo.items()) {
-            ProductResponse productInfo = getProductInfo(item.productCode());
-            productList.add(productInfo);
-        }
+        log.debug("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerCode: {}, sellerName: {}, quantity: {}, price: {}, status: {}",
+                productInfo.id(),
+                productInfo.code(),
+                productInfo.name(),
+                productInfo.sellerCode(),
+                productInfo.sellerName(),
+                productInfo.quantity(),
+                productInfo.price(),
+                productInfo.status());
 
         Order order = Order.create(
                 userInfo.id(),
                 userInfo.code(),
-                cartRequest.orderType(),
-                cartRequest.address()
+                directRequest.orderType(),
+                directRequest.address()
         );
         Order savedOrder = orderJpaRepository.save(order);
 
-        List<OrderItem> orderItems = new ArrayList<>();
-        for (CartItemInfo cartItem : cartInfo.items()) {
-            ProductResponse productInfo = productList.stream()
-                    .filter(response -> response.id().equals(cartItem.productId()))
-                    .findFirst()
-                    .orElseThrow(() -> {
-                        log.warn("상품을 찾을 수 없습니다. productId: {}", cartItem.productId());
-                        return new BaseException(OrderErrorCode.PRODUCT_NOT_FOUND);
-                    });
-
-            OrderItem orderItem = savedOrder.createOrderItem(
-                    productInfo.id(),
-                    productInfo.code(),
-                    productInfo.sellerCode(),
-                    productInfo.name(),
-                    cartItem.quantity(),
-                    productInfo.price()
-            );
-            orderItems.add(orderItem);
-        }
-
-        orderItemJpaRepository.saveAll(orderItems);
+        OrderItem orderItem = savedOrder.createOrderItem(
+                productInfo.id(),
+                productInfo.code(),
+                productInfo.sellerCode(),
+                productInfo.name(),
+                directRequest.quantity(),
+                productInfo.price()
+        );
+        orderItemJpaRepository.save(orderItem);
 
         // 주문 생성 이력 저장
-        OrderHistoryEntity orderHistory = OrderHistoryBuilder.createOrderHistory(savedOrder, orderItems);
+        OrderHistoryEntity orderHistory = OrderHistoryBuilder.createOrderHistory(savedOrder, List.of(orderItem));
         orderHistoryJpaRepository.save(orderHistory);
 
-        return new OrderCreationResult(savedOrder, orderItems);
+        return new OrderCreationResult(savedOrder, List.of(orderItem));
     }
 
     @Override
     @Transactional
     protected void processDepositPayment(Order order, List<OrderItem> orderItems, Object request) {
-        if (!(request instanceof OrderCartItemRequest cartRequest)) {
-            throw new IllegalArgumentException("OrderCartItemRequest 타입이 아닙니다.");
+        if (!(request instanceof OrderDirectRequest directRequest)) {
+            throw new IllegalArgumentException("OrderDirectRequest 타입이 아닙니다.");
         }
 
         OrderPaymentRequest orderPaymentRequest = OrderPaymentRequest.from(
                 order,
                 order.getBuyerCode(),
-                cartRequest.paidType(),
-                cartRequest.paymentKey()
+                directRequest.paidType(),
+                directRequest.paymentKey()
         );
+
+        OrderStatus previousStatus = order.getOrderStatus();
 
         try {
             paymentApiClient.requestDepositPayment(orderPaymentRequest);
@@ -150,7 +137,7 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
 
             // 주문 상태 변경 이력 저장 (결제 성공)
             OrderHistoryEntity successHistory = OrderHistoryBuilder.createPaymentSuccessHistory(
-                    order, orderItems, order.getOrderStatus(), "예치금");
+                    order, orderItems, previousStatus, "예치금");
             orderHistoryJpaRepository.save(successHistory);
 
             // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
@@ -164,7 +151,7 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
 
             // 주문 상태 변경 이력 저장 (결제 실패)
             OrderHistoryEntity failHistory = OrderHistoryBuilder.createPaymentFailHistory(
-                    order, orderItems, order.getOrderStatus(), "예치금", e.getMessage());
+                    order, orderItems, previousStatus, "예치금", e.getMessage());
             orderHistoryJpaRepository.save(failHistory);
 
             // 결제 실패 시 재고 롤백 (재고 차감이 결제 전에 이루어졌기 때문)
@@ -179,18 +166,18 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
 
     @Override
     protected PaidType extractPaidType(Object request) {
-        if (!(request instanceof OrderCartItemRequest cartRequest)) {
-            throw new IllegalArgumentException("OrderCartItemRequest 타입이 아닙니다.");
+        if (!(request instanceof OrderDirectRequest directRequest)) {
+            throw new IllegalArgumentException("OrderDirectRequest 타입이 아닙니다.");
         }
-        return cartRequest.paidType();
+        return directRequest.paidType();
     }
 
     @Override
     protected String extractPaymentKey(Object request) {
-        if (!(request instanceof OrderCartItemRequest cartRequest)) {
-            throw new IllegalArgumentException("OrderCartItemRequest 타입이 아닙니다.");
+        if (!(request instanceof OrderDirectRequest directRequest)) {
+            throw new IllegalArgumentException("OrderDirectRequest 타입이 아닙니다.");
         }
-        return cartRequest.paymentKey();
+        return directRequest.paymentKey();
     }
 }
 

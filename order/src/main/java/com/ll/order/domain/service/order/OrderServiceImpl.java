@@ -1,44 +1,32 @@
-package com.ll.order.domain.service;
+package com.ll.order.domain.service.order;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.exception.BaseException;
-import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.order.domain.client.*;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
-import com.ll.order.domain.model.entity.TransactionTracing;
 import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
-import com.ll.order.domain.model.entity.OrderEventOutbox;
-import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
-import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
-import com.ll.order.domain.model.enums.product.ProductStatus;
-import com.ll.order.domain.model.vo.InventoryDeduction;
 import com.ll.order.domain.model.vo.request.*;
-import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
-import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
 import com.ll.order.domain.model.vo.response.order.*;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
-import com.ll.order.domain.repository.OrderEventOutboxRepository;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.order.domain.repository.TransactionTracingRepository;
-import com.ll.order.domain.service.strategy.CartOrderCreationStrategy;
-import com.ll.order.domain.service.strategy.DirectOrderCreationStrategy;
+import com.ll.order.domain.service.compensation.CompensationService;
+import com.ll.order.domain.service.order.create.strategy.CartOrderCreationStrategy;
+import com.ll.order.domain.service.order.create.strategy.DirectOrderCreationStrategy;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
@@ -54,8 +42,6 @@ public class OrderServiceImpl implements OrderService {
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
     private final OrderHistoryJpaRepository orderHistoryJpaRepository;
-    private final OrderEventOutboxRepository orderEventOutboxRepository;
-    private final TransactionTracingRepository transactionTracingRepository;
 
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
@@ -63,7 +49,8 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderEventProducer orderEventProducer;
     private final OrderValidator orderValidator;
-    private final ObjectMapper objectMapper;
+    
+    private final CompensationService compensationService;
 
     // Strategy 패턴을 위한 주문 생성 전략들
     private final CartOrderCreationStrategy cartOrderCreationStrategy;
@@ -170,7 +157,7 @@ public class OrderServiceImpl implements OrderService {
             orderHistoryJpaRepository.save(successHistory);
 
             // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
-            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
+            cartOrderCreationStrategy.publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
         } catch (Exception e) {
             order.changeStatus(OrderStatus.FAILED);
@@ -236,6 +223,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     // 주문 취소 처리 -> 환불 처리(동기) + 환불 이벤트 발행(비동기) + 재고 복구 요청
+    // 부모 트랜잭션 ( updateOrderStatus ) 에서 호출되는 메서드
     private void handleOrderCancellation(Order order) {
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
         String buyerCode = order.getBuyerCode();
@@ -256,7 +244,7 @@ public class OrderServiceImpl implements OrderService {
                         order.getCode(), e.getMessage());
                 log.error(errorMessage, e);
                 // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
-                markCompensationFailed(order.getCode(), errorMessage);
+                compensationService.markCompensationFailed(order.getCode(), errorMessage);
                 throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
             }
         }
@@ -285,34 +273,8 @@ public class OrderServiceImpl implements OrderService {
                         orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage());
                 log.error(errorMessage, e);
                 // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
-                markCompensationFailed(order.getCode(), errorMessage);
+                compensationService.markCompensationFailed(order.getCode(), errorMessage);
             }
-        }
-    }
-
-    //     보상 로직 실패 시 TransactionTracing에 실패 상태를 저장합니다.
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markCompensationFailed(String orderCode, String errorMessage) {
-        try {
-            TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
-                    .orElse(null);
-
-            if (tracing != null) {
-                // 보상 시작 상태로 변경 (아직 시작하지 않았다면)
-                if (tracing.getCompensationStatus() == CompensationStatus.NONE) {
-                    tracing.startCompensation();
-                }
-                // 보상 실패 상태로 변경
-                tracing.markCompensationFailed(errorMessage);
-
-                log.debug("보상 로직 실패 상태 저장 완료 - orderCode: {}, retryCount: {}",
-                        orderCode, tracing.getCompensationRetryCount());
-            } else {
-                log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
-            }
-        } catch (Exception e) {
-            log.error("보상 로직 실패 상태 저장 실패 - orderCode: {}, error: {}",
-                    orderCode, e.getMessage(), e);
         }
     }
 
@@ -340,37 +302,4 @@ public class OrderServiceImpl implements OrderService {
                 });
     }
 
-    // 주문 완료 이벤트를 Outbox에 저장 (트랜잭션과 이벤트 발행의 원자성 보장)
-    private void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
-        for (OrderItem orderItem : orderItems) {
-            OrderEvent orderEvent = OrderEvent.of(
-                    buyerCode,
-                    orderItem.getSellerCode(),
-                    orderItem.getCode(),
-                    order.getCode(),
-                    (long) orderItem.getPrice() * orderItem.getQuantity()
-            );
-
-            // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
-            // 별도 프로세스가 Outbox를 읽어서 Kafka에 발행
-            saveToOutbox(orderEvent, order.getCode(), orderItem.getCode());
-        }
-    }
-
-    // 이벤트를 Outbox에 저장 (PENDING 상태로 저장하여 스케줄러가 발행)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode) {
-        try {
-            OrderEventOutbox outbox = OrderEventOutbox.from(orderEvent, objectMapper);
-            // PENDING 상태로 저장 (기본값이므로 명시적으로 설정하지 않아도 됨)
-            orderEventOutboxRepository.save(outbox);
-
-            log.debug("주문 이벤트 Outbox 저장 완료 (PENDING) - orderCode: {}, orderItemCode: {}, referenceCode: {}, outboxId: {}",
-                    orderCode, orderItemCode, orderEvent.referenceCode(), outbox.getId());
-        } catch (Exception e) {
-            log.error("주문 이벤트 Outbox 저장 실패 - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}",
-                    orderCode, orderItemCode, orderEvent.referenceCode(), e.getMessage(), e);
-            // Outbox 저장 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
-        }
-    }
 }

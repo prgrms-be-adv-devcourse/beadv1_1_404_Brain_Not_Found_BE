@@ -1,23 +1,18 @@
-package com.ll.order.domain.service;
+package com.ll.order.domain.service.order;
 
 import com.ll.order.domain.model.enums.payment.PaidType;
-import com.ll.order.domain.model.entity.Order;
-import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
 import com.ll.order.domain.model.vo.request.OrderValidateRequest;
 import com.ll.order.domain.model.vo.response.order.OrderCreateResponse;
-import com.ll.order.domain.model.vo.response.order.OrderCreationResult;
 import com.ll.order.domain.model.vo.response.order.OrderDetailResponse;
 import com.ll.order.domain.model.vo.response.order.OrderPageResponse;
 import com.ll.order.domain.model.vo.response.order.OrderStatusUpdateResponse;
 import com.ll.order.domain.model.vo.response.order.OrderValidateResponse;
-import com.ll.order.domain.model.vo.response.user.UserResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface OrderService {

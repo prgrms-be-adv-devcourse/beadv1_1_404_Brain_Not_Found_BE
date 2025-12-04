@@ -1,4 +1,4 @@
-package com.ll.order.domain.service;
+package com.ll.order.domain.service.compensation;
 
 import com.ll.core.model.exception.BaseException;
 import com.ll.order.domain.client.PaymentServiceClient;
@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -33,6 +32,7 @@ public class CompensationRetryService {
 
     private final OrderEventProducer orderEventProducer;
     private final PaymentServiceClient paymentServiceClient;
+    private final CompensationService compensationService;
 
     @Value("${order.compensation.max-retry-count:5}")
     private Integer maxRetryCount;
@@ -74,7 +74,7 @@ public class CompensationRetryService {
         String orderCode = tracing.getOrderCode();
         
         // 보상 시작 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
-        updateCompensationStartedStatus(orderCode);
+        compensationService.markCompensationStarted(orderCode);
 
         try {
             Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
@@ -90,12 +90,12 @@ public class CompensationRetryService {
 
             if (compensationSuccess) {
                 // 보상 완료 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
-                updateCompensationCompletedStatus(orderCode);
+                compensationService.markCompensationCompleted(orderCode);
                 
                 log.debug("보상 로직 재시도 성공 - orderCode: {}", orderCode);
             } else {
                 // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
-                updateCompensationFailedStatus(orderCode, "보상 로직 실행 중 일부 실패");
+                compensationService.markCompensationFailed(orderCode, "보상 로직 실행 중 일부 실패");
                 
                 log.warn("보상 로직 재시도 부분 실패 - orderCode: {}", orderCode);
                 throw new RuntimeException("보상 로직 실행 중 일부 실패");
@@ -103,7 +103,7 @@ public class CompensationRetryService {
 
         } catch (Exception e) {
             // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
-            updateCompensationFailedStatus(orderCode, e.getMessage());
+            compensationService.markCompensationFailed(orderCode, e.getMessage());
             
             log.error("보상 로직 재시도 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
@@ -175,72 +175,6 @@ public class CompensationRetryService {
         return transactionTracingRepository
                 .findFailedCompensationsForRetry(CompensationStatus.FAILED, maxRetryCount)
                 .size();
-    }
-
-    // 보상 시작 상태를 별도 트랜잭션으로 업데이트 (롤백 방지)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateCompensationStartedStatus(String orderCode) {
-        try {
-            TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
-                    .orElse(null);
-
-            if (tracing != null) {
-                tracing.startCompensation();
-
-                log.debug("보상 시작 상태 업데이트 완료 - orderCode: {}", orderCode);
-            } else {
-                log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
-            }
-        } catch (Exception e) {
-            log.error("보상 시작 상태 업데이트 실패 - orderCode: {}, error: {}",
-                    orderCode, e.getMessage(), e);
-        }
-    }
-
-    // 보상 완료 상태를 별도 트랜잭션으로 업데이트 (롤백 방지)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateCompensationCompletedStatus(String orderCode) {
-        try {
-            TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
-                    .orElse(null);
-
-            if (tracing != null) {
-                tracing.markCompensationCompleted();
-
-                log.debug("보상 완료 상태 업데이트 완료 - orderCode: {}", orderCode);
-            } else {
-                log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
-            }
-        } catch (Exception e) {
-            log.error("보상 완료 상태 업데이트 실패 - orderCode: {}, error: {}",
-                    orderCode, e.getMessage(), e);
-        }
-    }
-
-    // 보상 실패 상태를 별도 트랜잭션으로 업데이트 (롤백 방지)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateCompensationFailedStatus(String orderCode, String errorMessage) {
-        try {
-            TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
-                    .orElse(null);
-
-            if (tracing != null) {
-                // 보상 시작 상태로 변경 (아직 시작하지 않았다면)
-                if (tracing.getCompensationStatus() == CompensationStatus.NONE) {
-                    tracing.startCompensation();
-                }
-                // 보상 실패 상태로 변경 (재시도 횟수 증가)
-                tracing.markCompensationFailed(errorMessage);
-
-                log.debug("보상 실패 상태 업데이트 완료 - orderCode: {}, retryCount: {}",
-                        orderCode, tracing.getCompensationRetryCount());
-            } else {
-                log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
-            }
-        } catch (Exception e) {
-            log.error("보상 실패 상태 업데이트 실패 - orderCode: {}, error: {}",
-                    orderCode, e.getMessage(), e);
-        }
     }
 }
 

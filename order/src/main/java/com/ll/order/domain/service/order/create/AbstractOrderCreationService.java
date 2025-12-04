@@ -1,6 +1,5 @@
-package com.ll.order.domain.service;
+package com.ll.order.domain.service.order.create;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.order.domain.client.CartServiceClient;
@@ -10,11 +9,8 @@ import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
-import com.ll.order.domain.model.entity.OrderEventOutbox;
 import com.ll.order.domain.model.entity.OrderItem;
-import com.ll.order.domain.model.entity.TransactionTracing;
 import com.ll.order.domain.model.enums.payment.PaidType;
-import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import com.ll.order.domain.model.vo.InventoryDeduction;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
 import com.ll.order.domain.model.vo.response.order.OrderCreateResponse;
@@ -22,10 +18,11 @@ import com.ll.order.domain.model.vo.response.order.OrderCreationResult;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.*;
+import com.ll.order.domain.service.compensation.CompensationService;
+import com.ll.order.domain.service.event.OrderEventOutboxService;
+import com.ll.order.domain.service.order.OrderValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,8 +36,6 @@ public abstract class AbstractOrderCreationService {
     protected final OrderJpaRepository orderJpaRepository;
     protected final OrderItemJpaRepository orderItemJpaRepository;
     protected final OrderHistoryJpaRepository orderHistoryJpaRepository;
-    protected final OrderEventOutboxRepository orderEventOutboxRepository;
-    protected final TransactionTracingRepository transactionTracingRepository;
 
     protected final UserServiceClient userServiceClient;
     protected final ProductServiceClient productServiceClient;
@@ -48,8 +43,10 @@ public abstract class AbstractOrderCreationService {
     protected final PaymentServiceClient paymentApiClient;
 
     protected final OrderEventProducer orderEventProducer;
-    protected final ObjectMapper objectMapper;
     protected final OrderValidator orderValidator;
+    
+    protected final OrderEventOutboxService orderEventOutboxService;
+    protected final CompensationService compensationService;
 
     public final OrderCreateResponse createOrder(Object request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
@@ -86,10 +83,8 @@ public abstract class AbstractOrderCreationService {
 
     protected abstract void validateInventory(Object request);
 
-    @Transactional
     protected abstract OrderCreationResult createOrderWithItems(Object request, UserResponse userInfo);
 
-    @Transactional
     protected abstract void processDepositPayment(Order order, List<OrderItem> orderItems, Object request);
 
     protected abstract PaidType extractPaidType(Object request);
@@ -197,7 +192,7 @@ public abstract class AbstractOrderCreationService {
 
         // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
         if (hasFailure && orderCode != null) {
-            markCompensationFailed(orderCode, lastErrorMessage);
+            compensationService.markCompensationFailed(orderCode, lastErrorMessage);
         }
     }
 
@@ -211,7 +206,7 @@ public abstract class AbstractOrderCreationService {
         rollbackInventory(deductions, orderCode);
     }
 
-    protected void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
+    public void publishOrderCompletedEvents(Order order, List<OrderItem> orderItems, String buyerCode) {
         for (OrderItem orderItem : orderItems) {
             OrderEvent orderEvent = OrderEvent.of(
                     buyerCode,
@@ -223,50 +218,14 @@ public abstract class AbstractOrderCreationService {
 
             // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
             // 별도 프로세스가 Outbox를 읽어서 Kafka에 발행
-            saveToOutbox(orderEvent, order.getCode(), orderItem.getCode());
-        }
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode) {
-        try {
-            OrderEventOutbox outbox = OrderEventOutbox.from(orderEvent, objectMapper);
-            // PENDING 상태로 저장 (기본값이므로 명시적으로 설정하지 않아도 됨)
-            orderEventOutboxRepository.save(outbox);
-
-            log.debug("주문 이벤트 Outbox 저장 완료 (PENDING) - orderCode: {}, orderItemCode: {}, referenceCode: {}, outboxId: {}",
-                    orderCode, orderItemCode, orderEvent.referenceCode(), outbox.getId());
-        } catch (Exception e) {
-            log.error("주문 이벤트 Outbox 저장 실패 - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}",
-                    orderCode, orderItemCode, orderEvent.referenceCode(), e.getMessage(), e);
-            // Outbox 저장 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
-        }
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markCompensationFailed(String orderCode, String errorMessage) {
-        try {
-            TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
-                    .orElse(null);
-
-            if (tracing != null) {
-                // 보상 시작 상태로 변경 (아직 시작하지 않았다면)
-                if (tracing.getCompensationStatus() == CompensationStatus.NONE) {
-                    tracing.startCompensation();
-                }
-                // 보상 실패 상태로 변경
-                tracing.markCompensationFailed(errorMessage);
-
-                log.debug("보상 로직 실패 상태 저장 완료 - orderCode: {}, retryCount: {}",
-                        orderCode, tracing.getCompensationRetryCount());
-            } else {
-                log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
-            }
-        } catch (Exception e) {
-            log.error("보상 로직 실패 상태 저장 실패 - orderCode: {}, error: {}",
-                    orderCode, e.getMessage(), e);
+            orderEventOutboxService.saveToOutbox(orderEvent, order.getCode(), orderItem.getCode());
         }
     }
 
 }
+
+
+
+
+
 
