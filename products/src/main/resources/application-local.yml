@@ -29,7 +29,11 @@ spring:
       group-id: product-service
       properties:
         allow.auto.create.topics: false
-
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000ms
 # 로깅 설정
 logging:
   level:

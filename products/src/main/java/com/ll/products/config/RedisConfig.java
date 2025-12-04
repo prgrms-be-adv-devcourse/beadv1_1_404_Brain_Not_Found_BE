@@ -1,4 +1,4 @@
-package com.ll.auth.config;
+package com.ll.products.config;
 
 
 import org.springframework.context.annotation.Bean;
