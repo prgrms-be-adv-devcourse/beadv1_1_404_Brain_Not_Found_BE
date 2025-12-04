@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
@@ -41,45 +42,24 @@ public class TokenExtractionFilter extends AbstractGatewayFilterFactory<TokenExt
 
             ServerHttpRequest request = exchange.getRequest();
 
-            Optional<String> tokenOptional = resolveToken(request);
+            String token = getTokenFromCookie(request);
 
-            if (tokenOptional.isEmpty()) {
-                log.info("No token found. Skip token extraction.");
-                return chain.filter(exchange);
-            }
-
-            String token = tokenOptional.get();
-
+            //올바른 토큰 값 형식이 아닐 때
             if (!isValidToken(token)) {
-                log.info("Invalid or expired token. Skipping token extraction.");
-                return chain.filter(exchange);
+                log.error("Token value is invalid!");
+                return Mono.error(new GatewayBaseException(GatewayErrorCode.UNAUTHORIZED));
             }
 
             Jws<Claims> claims = getClaims(token);
-            String userCode = claims.getPayload().get("userCode", String.class);
-            String role = claims.getPayload().get("role", String.class);
+            TokenExtractionFilter.getUserCodeDto result = getUserCode(claims);
 
-            ServerHttpRequest mutatedRequest = request.mutate()
-                    .header("X-User-Code", userCode)
-                    .header("X-Role", role)
-                    .build();
-
-            log.info("Injected userCode={}, role={} into headers", userCode, role);
-
+            ServerHttpRequest mutatedRequest = setUserCodeAtHeader(request, result);
+            log.info("Header user code added");
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
+
         };
     }
 
-
-    private Optional<String> resolveToken(ServerHttpRequest request) {
-
-        String bearerToken = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return Optional.of(bearerToken.substring(7));
-        }
-        return Optional.empty();
-    }
 
     private boolean isValidToken(String token) {
 
@@ -98,6 +78,12 @@ public class TokenExtractionFilter extends AbstractGatewayFilterFactory<TokenExt
         return false;
     }
 
+
+    private static String getTokenFromCookie(ServerHttpRequest request) {
+        HttpCookie cookie = request.getCookies().getFirst("accessToken");
+        return (cookie != null) ? cookie.getValue() : null;
+    }
+
     private Jws<Claims> getClaims(String token) {
         return Jwts.parser()
                 .verifyWith(Keys.hmacShaKeyFor(secretKey.getBytes()))
@@ -105,6 +91,23 @@ public class TokenExtractionFilter extends AbstractGatewayFilterFactory<TokenExt
                 .parseSignedClaims(token);
     }
 
+    private static ServerHttpRequest setUserCodeAtHeader(ServerHttpRequest request, TokenExtractionFilter.getUserCodeDto result) {
+        return request.mutate()
+                .header("X-User-Code", result.userCode())
+                .header("X-Role", result.role())
+                .build();
+    }
+
+    private static TokenExtractionFilter.getUserCodeDto getUserCode(Jws<Claims> claims) {
+        String userCode = claims.getPayload().get("userCode", String.class);
+        String role = claims.getPayload().get("role", String.class);
+        log.info("user code is {}", userCode);
+        log.info("role is {}", role);
+        return new TokenExtractionFilter.getUserCodeDto(userCode, role);
+    }
+
+    private record getUserCodeDto(String userCode, String role) {
+    }
 }
 
 

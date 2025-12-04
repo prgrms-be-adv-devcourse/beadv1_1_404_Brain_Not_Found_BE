@@ -5,6 +5,7 @@ import com.ll.products.domain.product.model.dto.request.ProductUpdateInventoryRe
 import com.ll.products.global.util.RedisService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -19,6 +20,9 @@ import com.ll.products.domain.product.model.dto.response.ProductResponse;
 import com.ll.products.domain.product.model.entity.ProductStatus;
 import com.ll.products.domain.product.service.ProductService;
 
+import java.util.List;
+
+@Slf4j
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
@@ -48,6 +52,8 @@ public class ProductController {
             @RequestHeader(value = "X-User-Code",required = false) String userCode) {
         if(userCode != null){
             redisService.saveViewData(userCode,code);
+            log.info("getProduct Controller 접근 usercode: {}",userCode);
+
         }
         ProductResponse response = productService.getProduct(code);
         return BaseResponse.ok(response);
@@ -111,5 +117,21 @@ public class ProductController {
     ) {
         productService.updateInventory(code, request.quantity());
         return BaseResponse.ok(null);
+    }
+
+    @GetMapping("recentview")
+    public ResponseEntity<BaseResponse<List<String>>> getRecentView(
+            @RequestHeader("X-User-Code") String userCode
+    ){
+        log.info("recentView Controller 접근 usercode: {}",userCode);
+        return BaseResponse.ok(redisService.getViewData(userCode));
+    }
+
+    @GetMapping("recentsearch")
+    public ResponseEntity<BaseResponse<List<String>>> getRecentSearch(
+            @RequestHeader("X-User-Code") String userCode
+    ){
+        log.info("recentSearch Controller 접근 usercode: {}",userCode);
+        return BaseResponse.ok(redisService.getSearchData(userCode));
     }
 }

@@ -101,7 +101,7 @@ spring:
                 - name: TokenAuthenticationFilter
             # User
             - id: user-route-protected
-              uri: http://localhost:8083
+              uri: http://localhost:8084
               predicates:
                 - Path=/api/users/**
                 - Method=POST, GET, PATCH, DELETE
@@ -110,7 +110,7 @@ spring:
               order: 2
 
             - id: user-route-public
-              uri: http://localhost:8083
+              uri: http://localhost:8084
               predicates:
                 - Path=/api/users
                 - Method=GET
