@@ -88,5 +88,8 @@ logging:
     org.springframework.security.oauth2: DEBUG
     com.ll.auth.handler: DEBUG
 
-
+management:
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
 

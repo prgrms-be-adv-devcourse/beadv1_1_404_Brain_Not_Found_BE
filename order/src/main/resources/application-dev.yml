@@ -15,25 +15,20 @@ spring:
 
   kafka:
     bootstrap-servers:
-      - ${KAFKA_1_CONTAINER_NAME}:9090
+      - http://kafka-svc-dev.dev.svc.cluster.local:9090
 
-eureka:
-  client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: ${DISCOVERY_URL}
+
 
 # External Service URLs
 external:
   user-service:
-    url: http://user:8083
+    url: http://auth-svc-dev.dev.svc.cluster.local:8084
   product-service:
-    url: http://product:8085
-  cart-service:
-    url: http://cart:8089
+    url: http://product-svc-dev.dev.svc.cluster.local:8085
+#  cart-service:
+#    url: http://cart:8089
   payment-service:
-    url: http://order:8087
+    url: http://payment-svc-dev.dev.svc.cluster.local:8087
 
   # Payment Configuration
 payment:

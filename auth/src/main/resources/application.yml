@@ -21,6 +21,12 @@ management:
   health:
     redis:
       enabled: false
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      consume: b3
+      produce: b3_multi
 
 jwt:
   secret: ${JWT_SECRET}

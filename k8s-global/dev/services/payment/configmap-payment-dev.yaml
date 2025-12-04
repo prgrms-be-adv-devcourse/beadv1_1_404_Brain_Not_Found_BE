@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payment-config-dev
+data:
+  PAYMENT_DB_URL: jdbc:mysql://payment-db-svc-dev:3315/payment_db
+  SPRING_PROFILES_ACTIVE : dev

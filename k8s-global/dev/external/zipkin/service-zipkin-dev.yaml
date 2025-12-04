@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin-svc-dev
+spec:
+  type: NodePort # 외부에서 UI 접근이 가능하도록 NodePort 타입으로 설정
+  selector:
+    app: zipkin-dev
+  ports:
+    # 9411 포트는 Zipkin UI 및 Trace 데이터 수신 포트입니다.
+    - port: 9411
+      targetPort: 9411
+      protocol: TCP
+      nodePort: 30890
+      name: http-zipkin

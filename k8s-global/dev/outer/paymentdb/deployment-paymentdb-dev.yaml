@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-db-dpy-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-db-dev
+  template:
+    metadata:
+      labels:
+        app: payment-db-dev
+    spec:
+      containers:
+        - name: payment-db-pod-dev
+          image: mysql:8.2.0
+          envFrom:
+            - configMapRef:
+                name: payment-db-config-dev
+            - secretRef:
+                name: payment-db-secret-dev
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: payment-db-data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: payment-db-data
+          emptyDir: {}   # 개발용, 나중에 PVC로 변경 가능

@@ -23,16 +23,16 @@ public class CartServiceClient {
 
     private final RestClient restClient;
     
-    @Value("${external.cart-service.url:http://localhost:8089}")
+    @Value("${external.product-service.url:http://localhost:8085}")
     private String cartServiceUrl;
 
     @CircuitBreaker(name = "cartService", fallbackMethod = "getCartByCodeFallback")
     @Retry(name = "cartService")
-    public CartItemsResponse getCartByCode(String cartCode) {
+    public CartItemsResponse getCartByCode(String userCode) {
         // cartCode 파라미터는 실제로 userCode로 사용됩니다
         BaseResponse<CartItemsResponse> response = restClient.get()
                 .uri(cartServiceUrl + "/api/carts/cartItems")
-                .header("X-User-Code", cartCode)
+                .header("X-User-Code", userCode)
                 .retrieve()
                 .body(new ParameterizedTypeReference<BaseResponse<CartItemsResponse>>() {});
 

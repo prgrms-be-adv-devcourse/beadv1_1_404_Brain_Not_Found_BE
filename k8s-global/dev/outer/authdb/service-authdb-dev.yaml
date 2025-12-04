@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-db-svc-dev
+spec:
+  type: ClusterIP
+  selector:
+    app: auth-db-dev
+  ports:
+    - protocol: TCP
+      port: 3308
+      targetPort: 3306

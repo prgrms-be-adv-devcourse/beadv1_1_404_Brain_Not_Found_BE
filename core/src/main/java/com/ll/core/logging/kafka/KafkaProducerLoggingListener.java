@@ -14,13 +14,13 @@ public class KafkaProducerLoggingListener<K, V> implements ProducerListener<K, V
 
     @Override
     public void onSuccess(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata) {
-        log.info(producerRecord.value().toString());
+        log.debug(producerRecord.value().toString());
         log.info("[Kafka Produce Success] topic={}, key={}, partition={}, offset={}",
                 producerRecord.topic(),
                 producerRecord.key(),
                 recordMetadata.partition(),
                 recordMetadata.offset());
-        log.info("time to produce={}ms", System.currentTimeMillis() - recordMetadata.timestamp());
+        log.debug("time to produce={}ms", System.currentTimeMillis() - recordMetadata.timestamp());
     }
 
     @Override
@@ -31,7 +31,7 @@ public class KafkaProducerLoggingListener<K, V> implements ProducerListener<K, V
                 exception.getMessage(),
                 exception);
 
-        log.info("time to produce={}ms", System.currentTimeMillis() - recordMetadata.timestamp());
+        log.debug("time to produce={}ms", System.currentTimeMillis() - recordMetadata.timestamp());
 
     }
 }
