@@ -42,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -168,7 +169,19 @@ class OrderPaymentInventoryIntegrationTest {
         // 외부 서비스 Mock 설정 (다른 마이크로서비스)
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUser);
         when(productServiceClient.getProductByCode("PROD-001")).thenReturn(testProduct);
-        doNothing().when(productServiceClient).decreaseInventory(anyString(), any());
+        
+        // 재고 추적 변수 (초기 재고: 10개)
+        AtomicInteger currentStock = new AtomicInteger(testProduct.quantity());
+        
+        // 재고 차감 Mock 설정: 실제 재고 차감을 시뮬레이션
+        doAnswer(invocation -> {
+            String productCode = invocation.getArgument(0);
+            Integer quantity = invocation.getArgument(1);
+            int newStock = currentStock.addAndGet(-quantity);
+            log.debug("재고 차감 완료 - productCode: {}, 차감량: {}, 남은 재고: {}", productCode, quantity, newStock);
+            return null;
+        }).when(productServiceClient).decreaseInventory(anyString(), any());
+        
         when(paymentServiceClient.requestDepositPayment(any())).thenReturn("OK");
 
         // when - 실제 OrderService 호출 (실제 DB 사용)
@@ -241,7 +254,14 @@ class OrderPaymentInventoryIntegrationTest {
         // 5. 외부 서비스 호출 검증
         verify(userServiceClient, times(1)).getUserByCode("USER-001");
         verify(productServiceClient, times(2)).getProductByCode("PROD-001"); // OrderValidator(1번) + createOrderWithItems(1번)
-        verify(productServiceClient, times(1)).decreaseInventory("PROD-001", 2);
+        
+        // 5-0. 재고 차감 검증 (ArgumentCaptor 사용)
+        ArgumentCaptor<String> productCodeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Integer> quantityCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(productServiceClient, times(1)).decreaseInventory(productCodeCaptor.capture(), quantityCaptor.capture());
+        
+        assertThat(productCodeCaptor.getValue()).isEqualTo("PROD-001");
+        assertThat(quantityCaptor.getValue()).isEqualTo(2);
         
         // 5-1. Payment 파라미터 검증 (ArgumentCaptor 사용)
         ArgumentCaptor<OrderPaymentRequest> paymentRequestCaptor = ArgumentCaptor.forClass(OrderPaymentRequest.class);
@@ -275,8 +295,9 @@ class OrderPaymentInventoryIntegrationTest {
      * 3. 실제 트랜잭션이 동작하는지 확인
      * 4. 외부 서비스 호출이 올바른지 확인
      * 5. 토스 결제는 주문만 생성하고 결제는 하지 않음 (상태: CREATED)
-     * 6. 결제 API가 호출되지 않음을 확인
-     * 7. 주문 완료 이벤트가 발행되지 않음을 확인
+     * 6. 결제 완료 처리 후 상태가 COMPLETED로 변경되는지 확인
+     * 7. Payment API 호출 및 파라미터 검증
+     * 8. 주문 완료 이벤트 발행 검증
      */
     @DisplayName("통합 테스트: 다이렉트 주문 생성 - 토스 결제 (TOSS_PAYMENT)")
     @Test
@@ -297,9 +318,19 @@ class OrderPaymentInventoryIntegrationTest {
         // 외부 서비스 Mock 설정 (다른 마이크로서비스)
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(testUser);
         when(productServiceClient.getProductByCode("PROD-001")).thenReturn(testProduct);
-        doNothing().when(productServiceClient).decreaseInventory(anyString(), any());
-        // TOSS_PAYMENT는 결제 API를 호출하지 않으므로 Mock 설정 불필요
-
+        
+        // 재고 추적 변수 (초기 재고: 10개)
+        AtomicInteger currentStock = new AtomicInteger(testProduct.quantity());
+        
+        // 재고 차감 Mock 설정: 실제 재고 차감을 시뮬레이션
+        doAnswer(invocation -> {
+            String productCode = invocation.getArgument(0);
+            Integer quantity = invocation.getArgument(1);
+            int newStock = currentStock.addAndGet(-quantity);
+            log.debug("재고 차감 완료 - productCode: {}, 차감량: {}, 남은 재고: {}", productCode, quantity, newStock);
+            return null;
+        }).when(productServiceClient).decreaseInventory(anyString(), any());
+        
         // when - 실제 OrderService 호출 (실제 DB 사용)
         OrderCreateResponse result = orderService.createDirectOrder(request, userCode);
         log.info("*****************************after createDirectOrder (TOSS_PAYMENT)*****************************");
@@ -325,7 +356,7 @@ class OrderPaymentInventoryIntegrationTest {
         assertThat(savedOrder.getBuyerId()).isEqualTo(1L);
         assertThat(savedOrder.getBuyerCode()).isEqualTo("USER-001");
 
-        // 3. 실제 DB에 주문 항목이 저장되었는지 확인
+        // 3. 실제 DB에 주문 상품이 저장되었는지 확인
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(savedOrder.getId());
         log.info("*****************************orderItems (TOSS_PAYMENT)*****************************");
         assertThat(orderItems).hasSize(1);
@@ -364,14 +395,87 @@ class OrderPaymentInventoryIntegrationTest {
         // 5. 외부 서비스 호출 검증
         verify(userServiceClient, times(1)).getUserByCode("USER-001");
         verify(productServiceClient, times(2)).getProductByCode("PROD-001"); // OrderValidator(1번) + createOrderWithItems(1번)
-        verify(productServiceClient, times(1)).decreaseInventory("PROD-001", 2);
         
-        // 5-1. TOSS_PAYMENT는 결제 API를 호출하지 않음
+        // 5-0. 재고 차감 검증 (ArgumentCaptor 사용)
+        ArgumentCaptor<String> productCodeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Integer> quantityCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(productServiceClient, times(1)).decreaseInventory(productCodeCaptor.capture(), quantityCaptor.capture());
+        
+        assertThat(productCodeCaptor.getValue()).isEqualTo("PROD-001");
+        assertThat(quantityCaptor.getValue()).isEqualTo(2);
+        
+        // 재고 차감이 실제로 이루어졌는지 확인
+        int expectedStock = testProduct.quantity() - quantityCaptor.getValue(); // 10 - 2 = 8
+        assertThat(currentStock.get())
+                .as("재고가 올바르게 차감되었는지 확인 (초기 재고: %d, 차감량: %d, 예상 남은 재고: %d)",
+                        testProduct.quantity(), quantityCaptor.getValue(), expectedStock)
+                .isEqualTo(expectedStock);
+        
+        // 5-1. TOSS_PAYMENT는 주문 생성 시점에 결제 API를 호출하지 않음
         verify(paymentServiceClient, never()).requestDepositPayment(any());
         verify(paymentServiceClient, never()).requestTossPayment(any());
 
-        // 5-2. TOSS_PAYMENT는 주문 완료 이벤트를 발행하지 않음 (CREATED 상태이므로)
+        // 5-2. TOSS_PAYMENT는 주문 생성 시점에 주문 완료 이벤트를 발행하지 않음 (CREATED 상태이므로)
         verify(orderEventService, never()).publishOrderCompletedEvents(any(), any(), anyString());
+
+        // ========== 2단계: 토스 결제 완료 처리 ==========
+        String paymentKey = "test_payment_key_12345";
+        
+        // Mock 재설정: completePaymentWithKey에서 사용할 Mock
+        doNothing().when(paymentServiceClient).requestTossPayment(any());
+
+        // when - UI에서 결제 완료 후 completePaymentWithKey 호출 (모킹)
+        log.info("*****************************before completePaymentWithKey (TOSS_PAYMENT)*****************************");
+        orderService.completePaymentWithKey(result.orderCode(), paymentKey);
+        log.info("*****************************after completePaymentWithKey (TOSS_PAYMENT)*****************************");
+
+        // then - 결제 완료 후 검증
+        // 6. 주문 상태가 COMPLETED로 변경되었는지 확인
+        Order completedOrder = orderJpaRepository.findByCode(result.orderCode());
+        log.info("*****************************completedOrder (TOSS_PAYMENT)*****************************");
+        assertThat(completedOrder).isNotNull();
+        assertThat(completedOrder.getOrderStatus()).isEqualTo(OrderStatus.COMPLETED);
+        assertThat(completedOrder.getTotalPrice()).isEqualTo(20000);
+        assertThat(completedOrder.getBuyerId()).isEqualTo(1L);
+        assertThat(completedOrder.getBuyerCode()).isEqualTo("USER-001");
+
+        // 7. 주문 이력 확인 (CREATE + STATUS_CHANGE)
+        List<OrderHistoryEntity> completedOrderHistories = orderHistoryJpaRepository.findByOrderId(completedOrder.getId());
+        assertThat(completedOrderHistories).hasSizeGreaterThanOrEqualTo(2); // CREATE + STATUS_CHANGE
+
+        // 결제 성공 이력 확인
+        OrderHistoryEntity tossPaymentSuccessHistory = completedOrderHistories.stream()
+                .filter(history -> history.getActionType() == OrderHistoryActionType.STATUS_CHANGE)
+                .filter(history -> history.getCurrentStatus() == OrderStatus.COMPLETED)
+                .findFirst()
+                .orElse(null);
+        log.info("*****************************tossPaymentSuccessHistory (TOSS_PAYMENT)*****************************");
+        assertThat(tossPaymentSuccessHistory).isNotNull();
+        assertThat(tossPaymentSuccessHistory.getOrderCode()).isEqualTo(completedOrder.getCode());
+        assertThat(tossPaymentSuccessHistory.getCurrentStatus()).isEqualTo(OrderStatus.COMPLETED);
+        assertThat(tossPaymentSuccessHistory.getPreviousStatus()).isEqualTo(OrderStatus.CREATED);
+        assertThat(tossPaymentSuccessHistory.getReason()).contains("토스");
+
+        // 8. Payment API 호출 검증 (completePaymentWithKey에서 호출됨)
+        ArgumentCaptor<OrderPaymentRequest> paymentRequestCaptor = ArgumentCaptor.forClass(OrderPaymentRequest.class);
+        verify(paymentServiceClient, times(1)).requestTossPayment(paymentRequestCaptor.capture());
+
+        OrderPaymentRequest capturedPaymentRequest = paymentRequestCaptor.getValue();
+        assertThat(capturedPaymentRequest.orderId()).isEqualTo(completedOrder.getId());
+        assertThat(capturedPaymentRequest.orderCode()).isEqualTo(completedOrder.getCode());
+        assertThat(capturedPaymentRequest.buyerId()).isEqualTo(1L);
+        assertThat(capturedPaymentRequest.buyerCode()).isEqualTo("USER-001");
+        assertThat(capturedPaymentRequest.paidAmount()).isEqualTo(20000);
+        assertThat(capturedPaymentRequest.paidType()).isEqualTo(PaidType.TOSS_PAYMENT);
+        assertThat(capturedPaymentRequest.paymentKey()).isEqualTo(paymentKey);
+
+        // 9. 주문 완료 이벤트 발행 검증 (결제 완료 후)
+        List<OrderItem> completedOrderItems = orderItemJpaRepository.findByOrderId(completedOrder.getId());
+        verify(orderEventService, times(1)).publishOrderCompletedEvents(
+                eq(completedOrder),
+                eq(completedOrderItems),
+                eq("USER-001")
+        );
 
         log.info("*****************************after assertions (TOSS_PAYMENT)*****************************");
     }

@@ -63,16 +63,19 @@ public abstract class AbstractOrderCreationService {
 
         // 4. 결제 처리 (별도 트랜잭션)
         PaidType paidType = extractPaidType(request);
-        if (paidType == PaidType.DEPOSIT) {
-            processDepositPayment(savedOrder, orderItems, request);
-        } else if (paidType == PaidType.TOSS_PAYMENT) {
-            // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
-            // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
-            log.debug("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)",
-                    savedOrder.getId(), savedOrder.getCode());
-        } else {
-            log.warn("지원하지 않는 결제 수단입니다. paidType: {}", paidType);
-            throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
+        switch (paidType) {
+            case DEPOSIT:
+                processDepositPayment(savedOrder, orderItems, request);
+                break;
+            case TOSS_PAYMENT:
+                // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
+                // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
+                log.debug("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)",
+                        savedOrder.getId(), savedOrder.getCode());
+                break;
+            default:
+                log.warn("지원하지 않는 결제 수단입니다. paidType: {}", paidType);
+                throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
         }
 
         return convertToOrderCreateResponse(savedOrder);
