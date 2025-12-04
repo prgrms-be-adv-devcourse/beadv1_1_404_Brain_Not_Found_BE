@@ -1,60 +1,26 @@
-package com.ll.auth.service;
+    package com.ll.auth.service;
+    import lombok.RequiredArgsConstructor;
+    import lombok.extern.slf4j.Slf4j;
+    import org.springframework.scheduling.annotation.Async;
+    import org.springframework.stereotype.Service;
 
-import com.ll.auth.exception.TokenNotFoundException;
-import com.ll.auth.model.entity.Auth;
-import com.ll.auth.repository.AuthRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+    @Service
+    @RequiredArgsConstructor
+    @Slf4j
+    public class AuthAsyncService {
 
-import java.util.Optional;
 
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class AuthAsyncService {
+        private final AuthSyncService authService;
 
-    private final AuthRepository authRepository;
-
-    public void save(Auth auth){
-        authRepository.save(auth);
-    }
-
-    public void update(String userCode, String deviceCode, String refreshToken){
-        Auth auth = authRepository.findByUserCodeAndDeviceCode(userCode,deviceCode).orElseThrow(TokenNotFoundException::new);
-        auth.updateRefreshToken(refreshToken);
-        save(auth);
-    }
-
-    public void delete(String refreshToken){
-        authRepository.deleteByRefreshToken(refreshToken);
-    }
-
-    @Async
-    @Transactional
-    public void asyncDelete(String refreshToken){
-        delete(refreshToken);
-        log.info("Async DB delete 완료: refreshToken={}", refreshToken);
-    }
-
-    @Async
-    @Transactional
-    public void asyncSave(String userCode, String deviceCode, String refreshToken){
-
-        Optional<Auth> auth = authRepository.findByUserCodeAndDeviceCode(userCode,deviceCode);
-
-        if(auth.isPresent()){
-            update(userCode, deviceCode, refreshToken);
+        @Async
+        public void asyncDelete(String refreshToken) {
+            authService.delete(refreshToken);
+            log.info("Async DB delete 완료: refreshToken={}", refreshToken);
         }
-        else{
-            save(Auth.builder()
-                    .userCode(userCode)
-                    .deviceCode(deviceCode)
-                    .refreshToken(refreshToken)
-                    .build());
+
+        @Async
+        public void asyncUpsert(String userCode, String deviceCode, String refreshToken) {
+            authService.upsert(userCode, deviceCode, refreshToken);
+            log.info("Async DB upsert 완료");
         }
-        log.info("Async DB Save 완료");
     }
-}

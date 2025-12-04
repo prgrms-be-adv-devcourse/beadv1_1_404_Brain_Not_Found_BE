@@ -65,7 +65,7 @@ public class AuthService {
         redisService.saveRefreshToken(userCode, deviceCode, tokens.refreshToken());
         redisService.invalidateOldRefreshToken(userCode, deviceCode, tokens.refreshToken());
         redisService.saveUserDeviceMapping(userCode,deviceCode,tokens.refreshToken());
-        authAsyncService.asyncSave(userCode, deviceCode, tokens.refreshToken());
+        authAsyncService.asyncUpsert(userCode, deviceCode, tokens.refreshToken());
         return tokens;
     }
 
@@ -80,5 +80,6 @@ public class AuthService {
             redisService.saveRefreshToken(auth.getUserCode(), auth.getDeviceCode(), auth.getRefreshToken());
         }
     }
+
 
 }

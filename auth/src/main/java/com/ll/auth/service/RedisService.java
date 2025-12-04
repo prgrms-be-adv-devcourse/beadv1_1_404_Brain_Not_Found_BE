@@ -1,6 +1,7 @@
 package com.ll.auth.service;
 
 import com.ll.auth.exception.TokenNotFoundException;
+import com.ll.auth.util.HashUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,7 +24,7 @@ public class RedisService {
 
     public void saveUserDeviceMapping(String userCode, String deviceCode, String refreshToken) {
         String key = generateUserCode(userCode, deviceCode);
-        redisTemplate.opsForValue().set(key, refreshToken);
+        redisTemplate.opsForValue().set(key, HashUtils.sha256Hex(refreshToken));
     }
 
     public void invalidateOldRefreshToken(String userCode, String deviceCode, String newRefreshToken) {
@@ -64,7 +65,7 @@ public class RedisService {
     }
 
     private String generateRefreshCode(String refreshToken, String deviceCode){
-        return "refresh:" + refreshToken + ":" +deviceCode;
+        return "refresh:" + HashUtils.sha256Hex(refreshToken) + ":" +deviceCode;
     }
 
     private String generateUserCode(String userCode, String deviceCode){

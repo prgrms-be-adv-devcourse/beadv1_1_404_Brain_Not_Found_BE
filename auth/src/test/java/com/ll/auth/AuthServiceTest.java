@@ -47,7 +47,7 @@ import static org.mockito.BDDMockito.*;
                 .build();
 
         // when
-        authAsyncService.save(auth);
+        authAsyncService.asyncUpsert(auth.getUserCode(),auth.getDeviceCode(),auth.getRefreshToken());
 
         // then
         then(authRepository).should().save(auth);
