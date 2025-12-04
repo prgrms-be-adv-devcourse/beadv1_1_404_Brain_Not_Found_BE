@@ -1,6 +1,6 @@
 package com.ll.order.domain.controller;
 
-import com.ll.order.domain.service.OrderService;
+import com.ll.order.domain.service.order.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;

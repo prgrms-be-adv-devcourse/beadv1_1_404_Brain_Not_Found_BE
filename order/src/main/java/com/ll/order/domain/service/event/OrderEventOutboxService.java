@@ -1,16 +1,17 @@
-package com.ll.order.domain.service;
+package com.ll.order.domain.service.event;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.order.domain.model.entity.OrderEventOutbox;
-import com.ll.order.domain.model.entity.OrderEventOutbox.OutboxStatus;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
+import com.ll.order.domain.model.enums.order.OutboxStatus;
 import com.ll.order.domain.repository.OrderEventOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -142,6 +143,23 @@ public class OrderEventOutboxService {
         return orderEventOutboxRepository
                 .findByStatusAndRetryCountLessThan(OutboxStatus.FAILED, maxRetryCount)
                 .size();
+    }
+
+    // 이벤트를 Outbox에 저장 (PENDING 상태로 저장하여 스케줄러가 발행)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode) {
+        try {
+            OrderEventOutbox outbox = OrderEventOutbox.from(orderEvent, objectMapper);
+            // PENDING 상태로 저장 (기본값이므로 명시적으로 설정하지 않아도 됨)
+            orderEventOutboxRepository.save(outbox);
+
+            log.debug("주문 이벤트 Outbox 저장 완료 (PENDING) - orderCode: {}, orderItemCode: {}, referenceCode: {}, outboxId: {}",
+                    orderCode, orderItemCode, orderEvent.referenceCode(), outbox.getId());
+        } catch (Exception e) {
+            log.error("주문 이벤트 Outbox 저장 실패 - orderCode: {}, orderItemCode: {}, referenceCode: {}, error: {}",
+                    orderCode, orderItemCode, orderEvent.referenceCode(), e.getMessage(), e);
+            // Outbox 저장 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
+        }
     }
 }
 
