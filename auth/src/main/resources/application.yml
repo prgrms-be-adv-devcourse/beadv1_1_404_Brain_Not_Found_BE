@@ -15,9 +15,12 @@ management:
       base-path: /actuator                            # 엔드포인트 기본 경로
   endpoint:
     health:
-      show-details: always                           # 헬스체크 상세 정보
+      show-details: always                            # 헬스체크 상세 정보
     info:
       enabled: true
+  health:
+    redis:
+      enabled: false
 
 jwt:
   secret: ${JWT_SECRET}

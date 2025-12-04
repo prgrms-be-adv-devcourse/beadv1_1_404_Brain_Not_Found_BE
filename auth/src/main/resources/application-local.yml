@@ -72,7 +72,11 @@ spring:
     redis:
       host: localhost
       port: 6379
-      timeout: 60000ms
+      timeout: 500ms
+      lettuce:
+        pool:
+          max-active: 5
+        shutdown-timeout: 100ms
 # External Service URLs (로컬 개발용)
 external:
   user-service:

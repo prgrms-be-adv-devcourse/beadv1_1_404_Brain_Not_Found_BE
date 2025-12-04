@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -29,49 +30,77 @@ public class AuthService {
     private final AuthAsyncService authAsyncService;
 
 
-    public List<Auth> findAllValid(){
+    public List<Auth> findAllValid() {
         return authRepository.findByExpiredAtAfter((LocalDateTime.now()));
     }
 
-    public Tokens refreshToken(TokenValidRequest request){
+    public Tokens refreshToken(TokenValidRequest request) {
 
-        if(request.refreshToken() == null || request.refreshToken().isEmpty()){
+        if (request.refreshToken() == null || request.refreshToken().isEmpty()) {
             throw new TokenNotProvidedException();
         }
-        if(request.deviceCode() == null || request.deviceCode().isEmpty()){
+        if (request.deviceCode() == null || request.deviceCode().isEmpty()) {
             throw new DeviceCodeNotProvidedException();
         }
 
+        try {
+            if (!redisService.validRefreshToken(request.refreshToken(), request.deviceCode())) {
+                // 연속적인 Redis 갱신 보호
+                if (!redisService.checkUpdateRedisLimit()) {
+                    updateRedis();
+                    redisService.setUpdateRedisLimit();
+                }
+            }
 
-        if (!redisService.validRefreshToken(request.refreshToken(),request.deviceCode())) {
-            // 연속적인 Redis 갱신 보호
-            if(!redisService.checkUpdateRedisLimit()){
-                updateRedis();
-                redisService.setUpdateRedisLimit();
+            if (redisService.validRefreshToken(request.refreshToken(), request.deviceCode())) {
+                String userCode = redisService.getUserCode(request.refreshToken(), request.deviceCode());
+                UserResponse user = userService.getUserByUserCode(userCode);
+                redisService.deleteRefreshToken(request.refreshToken(), request.deviceCode());
+                return issuedToken(user.code(), request.deviceCode(), user.role().name());
+
+            }
+
+        } catch (Exception e) {
+            log.error(e.getMessage());
+            Optional<Auth> existing = authRepository.findByRefreshToken(request.refreshToken());
+            if(existing.isPresent()) {
+                Auth auth = existing.get();
+                String userCode = auth.getUserCode();
+                UserResponse user = userService.getUserByUserCode(userCode);
+                return issuedToken(user.code(), request.deviceCode(), user.role().name());
             }
         }
-        if (redisService.validRefreshToken(request.refreshToken(),request.deviceCode())) {
-            String userCode = redisService.getUserCode(request.refreshToken(),request.deviceCode());
-            UserResponse user = userService.getUserByUserCode(userCode);
-            redisService.deleteRefreshToken(request.refreshToken(),request.deviceCode());
-            return issuedToken(user.code(),request.deviceCode(),user.role().name());
 
-        }
         throw new TokenNotFoundException();
     }
 
+
+
     public Tokens issuedToken(String userCode,String deviceCode,String role){
         Tokens tokens = jWTProvider.createToken(userCode, role);
-        redisService.saveRefreshToken(userCode, deviceCode, tokens.refreshToken());
-        redisService.invalidateOldRefreshToken(userCode, deviceCode, tokens.refreshToken());
-        redisService.saveUserDeviceMapping(userCode,deviceCode,tokens.refreshToken());
-        authAsyncService.asyncUpsert(userCode, deviceCode, tokens.refreshToken());
+        try{
+            redisService.saveRefreshToken(userCode, deviceCode, tokens.refreshToken());
+            redisService.invalidateOldRefreshToken(userCode, deviceCode, tokens.refreshToken());
+            redisService.saveUserDeviceMapping(userCode,deviceCode,tokens.refreshToken());
+        }catch(Exception e){
+            log.error(e.getMessage());
+        }
+        finally {
+            authAsyncService.asyncUpsert(userCode, deviceCode, tokens.refreshToken());
+        }
         return tokens;
     }
 
     public void logoutUser(String refreshToken , String deviceCode){
-        redisService.deleteRefreshToken(refreshToken,deviceCode);
-        authAsyncService.asyncDelete(refreshToken);
+        try{
+            redisService.deleteRefreshToken(refreshToken,deviceCode);
+        }
+        catch(Exception e){
+            log.error(e.getMessage());
+        }
+        finally {
+            authAsyncService.asyncDelete(refreshToken);
+        }
 
     }
 

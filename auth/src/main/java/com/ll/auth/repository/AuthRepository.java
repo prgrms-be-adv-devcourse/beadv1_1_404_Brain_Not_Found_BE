@@ -16,4 +16,6 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
     List<Auth> findByExpiredAtAfter(LocalDateTime expiredAtAfter);
 
     void deleteByRefreshToken(String refreshToken);
+
+    Optional<Auth> findByRefreshToken(String refreshToken);
 }
