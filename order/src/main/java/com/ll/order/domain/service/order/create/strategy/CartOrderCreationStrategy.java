@@ -1,13 +1,11 @@
 package com.ll.order.domain.service.order.create.strategy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.exception.BaseException;
 import com.ll.order.domain.client.CartServiceClient;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
-import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
@@ -21,14 +19,14 @@ import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
 import com.ll.order.domain.model.vo.response.order.OrderCreationResult;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
-import com.ll.order.domain.repository.OrderEventOutboxRepository;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.order.domain.service.order.create.AbstractOrderCreationService;
-import com.ll.order.domain.service.compensation.CompensationService;
-import com.ll.order.domain.service.event.OrderEventOutboxService;
+import com.ll.order.domain.service.event.OrderEventService;
+import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.OrderValidator;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,22 +42,18 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
             OrderJpaRepository orderJpaRepository,
             OrderItemJpaRepository orderItemJpaRepository,
             OrderHistoryJpaRepository orderHistoryJpaRepository,
-            OrderEventOutboxRepository orderEventOutboxRepository,
             UserServiceClient userServiceClient,
             ProductServiceClient productServiceClient,
             CartServiceClient cartServiceClient,
             PaymentServiceClient paymentApiClient,
-            OrderEventProducer orderEventProducer,
-            ObjectMapper objectMapper,
             OrderValidator orderValidator,
-            OrderEventOutboxService orderEventOutboxService,
-            CompensationService compensationService
+            OrderEventService orderEventService,
+            OrderInventoryService orderInventoryService
     ) {
         super(orderJpaRepository, orderItemJpaRepository, orderHistoryJpaRepository,
-                orderEventOutboxRepository,
                 userServiceClient, productServiceClient, cartServiceClient,
-                paymentApiClient, orderEventProducer, objectMapper, orderValidator,
-                orderEventOutboxService, compensationService);
+                paymentApiClient, orderValidator,
+                orderEventService, orderInventoryService);
     }
 
     @Override
@@ -85,6 +79,7 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
             throw new IllegalArgumentException("OrderCartItemRequest 타입이 아닙니다.");
         }
 
+        // TODO : 재고 확인때 똑같이 하니까 return된 값을 가질 수 없는지 ?
         CartItemsResponse cartInfo = getCartInfo(cartRequest.cartCode());
 
         List<ProductResponse> productList = new ArrayList<>();
@@ -157,7 +152,7 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
             orderHistoryJpaRepository.save(successHistory);
 
             // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
-            publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
+            orderEventService.publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
             log.debug("예치금 결제 완료 - orderCode: {}, amount: {}",
                     order.getCode(), order.getTotalPrice());
@@ -171,7 +166,7 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
             orderHistoryJpaRepository.save(failHistory);
 
             // 결제 실패 시 재고 롤백 (재고 차감이 결제 전에 이루어졌기 때문)
-            rollbackInventoryForOrder(orderItems, order.getCode());
+            orderInventoryService.rollbackInventoryForOrder(orderItems, order.getCode());
 
             log.error("결제 처리 실패 - orderCode: {}, error: {}",
                     order.getCode(), e.getMessage(), e);

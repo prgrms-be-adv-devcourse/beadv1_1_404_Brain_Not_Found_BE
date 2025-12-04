@@ -19,6 +19,8 @@ import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.order.domain.service.compensation.CompensationService;
+import com.ll.order.domain.service.event.OrderEventService;
+import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.create.strategy.CartOrderCreationStrategy;
 import com.ll.order.domain.service.order.create.strategy.DirectOrderCreationStrategy;
 import jakarta.validation.Valid;
@@ -51,6 +53,8 @@ public class OrderServiceImpl implements OrderService {
     private final OrderValidator orderValidator;
     
     private final CompensationService compensationService;
+    private final OrderEventService orderEventService;
+    private final OrderInventoryService orderInventoryService;
 
     // Strategy 패턴을 위한 주문 생성 전략들
     private final CartOrderCreationStrategy cartOrderCreationStrategy;
@@ -157,7 +161,7 @@ public class OrderServiceImpl implements OrderService {
             orderHistoryJpaRepository.save(successHistory);
 
             // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
-            cartOrderCreationStrategy.publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
+            orderEventService.publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
         } catch (Exception e) {
             order.changeStatus(OrderStatus.FAILED);
@@ -170,8 +174,7 @@ public class OrderServiceImpl implements OrderService {
             orderHistoryJpaRepository.save(failHistory);
 
             // 결제 실패 시 재고 롤백 (재고 차감이 주문 생성 시점에 이루어졌기 때문)
-            // 토스 결제는 주문 생성 시점에 재고 차감이 이루어지므로, 어떤 Strategy든 사용 가능
-            cartOrderCreationStrategy.rollbackInventoryForOrder(orderItems, order.getCode());
+            orderInventoryService.rollbackInventoryForOrder(orderItems, order.getCode());
 
             log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderCode, paymentKey, e.getMessage(), e);
             throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
