@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config-dev
+data:
+  AUTH_DB_URL: jdbc:mysql://auth-db-svc-dev:3308/auth_db
+  SPRING_PROFILES_ACTIVE : dev

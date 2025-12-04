@@ -9,23 +9,23 @@ COPY gradle /app/gradle/
 RUN chmod +x gradlew
 
 # 의존성만 먼저 빌드
-RUN ./gradlew dependencies --no-daemon
+#RUN ./gradlew dependencies --no-daemon
 COPY core /app/core/
 COPY products /app/products/
 # 빌드 (배포 시 -x 옵션 제거 필수!)
 # 저장 경로 app/products/build/libs/products-<version>.jar
-RUN ./gradlew :products:bootJar -x test --no-daemon --stacktrace
+#RUN ./gradlew :products:bootJar -x test --no-daemon --stacktrace
 
 FROM azul/zulu-openjdk:21-latest
 WORKDIR /app
 
-RUN apt-get update && \
-    apt-get install -y curl
+#RUN apt-get update && \
+#    apt-get install -y curl
 
 # 8. 빌드된 jar파일 최상위로 복사
 COPY --from=builder /app/products/build/libs/*.jar app.jar
 # 9. 외부 포트 노출
-EXPOSE 8080
+EXPOSE 8085
 
 # x. 컨테이너 시작 명령
 ENTRYPOINT ["java", "-jar", "app.jar"]

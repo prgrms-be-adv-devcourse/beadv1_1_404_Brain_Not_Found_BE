@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: els-dpy-dev
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: els-dev
+
+  template:
+    metadata:
+      labels:
+        app: els-dev
+
+    spec:
+      containers:
+        - name: elasticsearch-1-pod-dev
+          image: docker.elastic.co/elasticsearch/elasticsearch:9.2.1
+          ports:
+            - containerPort: 9200
+          envFrom:
+            - configMapRef:
+                name: els-config-dev
+          command: ["bash", "-c"]
+          args:
+            - |
+              bin/elasticsearch-plugin list | grep -q analysis-nori || bin/elasticsearch-plugin install analysis-nori --batch;
+              /usr/local/bin/docker-entrypoint.sh

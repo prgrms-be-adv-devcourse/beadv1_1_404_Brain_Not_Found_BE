@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-dpy-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-dev
+  template:
+    metadata:
+      labels:
+        app: redis-dev
+    spec:
+      containers:
+        - name: redis-pod-dev
+          image: redis:latest
+          command: ["redis-server"]
+          # ConfigMap에 정의된 redis.conf 파일을 사용하도록 인수를 전달합니다.
+          args: ["/redis-master/redis.conf"]
+          ports:
+            - containerPort: 6379
+          # ConfigMap 볼륨 마운트
+          volumeMounts:
+            - name: redis-config-volume
+              mountPath: /redis-master
+          resources:
+            limits:
+              cpu: "200m"
+              memory: "300Mi" # ConfigMap의 maxmemory보다 높게 설정
+            requests:
+              cpu: "100m"
+              memory: "150Mi"
+      volumes:
+        # ConfigMap을 볼륨으로 정의합니다.
+        - name: redis-config-volume
+          configMap:
+            name: redis-config-dev # 위에서 정의한 ConfigMap 이름
+            items:
+              - key: redis.conf
+                path: redis.conf

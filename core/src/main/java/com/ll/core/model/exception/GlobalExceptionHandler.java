@@ -24,7 +24,6 @@ public class GlobalExceptionHandler {
     // 커스텀 예외 (BaseException)
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<BaseResponse<Void>> handleBaseException(BaseException e) {
-        log.error(LOG_PREFIX, e.getMessage(), e);
         return BaseResponse.error(e.getErrorCode(), e.getMessage());
     }
 

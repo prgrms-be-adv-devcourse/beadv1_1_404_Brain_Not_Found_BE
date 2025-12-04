@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-db-svc-dev
+spec:
+  type: ClusterIP
+  selector:
+    app: payment-db-dev
+  ports:
+    - protocol: TCP
+      port: 3315
+      targetPort: 3306

@@ -1,0 +1,49 @@
+
+spring:
+  datasource:
+    url: ${SETTLEMENT_DB_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+
+  batch:
+    jdbc:
+      initialize-schema: never
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:org/springframework/batch/core/schema-mysql.sql
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  kafka:
+    bootstrap-servers:
+      - kafka-1:9090
+    consumer:
+      group-id: settlement-service
+      properties:
+        allow.auto.create.topics: false
+
+
+custom:
+  batch:
+    chunk:
+      size: 500
+    skip:
+      limit: 10
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${DISCOVERY_URL}
+logging:
+  level:
+    root: info

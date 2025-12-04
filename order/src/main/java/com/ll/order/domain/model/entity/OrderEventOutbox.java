@@ -3,6 +3,7 @@ package com.ll.order.domain.model.entity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.persistence.BaseEntity;
 import com.ll.core.model.vo.kafka.OrderEvent;
+import com.ll.order.domain.model.enums.order.OutboxStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -71,12 +72,6 @@ public class OrderEventOutbox extends BaseEntity {
         } catch (Exception e) {
             throw new RuntimeException("OrderEvent를 JSON으로 직렬화하는 중 오류 발생", e);
         }
-    }
-
-    public enum OutboxStatus {
-        PENDING,    // 발행 대기
-        PUBLISHED,  // 발행 완료
-        FAILED      // 발행 실패 (재시도 한계 초과)
     }
 }
 

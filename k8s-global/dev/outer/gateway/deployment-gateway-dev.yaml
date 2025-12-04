@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-dpy-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-dev
+  template:
+    metadata:
+      labels:
+        app: gateway-dev
+    spec:
+      containers:
+        - name: gateway-pod-dev
+          image: gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: gateway-config-dev
+            - secretRef:
+                name: gateway-secret-dev
+      restartPolicy: Always
