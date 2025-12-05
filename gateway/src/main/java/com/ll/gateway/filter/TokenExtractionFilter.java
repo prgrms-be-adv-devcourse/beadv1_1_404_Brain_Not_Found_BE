@@ -1,11 +1,8 @@
 package com.ll.gateway.filter;
 
-
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.gateway.exception.GatewayBaseException;
 import com.ll.gateway.exception.GatewayErrorCode;
-import com.ll.gateway.resopnse.GatewayBaseResponse;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
@@ -13,12 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpCookie;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
-
-import java.util.Optional;
 
 @Component
 @Slf4j
@@ -27,7 +21,6 @@ public class TokenExtractionFilter extends AbstractGatewayFilterFactory<TokenExt
     @Value("${custom.jwt.secrets.app-key}")
     private String secretKey;
 
-    private final ObjectMapper om = new ObjectMapper();
 
     public static class Config {
     }
@@ -47,7 +40,7 @@ public class TokenExtractionFilter extends AbstractGatewayFilterFactory<TokenExt
             //올바른 토큰 값 형식이 아닐 때
             if (!isValidToken(token)) {
                 log.error("Token value is invalid!");
-                return Mono.error(new GatewayBaseException(GatewayErrorCode.UNAUTHORIZED));
+                return chain.filter(exchange);
             }
 
             Jws<Claims> claims = getClaims(token);
