@@ -18,6 +18,7 @@ import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -55,6 +56,7 @@ public class KafkaCommonConfiguration {
     ) {
         KafkaTemplate<String, Object> kafkaTemplate = new KafkaTemplate<>(factory);
         kafkaTemplate.setProducerListener(listener);
+        kafkaTemplate.setObservationEnabled(true);
         log.info("KafkaTemplate started");
         return kafkaTemplate;
     }
@@ -64,7 +66,11 @@ public class KafkaCommonConfiguration {
     public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> config = new HashMap<>(properties.buildConsumerProperties());
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class); // Key 에 대한 Deserializer 설정
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, EnvelopeDeserializer.class); // Value 에 대한 Deserializer 설정+
+
+        // Deserializer 이 실패했을 시 무한 반복하지 않도록 ErrorHandlingDeserializer 설정
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        config.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, EnvelopeDeserializer.class);
+
         config.put(JsonDeserializer.TRUSTED_PACKAGES, "*"); // 모든 패키지 신뢰 설정
         return new DefaultKafkaConsumerFactory<>(config);
     }
@@ -116,6 +122,7 @@ public class KafkaCommonConfiguration {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
         factory.setCommonErrorHandler(errorHandler);
+        factory.getContainerProperties().setObservationEnabled(true);
 //        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE); // 수동 커밋 모드 설정
         return factory;
     }

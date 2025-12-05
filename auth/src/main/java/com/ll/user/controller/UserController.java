@@ -1,11 +1,15 @@
 package com.ll.user.controller;
 
+import com.ll.auth.model.vo.dto.Tokens;
+import com.ll.auth.service.AuthService;
+import com.ll.auth.util.CookieUtil;
 import com.ll.user.model.vo.request.UserPatchRequest;
 import com.ll.common.model.vo.request.UserLoginRequest;
 import com.ll.common.model.vo.response.UserLoginResponse;
 import com.ll.user.model.vo.response.UserResponse;
 import com.ll.user.service.UserService;
 import com.ll.core.model.response.BaseResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -17,12 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-
-    @GetMapping("/ping")
-    public ResponseEntity<BaseResponse<String>> pong() {
-        System.out.println("ProductController.pong");
-        return BaseResponse.ok("Ok");
-    }
+    private final AuthService authService;
 
     // 회원 정보 조회
     @GetMapping("/info")
@@ -43,9 +42,14 @@ public class UserController {
     @PatchMapping
     public ResponseEntity<BaseResponse<UserResponse>> updateUser(
             @RequestBody @Validated UserPatchRequest request,
-            @RequestHeader(value = "X-User-Code") String userCode
+            @RequestHeader(value = "X-User-Code") String userCode,
+            @CookieValue(value = "deviceCode") String deviceCode,
+            HttpServletResponse response
     ){
-            return BaseResponse.ok(userService.updateUser(request, userCode));
+            UserResponse user = userService.updateUser(request,userCode);
+            Tokens tokens = authService.issuedToken(userCode,deviceCode, user.role().name());
+            CookieUtil.setTokenCookie(response,tokens.accessToken(),tokens.refreshToken());
+            return BaseResponse.ok(user);
     }
 
     // 회원 목록 조회

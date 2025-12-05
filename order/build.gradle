@@ -13,9 +13,24 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    
+    // Apache HttpClient 5 for RestClient HttpComponentsClientHttpRequestFactory
+    implementation 'org.apache.httpcomponents.client5:httpclient5'
+
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+    implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
-    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    // Resilience4j for Circuit Breaker & Retry
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker'
+    implementation 'io.github.resilience4j:resilience4j-retry'
+
+    // Resilience4j for Circuit Breaker & Retry
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker'
+    implementation 'io.github.resilience4j:resilience4j-retry'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     

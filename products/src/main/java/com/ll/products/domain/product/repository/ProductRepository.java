@@ -18,6 +18,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, Product
            "WHERE p.code = :code AND p.isDeleted = false")
     Optional<Product> findByCodeAndIsDeletedFalse(@Param("code") String code);
 
+    Optional<Product> findByIdAndIsDeleted(Long id, Boolean isDeleted);
+    
     @Query("SELECT DISTINCT p FROM Product p " +
            "LEFT JOIN FETCH p.images " +
            "LEFT JOIN FETCH p.category " +

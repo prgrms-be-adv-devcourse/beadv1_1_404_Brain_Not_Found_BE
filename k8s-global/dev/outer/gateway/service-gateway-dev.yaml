@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-svc-dev
+spec:
+  type: ClusterIP
+  selector:
+    app: gateway-dev
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-config-dev
+data:
+  PRODUCT_DB_URL: jdbc:mysql://product-db-svc-dev:3311/product_db
+  SPRING_PROFILES_ACTIVE : dev
