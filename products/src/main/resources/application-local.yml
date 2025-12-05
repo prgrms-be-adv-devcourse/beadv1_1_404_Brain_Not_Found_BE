@@ -20,7 +20,7 @@ spring:
 
   # Elasticsearch 설정
   elasticsearch:
-    uris: http://localhost:9202
+    uris: http://localhost:9200
 
   kafka:
     bootstrap-servers:
@@ -29,7 +29,15 @@ spring:
       group-id: product-service
       properties:
         allow.auto.create.topics: false
-
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 500ms
+      lettuce:
+        pool:
+          max-active: 5
+        shutdown-timeout: 100ms
 # 로깅 설정
 logging:
   level:

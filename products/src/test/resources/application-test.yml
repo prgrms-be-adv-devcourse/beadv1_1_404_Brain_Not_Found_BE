@@ -1,0 +1,69 @@
+spring:
+  # MySQL 데이터베이스 설정 (동시성 테스트용)
+  # docker-compose-concurrency.yml의 MySQL 컨테이너와 연결
+  datasource:
+    url: jdbc:mysql://localhost:3308/products_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    username: root
+    password: root123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA 설정
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # 테스트 후 데이터 삭제
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+        # 동시성 테스트를 위한 트랜잭션 격리 수준 설정
+        connection:
+          isolation: 2  # TRANSACTION_REPEATABLE_READ
+
+  # Kafka 설정 (최소 설정 - 이벤트 리스너 자동 설정 방지)
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: product-service-test
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+# 로깅 설정 (동시성 테스트 디버깅용)
+logging:
+  level:
+    root: INFO
+    com.ll.products: DEBUG
+    org.springframework.transaction: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.engine.transaction: DEBUG
+
+# AWS S3 설정 (ProductService에서 @Value로 주입받으므로 필수)
+cloud:
+  aws:
+    s3:
+      bucket: test-bucket
+      base-url: https://test-bucket.s3.ap-northeast-2.amazonaws.com
+    credentials:
+      access-key: test-access-key
+      secret-key: test-secret-key
+    region:
+      static: ap-northeast-2
+    stack:
+      auto: false
+
+# 외부 API 설정 (테스트에서는 모킹 사용)
+api:
+  user:
+    base-url: http://localhost:8084
+
+# Eureka 비활성화
+eureka:
+  client:
+    enabled: false
+
+# Management 설정 (Elasticsearch 헬스체크 비활성화)
+management:
+  health:
+    elasticsearch:
+      enabled: false
+

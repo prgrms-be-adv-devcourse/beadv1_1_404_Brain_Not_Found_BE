@@ -52,6 +52,7 @@ class OrderRelationshipComparisonTest {
         for (int i = 0; i < ORDER_COUNT; i++) {
             Order order = Order.create(
                     1L,
+                    "USER-001",
                     OrderType.ONLINE,
                     "서울시 강남구 테스트동 " + i
             );

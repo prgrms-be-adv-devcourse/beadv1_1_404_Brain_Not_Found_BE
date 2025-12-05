@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  order-mysql:
+    image: mysql:8.0
+    container_name: order-mysql-test
+    ports:
+      - "3307:3306"  # 호스트 포트 3307로 매핑 (기본 MySQL 포트 3306과 충돌 방지)
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=orderdb
+      - MYSQL_USER=kissmyass
+      - MYSQL_PASSWORD=dickhead
+      - TZ=Asia/Seoul
+    command: 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    # volumes:
+    #   # 데이터 영속성을 원하는 경우 주석 해제
+    #   - order-mysql-data:/var/lib/mysql
+    #   # 초기 스키마나 데이터를 넣고 싶은 경우
+    #   - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - order-test-network
+
+networks:
+  order-test-network:
+    driver: bridge
+
+# volumes:
+#   order-mysql-data:
+

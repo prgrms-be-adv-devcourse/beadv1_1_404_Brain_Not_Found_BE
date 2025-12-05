@@ -4,7 +4,6 @@ import com.ll.core.model.response.BaseResponse;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
-import com.ll.order.domain.model.vo.request.OrderValidateRequest;
 import com.ll.order.domain.model.vo.response.order.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -89,17 +88,6 @@ public interface OrderControllerSwagger {
     )
     ResponseEntity<BaseResponse<Map<String, String>>> getOrderCodeById(
             @Parameter(description = "주문 ID", required = true) @org.springframework.web.bind.annotation.PathVariable Long orderId
-    );
-
-    @Operation(
-            summary = "주문 가능 여부 확인",
-            description = """
-                    주문 전 상품의 재고, 가격, 판매 상태 등을 검증합니다.
-                    주문 가능 여부와 검증 결과를 반환합니다.
-                    """
-    )
-    ResponseEntity<BaseResponse<OrderValidateResponse>> validateOrder(
-            @Parameter(description = "주문 검증 요청", required = true) @Valid @RequestBody OrderValidateRequest request
     );
 
     @Operation(

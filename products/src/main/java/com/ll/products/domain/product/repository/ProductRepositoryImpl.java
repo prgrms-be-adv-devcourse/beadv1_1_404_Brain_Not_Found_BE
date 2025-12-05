@@ -41,6 +41,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                         statusEq(status),
                         nameContains(name)
                 )
+                .leftJoin(product.images).fetchJoin()
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .orderBy(getOrderSpecifiers(pageable))

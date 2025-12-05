@@ -77,7 +77,15 @@ public class CategoryService {
         List<CategoryResponse> children = childrenMap.getOrDefault(category.getId(), List.of()).stream()
                 .map(child -> buildCategoryTree(child, childrenMap))
                 .toList();
-        return convertToResponse(category, false);
+        return CategoryResponse.builder()
+                .id(category.getId())
+                .parentId(category.getParent() != null ? category.getParent().getId() : null)
+                .name(category.getName())
+                .depth(category.getDepth())
+                .createdAt(category.getCreatedAt())
+                .updatedAt(category.getUpdatedAt())
+                .children(children.isEmpty() ? null : children)
+                .build();
     }
 
     @Transactional
