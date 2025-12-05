@@ -38,7 +38,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -518,56 +517,6 @@ class OrderServiceImplTest { // BDD, nested test, slice test
         assertThat(response.status()).isEqualTo(OrderStatus.PAID);
         verify(mockOrder).changeStatus(OrderStatus.PAID);
         verify(orderJpaRepository).save(mockOrder);
-    }
-
-    @DisplayName("주문 검증 - 성공")
-    @Test
-    void validateOrder_Success() {
-        // given
-        ProductRequest productRequest1 = new ProductRequest("PROD-001", 2, 10000, null);
-        ProductRequest productRequest2 = new ProductRequest("PROD-002", 1, 5000, null);
-        OrderValidateRequest request = new OrderValidateRequest(
-                "USER-001",
-                List.of(productRequest1, productRequest2)
-        );
-
-        when(productServiceClient.getProductByCode("PROD-001"))
-                .thenReturn(ProductResponse.builder()
-                        .id(11L)
-                        .code("PROD-001")
-                        .name("상품1")
-                        .sellerCode("SELLER-021")
-                        .sellerName("판매자1")
-                        .quantity(5)
-                        .price(10000)
-                        .status(ProductStatus.ON_SALE)
-                        .images(null)
-                        .build());
-        when(productServiceClient.getProductByCode("PROD-002"))
-                .thenReturn(ProductResponse.builder()
-                        .id(12L)
-                        .code("PROD-002")
-                        .name("상품2")
-                        .sellerCode("SELLER-022")
-                        .sellerName("판매자2")
-                        .quantity(3)
-                        .price(5000)
-                        .status(ProductStatus.ON_SALE)
-                        .images(null)
-                        .build());
-
-        // when
-        OrderValidateResponse response = orderService.validateOrder(request);
-
-        // then
-        assertThat(response.buyerCode()).isEqualTo("USER-001");
-        assertThat(response.totalQuantity()).isEqualTo(3);
-        assertThat(response.totalAmount()).isEqualTo(BigDecimal.valueOf(25000));
-        assertThat(response.items()).hasSize(2);
-        assertThat(response.items().get(0).productCode()).isEqualTo("PROD-001");
-        assertThat(response.items().get(0).price()).isEqualTo(10000);
-        assertThat(response.items().get(1).productCode()).isEqualTo("PROD-002");
-        assertThat(response.items().get(1).price()).isEqualTo(5000);
     }
 }
 

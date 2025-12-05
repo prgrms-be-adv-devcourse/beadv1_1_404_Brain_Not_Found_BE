@@ -4,7 +4,6 @@ import com.ll.core.model.response.BaseResponse;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
-import com.ll.order.domain.model.vo.request.OrderValidateRequest;
 import com.ll.order.domain.model.vo.response.order.*;
 import com.ll.order.domain.service.order.OrderService;
 import jakarta.validation.Valid;
@@ -91,15 +90,6 @@ public class OrderController implements OrderControllerSwagger {
     ) {
         String orderCode = orderService.getOrderCodeById(orderId);
         return BaseResponse.ok(Map.of("orderCode", orderCode));
-    }
-
-    // 주문 가능 여부 확인
-    @PostMapping("/validate")
-    public ResponseEntity<BaseResponse<OrderValidateResponse>> validateOrder(
-            @Valid @RequestBody OrderValidateRequest request
-    ) {
-        OrderValidateResponse response = orderService.validateOrder(request);
-        return BaseResponse.ok(response);
     }
 
     @GetMapping("/payment/success")
