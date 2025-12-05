@@ -14,46 +14,39 @@ import java.util.List;
 public class RedisService {
 
     private final RedisTemplate<String, String> redisTemplate;
-    private final Long TTL = 15L;          // 데이터 유지기간 (일)
-    private final Long dataRange = 30L;    // 저장 최대 개수
 
-    public void saveSearchData(String userCode, String keyword) {
-        String key = generateSearchCode(userCode);
-        try {
-            redisTemplate.opsForList().leftPush(key, keyword);
-            redisTemplate.opsForList().trim(key, 0, dataRange - 1); // 최대 개수 유지
-            redisTemplate.expire(key, Duration.ofDays(TTL));
-            log.info("Redis 검색 기록 저장 성공 :{}",keyword);
-        } catch (Exception e) {
-            log.warn("Redis 검색 기록 저장 실패: {}", e.getMessage());
-        }
+    private final Long TTL = 15L;       // 15일 유지
+    private final Long dataRange = 30L; // 최근 30개 유지
+
+    public void pushSearchData(String userCode, String keyword) {
+        String key = generateSearchKey(userCode);
+
+        redisTemplate.opsForList().leftPush(key, keyword);
+        redisTemplate.opsForList().trim(key, 0, dataRange - 1);
+        redisTemplate.expire(key, Duration.ofDays(TTL));
     }
 
-    public void saveViewData(String userCode, String productCode) {
-        String key = generateViewCode(userCode);
-        try {
-            redisTemplate.opsForList().leftPush(key, productCode);
-            redisTemplate.opsForList().trim(key, 0, dataRange - 1); // 최대 개수 유지
-            redisTemplate.expire(key, Duration.ofDays(TTL));
-            log.info("Redis 조회 기록 저장 성공 :{}", productCode);
-        } catch (Exception e) {
-            log.warn("Redis 조회 기록 저장 실패: {}", e.getMessage());
-        }
+    public List<String> getSearchData(String userCode) {
+        return redisTemplate.opsForList().range(generateSearchKey(userCode), 0, dataRange - 1);
     }
 
-    public List<String> getSearchData(String userCode){
-        return redisTemplate.opsForList().range(generateSearchCode(userCode), 0, dataRange - 1);
-    }
-
-    public List<String> getViewData(String userCode){
-        return redisTemplate.opsForList().range(generateViewCode(userCode), 0, dataRange - 1);
-    }
-
-    private String generateSearchCode(String userCode){
+    private String generateSearchKey(String userCode) {
         return "search:" + userCode;
     }
 
-    private String generateViewCode(String userCode){
+    public void pushViewData(String userCode, String productCode) {
+        String key = generateViewKey(userCode);
+
+        redisTemplate.opsForList().leftPush(key, productCode);
+        redisTemplate.opsForList().trim(key, 0, dataRange - 1);
+        redisTemplate.expire(key, Duration.ofDays(TTL));
+    }
+
+    public List<String> getViewData(String userCode) {
+        return redisTemplate.opsForList().range(generateViewKey(userCode), 0, dataRange - 1);
+    }
+
+    private String generateViewKey(String userCode) {
         return "view:" + userCode;
     }
 }

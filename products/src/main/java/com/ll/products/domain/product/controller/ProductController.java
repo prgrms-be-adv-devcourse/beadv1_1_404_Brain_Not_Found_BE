@@ -1,8 +1,8 @@
 package com.ll.products.domain.product.controller;
 
 import com.ll.core.model.response.BaseResponse;
+import com.ll.products.domain.history.service.HistoryFacadeService;
 import com.ll.products.domain.product.model.dto.request.ProductUpdateInventoryRequest;
-import com.ll.products.global.util.RedisService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ public class ProductController {
     // 결제/후처리는 비동기 가능 -> 사용자 경험 개선 ( 오래 걸림 )
 
     private final ProductService productService;
-    private final RedisService redisService;
+    private final HistoryFacadeService historyFacadeService;
 
     // 1. 상품 생성
     @PostMapping
@@ -50,12 +50,12 @@ public class ProductController {
     public ResponseEntity<BaseResponse<ProductResponse>> getProduct(
             @PathVariable String code,
             @RequestHeader(value = "X-User-Code",required = false) String userCode) {
-        if(userCode != null){
-            redisService.saveViewData(userCode,code);
-            log.info("getProduct Controller 접근 usercode: {}",userCode);
 
-        }
         ProductResponse response = productService.getProduct(code);
+        if(userCode != null){
+            historyFacadeService.saveView(userCode,code);
+            log.info("getProduct Controller 접근 usercode: {}",userCode);
+        }
         return BaseResponse.ok(response);
     }
 
@@ -124,7 +124,7 @@ public class ProductController {
             @RequestHeader("X-User-Code") String userCode
     ){
         log.info("recentView Controller 접근 usercode: {}",userCode);
-        return BaseResponse.ok(redisService.getViewData(userCode));
+        return BaseResponse.ok(historyFacadeService.getViewList(userCode));
     }
 
     @GetMapping("recentsearch")
@@ -132,6 +132,6 @@ public class ProductController {
             @RequestHeader("X-User-Code") String userCode
     ){
         log.info("recentSearch Controller 접근 usercode: {}",userCode);
-        return BaseResponse.ok(redisService.getSearchData(userCode));
+        return BaseResponse.ok(historyFacadeService.getSearchList(userCode));
     }
 }

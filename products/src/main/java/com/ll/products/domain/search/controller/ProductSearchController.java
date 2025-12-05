@@ -1,8 +1,8 @@
 package com.ll.products.domain.search.controller;
 import com.ll.core.model.response.BaseResponse;
+import com.ll.products.domain.history.service.HistoryFacadeService;
 import com.ll.products.domain.search.dto.ProductSearchResponse;
 import com.ll.products.domain.search.service.ProductSearchService;
-import com.ll.products.global.util.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class ProductSearchController {
 
     private final ProductSearchService productSearchService;
-    private final RedisService redisService;
+    private final HistoryFacadeService historyFacadeService;
 
     @GetMapping("/search")
     public ResponseEntity<BaseResponse<Page<ProductSearchResponse>>> search(
@@ -31,8 +31,7 @@ public class ProductSearchController {
             @PageableDefault(size = 20) Pageable pageable
     ) {
         if(userCode != null){
-            redisService.saveSearchData(userCode,keyword);
-            log.info("searchData Controller 접근 usercode: {}",userCode);
+            historyFacadeService.saveSearch(userCode,keyword);
         }
         log.debug("상품 검색 API 호출: keyword={}, categoryId={}, price={}-{}, status={}, pageable={}",
                 keyword, categoryId, minPrice, maxPrice, status, pageable);

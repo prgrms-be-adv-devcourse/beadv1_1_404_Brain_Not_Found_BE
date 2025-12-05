@@ -21,6 +21,9 @@ management:
       show-details: always                           # 헬스체크 상세 정보
     info:
       enabled: true
+  health:
+    redis:
+      enabled: false
   tracing:
     sampling:
       probability: 1.0
