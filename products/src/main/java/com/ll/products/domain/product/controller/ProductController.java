@@ -118,20 +118,4 @@ public class ProductController {
         productService.updateInventory(code, request.quantity());
         return BaseResponse.ok(null);
     }
-
-    @GetMapping("recentview")
-    public ResponseEntity<BaseResponse<List<String>>> getRecentView(
-            @RequestHeader("X-User-Code") String userCode
-    ){
-        log.info("recentView Controller 접근 usercode: {}",userCode);
-        return BaseResponse.ok(historyFacadeService.getViewList(userCode));
-    }
-
-    @GetMapping("recentsearch")
-    public ResponseEntity<BaseResponse<List<String>>> getRecentSearch(
-            @RequestHeader("X-User-Code") String userCode
-    ){
-        log.info("recentSearch Controller 접근 usercode: {}",userCode);
-        return BaseResponse.ok(historyFacadeService.getSearchList(userCode));
-    }
 }
