@@ -22,6 +22,8 @@ public class QProductImage extends EntityPathBase<ProductImage> {
 
     public static final QProductImage productImage = new QProductImage("productImage");
 
+    public final StringPath fileKey = createString("fileKey");
+
     public final NumberPath<Long> id = createNumber("id", Long.class);
 
     public final BooleanPath isMain = createBoolean("isMain");
@@ -29,8 +31,6 @@ public class QProductImage extends EntityPathBase<ProductImage> {
     public final QProduct product;
 
     public final NumberPath<Integer> sequence = createNumber("sequence", Integer.class);
-
-    public final StringPath url = createString("url");
 
     public QProductImage(String variable) {
         this(ProductImage.class, forVariable(variable), INITS);
