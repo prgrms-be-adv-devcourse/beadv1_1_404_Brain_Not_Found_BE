@@ -205,26 +205,6 @@ public class OrderServiceImpl implements OrderService {
         return Optional.of(redirectUrl);
     }
 
-    @Override
-    public OrderValidateResponse validateOrder(OrderValidateRequest request) {
-        List<OrderValidateResponse.ItemInfo> itemInfos = orderValidator.validateProducts(request.products());
-
-        int totalQuantity = itemInfos.stream()
-                .mapToInt(OrderValidateResponse.ItemInfo::requestedQuantity)
-                .sum();
-
-        long totalAmount = itemInfos.stream()
-                .mapToLong(item -> (long) item.price() * item.requestedQuantity())
-                .sum();
-
-        return OrderValidateResponse.from(
-                request.buyerCode(),
-                totalQuantity,
-                totalAmount,
-                itemInfos
-        );
-    }
-
     // 주문 취소 처리 -> 환불 처리(동기) + 환불 이벤트 발행(비동기) + 재고 복구 요청
     // 부모 트랜잭션 ( updateOrderStatus ) 에서 호출되는 메서드
     private void handleOrderCancellation(Order order) {
