@@ -47,6 +47,10 @@ dependencies {
     // env 파일 읽기
     implementation 'io.github.cdimascio:java-dotenv:5.2.2'
 
+    // redis 관련 implementation
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 }

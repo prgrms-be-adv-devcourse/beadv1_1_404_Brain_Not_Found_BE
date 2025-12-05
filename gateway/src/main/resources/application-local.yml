@@ -49,6 +49,8 @@ spring:
                 - Path=/api/products/**
                 - Method=GET
               order: 2
+              filters:
+                - name: TokenExtractionFilter
 
 
             - id: product-route-protected     #상품 수정 및 삭제 인증
@@ -64,6 +66,8 @@ spring:
               predicates:
                 - Path=/api/search/**
                 - Method=GET
+              filters:
+                - name: TokenExtractionFilter
 
             - id: product-images-route-protected   #이미지 업로드 인증
               uri: http://localhost:8085
@@ -97,7 +101,7 @@ spring:
                 - name: TokenAuthenticationFilter
             # User
             - id: user-route-protected
-              uri: http://localhost:8083
+              uri: http://localhost:8084
               predicates:
                 - Path=/api/users/**
                 - Method=POST, GET, PATCH, DELETE
@@ -106,7 +110,7 @@ spring:
               order: 2
 
             - id: user-route-public
-              uri: http://localhost:8083
+              uri: http://localhost:8084
               predicates:
                 - Path=/api/users
                 - Method=GET

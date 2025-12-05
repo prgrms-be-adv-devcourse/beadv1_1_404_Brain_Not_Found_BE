@@ -1,9 +1,11 @@
 package com.ll.products.domain.product.controller;
 
 import com.ll.core.model.response.BaseResponse;
+import com.ll.products.domain.history.service.HistoryFacadeService;
 import com.ll.products.domain.product.model.dto.request.ProductUpdateInventoryRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -18,6 +20,9 @@ import com.ll.products.domain.product.model.dto.response.ProductResponse;
 import com.ll.products.domain.product.model.entity.ProductStatus;
 import com.ll.products.domain.product.service.ProductService;
 
+import java.util.List;
+
+@Slf4j
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
@@ -27,6 +32,7 @@ public class ProductController {
     // 결제/후처리는 비동기 가능 -> 사용자 경험 개선 ( 오래 걸림 )
 
     private final ProductService productService;
+    private final HistoryFacadeService historyFacadeService;
 
     // 1. 상품 생성
     @PostMapping
@@ -41,8 +47,15 @@ public class ProductController {
 
     // 2. 상품 상세조회
     @GetMapping("/{code}")
-    public ResponseEntity<BaseResponse<ProductResponse>> getProduct(@PathVariable String code) {
+    public ResponseEntity<BaseResponse<ProductResponse>> getProduct(
+            @PathVariable String code,
+            @RequestHeader(value = "X-User-Code",required = false) String userCode) {
+
         ProductResponse response = productService.getProduct(code);
+        if(userCode != null){
+            historyFacadeService.saveView(userCode,code);
+            log.info("getProduct Controller 접근 usercode: {}",userCode);
+        }
         return BaseResponse.ok(response);
     }
 
