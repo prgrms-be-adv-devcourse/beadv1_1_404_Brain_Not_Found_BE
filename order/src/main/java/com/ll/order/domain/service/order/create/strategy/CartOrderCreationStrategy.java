@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Component
@@ -91,16 +92,14 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
         for (ProductRequest productRequest : cartRequest.products()) {
             // request의 productCode로 상품 정보 조회
             ProductResponse productInfo = getProductInfo(productRequest.productCode());
-            
             // cartInfo.items()에서 같은 productCode를 가진 CartItemInfo 찾기
             CartItemInfo cartItem = cartInfo.items().stream()
-                    .filter(item -> item.productCode().equals(productRequest.productCode()))
+                    .filter(item -> item.productId().equals(productInfo.id()))
                     .findFirst()
                     .orElseThrow(() -> {
-                        log.warn("장바구니에서 상품을 찾을 수 없습니다. productCode: {}", productRequest.productCode());
+                        log.warn("장바구니에서 상품을 찾을 수 없습니다. productCode: {}", productInfo.id());
                         return new BaseException(OrderErrorCode.PRODUCT_NOT_FOUND);
                     });
-
             OrderItem orderItem = savedOrder.createOrderItem(
                     productInfo.id(),
                     productInfo.code(),
@@ -111,7 +110,6 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
             );
             orderItems.add(orderItem);
         }
-
         orderItemJpaRepository.saveAll(orderItems);
 
         // 주문 생성 이력 저장
