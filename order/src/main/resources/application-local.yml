@@ -5,6 +5,10 @@ spring:
   cloud:
     discovery:
       enabled: false   # Eureka 클라이언트 비활성화
+
+# Mock Server 설정
+mock:
+  enabled: true  # Mock 서버 활성화 (로컬 개발 환경에서 다른 모듈의 API를 모킹)
   # Database Configuration
   datasource:
     # MySQL 컨테이너 연결 설정 (docker-compose.yml의 order-mysql 컨테이너 사용)
@@ -43,15 +47,20 @@ spring:
       - localhost:9092
 
   # External Service URLs
+  # Mock 서버 사용 시 (mock.enabled=true): User, Product, Cart는 localhost:8082 (Order 서버와 같은 포트)
+  # Payment 서비스는 실제 서버 실행 필요 (토스 결제 API 호출 등)
 external:
   user-service:
-    url: http://localhost:8083
+    url: http://localhost:8082  # Mock 사용 시: 8082
+    # url: http://localhost:8083  # 실제 서비스 포트
   product-service:
-    url: http://localhost:8085
+    url: http://localhost:8082  # Mock 사용 시: 8082
+    # url: http://localhost:8085  # 실제 서비스 포트
   cart-service:
-    url: http://localhost:8089
+    url: http://localhost:8082  # Mock 사용 시: 8082
+    # url: http://localhost:8089  # 실제 서비스 포트
   payment-service:
-    url: http://localhost:8087
+    url: http://localhost:8087  # 실제 Payment 서버 포트 (토스 결제 API 호출 필요)
 
   # Payment Configuration
 payment:
