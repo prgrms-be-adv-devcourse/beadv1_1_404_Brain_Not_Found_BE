@@ -47,49 +47,6 @@ services:
     volumes:
       - qdrant-data:/qdrant/storage
 
-  kafka:
-    image: apache/kafka:latest
-    container_name: products-kafka
-    ports:
-      - "9092:9092"
-    environment:
-      - KAFKA_NODE_ID=1
-      - KAFKA_PROCESS_ROLES=broker,controller
-      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:9094
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,INTERNAL://products-kafka:9094
-      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
-      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
-      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@products-kafka:9093
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
-      - KAFKA_MIN_INSYNC_REPLICAS=1
-      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
-      - CLUSTER_ID=QszDYpiURRaeCz86lsxokg
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
-      interval: 5s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-
-  kafka-init:
-    image: apache/kafka:latest
-    container_name: products-kafka-init
-    depends_on:
-      kafka:
-        condition: service_healthy
-    command: >
-      bash -c "
-        echo 'Creating Kafka topics...';
-        /opt/kafka/bin/kafka-topics.sh --bootstrap-server products-kafka:9094 --create --if-not-exists --topic product-events --partitions 3 --replication-factor 1;
-        echo 'Kafka topics created successfully';
-      "
-    restart: "no"
-
 volumes:
   qdrant-data:
   kafka-data:
