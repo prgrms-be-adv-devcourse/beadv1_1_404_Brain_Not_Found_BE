@@ -14,6 +14,7 @@ import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderPaymentRequest;
+import com.ll.order.domain.model.vo.request.ProductRequest;
 import com.ll.order.domain.model.vo.response.cart.CartItemInfo;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
 import com.ll.order.domain.model.vo.response.order.OrderCreationResult;
@@ -26,7 +27,6 @@ import com.ll.order.domain.service.order.create.AbstractOrderCreationService;
 import com.ll.order.domain.service.event.OrderEventService;
 import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.OrderValidator;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,16 +57,14 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
     }
 
     @Override
-    protected void validateInventory(Object request) {
+    protected void validateInventory(Object request, String userCode) {
         if (!(request instanceof OrderCartItemRequest cartRequest)) {
             throw new IllegalArgumentException("OrderCartItemRequest 타입이 아닙니다.");
         }
 
-        CartItemsResponse cartInfo = getCartInfo(cartRequest.cartCode());
-
-        for (CartItemInfo item : cartInfo.items()) {
+        for (ProductRequest product : cartRequest.products()) {
             // 재고 및 판매 상태 검증 (OrderValidator의 공통 메서드 사용)
-            orderValidator.validateProductInventory(item.productCode(), item.quantity());
+            orderValidator.validateProductInventory(product.productCode(), product.quantity());
         }
     }
 
@@ -79,14 +77,7 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
             throw new IllegalArgumentException("OrderCartItemRequest 타입이 아닙니다.");
         }
 
-        // TODO : 재고 확인때 똑같이 하니까 return된 값을 가질 수 없는지 ?
-        CartItemsResponse cartInfo = getCartInfo(cartRequest.cartCode());
-
-        List<ProductResponse> productList = new ArrayList<>();
-        for (CartItemInfo item : cartInfo.items()) {
-            ProductResponse productInfo = getProductInfo(item.productCode());
-            productList.add(productInfo);
-        }
+        CartItemsResponse cartInfo = getCartInfo(userInfo.code());
 
         Order order = Order.create(
                 userInfo.id(),
@@ -97,12 +88,16 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
         Order savedOrder = orderJpaRepository.save(order);
 
         List<OrderItem> orderItems = new ArrayList<>();
-        for (CartItemInfo cartItem : cartInfo.items()) {
-            ProductResponse productInfo = productList.stream()
-                    .filter(response -> response.id().equals(cartItem.productId()))
+        for (ProductRequest productRequest : cartRequest.products()) {
+            // request의 productCode로 상품 정보 조회
+            ProductResponse productInfo = getProductInfo(productRequest.productCode());
+            
+            // cartInfo.items()에서 같은 productCode를 가진 CartItemInfo 찾기
+            CartItemInfo cartItem = cartInfo.items().stream()
+                    .filter(item -> item.productCode().equals(productRequest.productCode()))
                     .findFirst()
                     .orElseThrow(() -> {
-                        log.warn("상품을 찾을 수 없습니다. productId: {}", cartItem.productId());
+                        log.warn("장바구니에서 상품을 찾을 수 없습니다. productCode: {}", productRequest.productCode());
                         return new BaseException(OrderErrorCode.PRODUCT_NOT_FOUND);
                     });
 

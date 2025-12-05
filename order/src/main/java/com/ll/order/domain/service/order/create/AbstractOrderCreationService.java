@@ -51,7 +51,7 @@ public abstract class AbstractOrderCreationService {
         UserResponse userInfo = getUserInfo(userCode);
 
         // 1. 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
-        validateInventory(request);
+        validateInventory(request, userCode); // 얘한테 userCode 생김
 
         // 2. 주문 및 주문 상품 데이터 생성
         OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
@@ -83,7 +83,7 @@ public abstract class AbstractOrderCreationService {
 
     // ========== 추상 메서드들 (하위 클래스에서 구현해야 함) ==========
 
-    protected abstract void validateInventory(Object request);
+    protected abstract void validateInventory(Object request, String userCode);
 
     protected abstract OrderCreationResult createOrderWithItems(Object request, UserResponse userInfo);
 
@@ -110,15 +110,15 @@ public abstract class AbstractOrderCreationService {
                 });
     }
 
-    protected CartItemsResponse getCartInfo(String cartCode) {
-        CartItemsResponse cartInfo = Optional.ofNullable(cartServiceClient.getCartByCode(cartCode))
+    protected CartItemsResponse getCartInfo(String userCode) {
+        CartItemsResponse cartInfo = Optional.ofNullable(cartServiceClient.getCartByCode(userCode))
                 .orElseThrow(() -> {
-                    log.warn("장바구니를 찾을 수 없습니다. cartCode: {}", cartCode);
+                    log.warn("장바구니를 찾을 수 없습니다. userCode: {}", userCode);
                     return new BaseException(OrderErrorCode.CART_NOT_FOUND);
                 });
 
         if (cartInfo.isEmpty()) {
-            log.warn("장바구니가 비어있습니다. cartCode: {}", cartCode);
+            log.warn("장바구니가 비어있습니다. userCode: {}", userCode);
             throw new BaseException(OrderErrorCode.CART_EMPTY);
         }
 

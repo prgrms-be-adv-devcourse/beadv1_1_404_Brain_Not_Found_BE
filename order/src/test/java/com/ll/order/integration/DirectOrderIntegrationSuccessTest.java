@@ -54,7 +54,7 @@ import static org.mockito.Mockito.*;
 @ActiveProfiles("test")
 @DisplayName("주문-결제-재고 통합 테스트")
 @Slf4j
-class OrderIntegrationSuccessTest {
+class DirectOrderIntegrationSuccessTest {
 
     @Autowired
     private OrderService orderService;
