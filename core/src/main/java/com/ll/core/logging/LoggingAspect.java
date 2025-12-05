@@ -27,8 +27,38 @@ public class LoggingAspect {
     @Pointcut("@within(org.springframework.stereotype.Service)")
     public void servicePointcut() {}
 
+    @Pointcut("@within(org.springframework.stereotype.Repository)")
+    public void repositoryPointcut() {}
+
+    @Pointcut("within(com.ll..client..*)")
+    public void clientPointcut() {}
+
+    @Pointcut("within(com.ll..messaging..*) || within(com.ll..producer..*)")
+    public void messagingPointcut() {}
+
+    @Pointcut("@within(org.springframework.kafka.annotation.KafkaListener)")
+    public void kafkaListenerPointcut() {}
+
     @Pointcut("@annotation(com.ll.core.logging.LogParams)")
     public void logParamsPointcut() {}
+
+    @Pointcut("controllerPointcut() || servicePointcut() || repositoryPointcut() || clientPointcut() || messagingPointcut() || kafkaListenerPointcut()")
+    public void allMethodsPointcut() {}
+
+    @Around("allMethodsPointcut()")
+    public Object logAllMethods(ProceedingJoinPoint pjp) throws Throwable {
+        Object[] args = pjp.getArgs();
+        String sig = simpleSignature(pjp);
+        log.info("[ENTER] {} | params={}", sig, Arrays.stream(args).map(this::toJson).toList());
+        try {
+            Object result = pjp.proceed();
+            log.info("[EXIT] {} | result={}", sig, this.toJson(result));
+            return result;
+        } catch (Throwable ex) {
+            log.error("[EXCEPTION] {} | message={}", sig, ex.getMessage());
+            throw ex;
+        }
+    }
 
     @Around("logParamsPointcut()")
     public Object logParams(ProceedingJoinPoint pjp) throws Throwable {
@@ -54,7 +84,7 @@ public class LoggingAspect {
             log.debug("[RESPONSE] {} {} | {}", method, uri, sig);
             return result;
         } catch (Exception e) {
-            log.error("[ERROR] {} {} | {} | message={}", method, uri, sig, e.getMessage());
+            log.debug("[ERROR] {} {} | {} | message={}", method, uri, sig, e.getMessage());
             throw e;
         }
     }
@@ -72,7 +102,7 @@ public class LoggingAspect {
             logServiceTime(sig, elapsed);
             return result;
         } catch (Throwable ex) {
-            log.error("[SERVICE-ERROR] {} | message={}", sig, ex.getMessage());
+            log.debug("[SERVICE-ERROR] {} | message={}", sig, ex.getMessage());
             throw ex;
         }
     }
