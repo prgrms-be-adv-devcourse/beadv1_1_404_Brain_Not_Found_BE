@@ -86,8 +86,8 @@ public class UserServiceImpl implements UserService {
                 .name(request.name())
                 .build());
 
-        //userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
-        //userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
+        userEventProducer.sendDeposit(savedUser.getId(),savedUser.getCode());
+        userEventProducer.sendCart(savedUser.getId(),savedUser.getCode());
         return savedUser;
     }
 }
