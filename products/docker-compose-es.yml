@@ -37,5 +37,16 @@ services:
       elasticsearch:
         condition: service_healthy
 
-#volumes:
-#  es-data:
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: products-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+volumes:
+  qdrant-data:
+  kafka-data:
