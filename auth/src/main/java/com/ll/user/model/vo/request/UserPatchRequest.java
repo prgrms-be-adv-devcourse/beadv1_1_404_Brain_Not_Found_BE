@@ -4,7 +4,9 @@ package com.ll.user.model.vo.request;
 import com.ll.common.model.enums.Grade;
 import com.ll.common.model.enums.Role;
 import jakarta.validation.constraints.Email;
+import lombok.Builder;
 
+@Builder
 public record UserPatchRequest(
         String name,
         String profileImageUrl,
