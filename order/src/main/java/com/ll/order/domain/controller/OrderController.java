@@ -95,13 +95,13 @@ public class OrderController implements OrderControllerSwagger {
     @GetMapping("/payment/success")
     public RedirectView paymentSuccess(
             @RequestParam String paymentKey,
-            @RequestParam String orderId, // 토스 결제 위젯에서 전달되는 orderId는 실제로 orderCode입니다
+            @RequestParam("orderId") String orderCode,
             @RequestParam String amount
     ) {
         try {
             // orderId 파라미터는 실제로 orderCode이므로 그대로 사용
-            orderService.completePaymentWithKey(orderId, paymentKey);
-            return new RedirectView("/orders/payment/success-page?orderId=" + orderId + "&amount=" + amount);
+            orderService.completePaymentWithKey(orderCode, paymentKey);
+            return new RedirectView("/orders/payment/success-page?orderId=" + orderCode + "&amount=" + amount);
         } catch (Exception e) {
             return new RedirectView("/orders/payment/fail-page?error=" + e.getMessage());
         }
