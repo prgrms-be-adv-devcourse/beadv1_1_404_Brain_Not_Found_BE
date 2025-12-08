@@ -32,7 +32,6 @@ import static org.mockito.Mockito.*;
 class UserServiceImplTests {
 
     @Mock private UserRepository userRepository;
-    @Mock private UserEventProducer userEventProducer;
     @Mock private ModelMapper modelMapper;
     @InjectMocks private UserServiceImpl userService;
 
@@ -229,7 +228,7 @@ class UserServiceImplTests {
         @Test
         @DisplayName("성공: 기존 사용자 업데이트")
         void updateExisting() {
-            User existing = createTestUser();
+            User existing = spy(createTestUser());
             UserLoginRequest request = new UserLoginRequest(
                     SOCIAL_ID, SOCIAL_PROVIDER, "updated@example.com", "Updated Name"
             );
