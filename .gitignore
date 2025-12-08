@@ -44,4 +44,7 @@ gradle/wrapper
 gradlew
 gradlew.bat
 
+### Cursor ###
+.cursorignore
+
 troubleshooting.md
