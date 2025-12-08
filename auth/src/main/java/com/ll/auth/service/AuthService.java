@@ -58,7 +58,6 @@ public class AuthService {
                 UserResponse user = userService.getUserByUserCode(userCode);
                 redisService.deleteRefreshToken(request.refreshToken(), request.deviceCode());
                 return issuedToken(user.code(), request.deviceCode(), user.role().name());
-
             }
 
         } catch (Exception e) {
