@@ -43,6 +43,8 @@ spring:
       embedding:
         enabled: ${OPENAI_EMBEDDING_ENABLED}
         options:
+#          model: text-embedding-3-large
+#          dimensions: 3072
           model: text-embedding-3-small
           dimensions: 1536
 
