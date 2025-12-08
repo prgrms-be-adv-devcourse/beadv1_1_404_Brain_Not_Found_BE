@@ -28,8 +28,8 @@ public class VectorStoreService {
     private final QdrantClient qdrantClient;
     private final String qdrantCollectionName;
 
-//    private static final int VECTOR_DIMENSION_SIZE = 3072;
-    private static final int VECTOR_DIMENSION_SIZE = 1536;
+    private static final int VECTOR_DIMENSION_SIZE = 3072;
+//    private static final int VECTOR_DIMENSION_SIZE = 1536;
 
     // 1. 상품 벡터 저장(단일)
     public void upsertProduct(ProductVectorPoint productVectorPoint) {
