@@ -8,6 +8,10 @@ import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
+import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
+import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
+import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
+import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
 import com.ll.order.domain.model.vo.InventoryDeduction;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
@@ -128,6 +132,8 @@ public abstract class AbstractOrderCreationService {
     protected void updateProductInventory(Order order, List<OrderItem> orderItems) {
         List<String> failedProducts = new ArrayList<>();
         List<InventoryDeduction> successfulDeductions = new ArrayList<>();
+        boolean hasFailed = false;
+        OrderStatus previousStatus = order.getOrderStatus();
 
         for (OrderItem orderItem : orderItems) {
             // 재고 감소 (동기 API 호출) <- 비관적 락 적용 시점
@@ -144,6 +150,27 @@ public abstract class AbstractOrderCreationService {
                 log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}",
                         orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
                 failedProducts.add(orderItem.getProductCode());
+                
+                // 첫 번째 실패 발생 시 즉시 주문 상태 변경 및 이력 저장 <- 여러 상상
+                if (!hasFailed) {
+                    hasFailed = true;
+                    order.changeStatus(OrderStatus.FAILED);
+                    orderJpaRepository.save(order);
+
+                    // 주문 상태 변경 이력 저장 (재고 차감 실패)
+                    String errorMessage = String.format("재고 차감 실패 - productCode: %s, error: %s",
+                            orderItem.getProductCode(), e.getMessage());
+                    OrderHistoryEntity failHistory = OrderHistoryBuilder.builder()
+                            .order(order)
+                            .orderItems(orderItems)
+                            .actionType(OrderHistoryActionType.STATUS_CHANGE)
+                            .previousStatus(previousStatus)
+                            .reason("재고 차감 실패")
+                            .errorMessage(errorMessage)
+                            .createdBy("SYSTEM")
+                            .build();
+                    orderHistoryJpaRepository.save(failHistory);
+                }
             }
         }
 
