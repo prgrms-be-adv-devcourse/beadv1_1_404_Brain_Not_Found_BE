@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
@@ -103,7 +105,8 @@ public class OrderController implements OrderControllerSwagger {
             orderService.completePaymentWithKey(orderCode, paymentKey);
             return new RedirectView("/orders/payment/success-page?orderId=" + orderCode + "&amount=" + amount);
         } catch (Exception e) {
-            return new RedirectView("/orders/payment/fail-page?error=" + e.getMessage());
+            String encodedErrorMessage = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+            return new RedirectView("/orders/payment/fail-page?error=" + encodedErrorMessage);
         }
     }
 
