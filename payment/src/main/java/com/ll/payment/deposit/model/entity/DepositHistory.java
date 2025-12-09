@@ -2,6 +2,7 @@ package com.ll.payment.deposit.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
 import com.ll.payment.deposit.model.enums.DepositHistoryType;
+import com.ll.payment.deposit.model.enums.TransactionStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,14 +32,19 @@ public class DepositHistory extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private DepositHistoryType historyType;
 
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus transactionStatus;
+
     @Builder
-    public DepositHistory(Long depositId, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType) {
+    public DepositHistory(Long depositId, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType, TransactionStatus transactionStatus) {
         this.depositId = depositId;
         this.amount = amount;
         this.balanceBefore = balanceBefore;
         this.balanceAfter = balanceAfter;
         this.referenceCode = referenceCode;
         this.historyType = historyType;
+        this.transactionStatus = transactionStatus;
     }
 
     public static DepositHistory create(Long depositId, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType) {
@@ -49,6 +55,19 @@ public class DepositHistory extends BaseEntity {
                 .balanceAfter(balanceAfter)
                 .referenceCode(referenceCode)
                 .historyType(historyType)
+                .transactionStatus(TransactionStatus.COMPLETED)
+                .build();
+    }
+
+    public static DepositHistory createFailedHistory(Long depositId, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType, Exception e) {
+        return DepositHistory.builder()
+                .depositId(depositId)
+                .amount(amount)
+                .balanceBefore(balanceBefore)
+                .balanceAfter(balanceAfter)
+                .referenceCode(referenceCode + "_FAILED_" + System.currentTimeMillis() + "_" + e.getClass().getSimpleName())
+                .historyType(historyType)
+                .transactionStatus(TransactionStatus.FAILED)
                 .build();
     }
 

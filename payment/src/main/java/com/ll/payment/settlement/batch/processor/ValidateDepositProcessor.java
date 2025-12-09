@@ -1,7 +1,7 @@
 package com.ll.payment.settlement.batch.processor;
 
 import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
-import com.ll.payment.deposit.service.DepositService;
+import com.ll.payment.deposit.service.DepositHistoryService;
 import com.ll.payment.settlement.batch.config.SettlementErrorCapture;
 import com.ll.payment.settlement.model.entity.Settlement;
 import com.ll.payment.settlement.model.vo.SettlementProcessDTO;
@@ -15,11 +15,11 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ValidateDepositProcessor implements ItemProcessor<Settlement, SettlementProcessDTO> {
 
-    private final DepositService depositService;
+    private final DepositHistoryService depositHistoryService;
     private final SettlementErrorCapture errorCapture;
 
     @Override
-    public SettlementProcessDTO process(Settlement settlement) throws Exception {
+    public SettlementProcessDTO process(Settlement settlement) {
         errorCapture.set(settlement);
         DepositTransactionRequest request = validationReferenceCode(settlement);
         return new SettlementProcessDTO(settlement, request);
@@ -28,7 +28,7 @@ public class ValidateDepositProcessor implements ItemProcessor<Settlement, Settl
     private DepositTransactionRequest validationReferenceCode(Settlement settlement) {
         DepositTransactionRequest request = DepositTransactionRequest
                 .of(settlement.getSettlementBalance(), settlement.getProductName(), settlement.getOrderItemCode());
-        depositService.validateSettlementForDeposit(request.referenceCode());
+        depositHistoryService.validateDuplicate(request.referenceCode());
         return request;
     }
 

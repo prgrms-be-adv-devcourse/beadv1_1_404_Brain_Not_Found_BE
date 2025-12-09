@@ -16,7 +16,6 @@ public interface DepositService {
     DepositResponse getDepositByUserCode(String userCode);
     DepositDeleteResponse deleteDepositByUserCode(String userCode, DepositDeleteRequest request);
     DepositTransactionResponse chargeDeposit(String userCode, DepositTransactionRequest request);
-    void validateSettlementForDeposit(String referenceCode);
     void settlementDeposit(String userCode, DepositTransactionRequest request);
     DepositTransactionResponse withdrawDeposit(String userCode, DepositTransactionRequest request);
     DepositTransactionResponse paymentDeposit(String userCode, DepositTransactionRequest request);
