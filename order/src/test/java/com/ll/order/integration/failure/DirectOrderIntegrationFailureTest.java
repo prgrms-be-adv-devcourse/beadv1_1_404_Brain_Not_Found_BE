@@ -9,13 +9,6 @@ class DirectOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
 
     // ========== 바로구매 주문 실패 테스트 목록 ==========
     
-    // ========== 1. 단일 상품 재고 관련 실패 ==========
-    // - 재고 부족: 요청 수량 > 현재 재고 → INSUFFICIENT_INVENTORY
-    // - 상품 판매 중지: ProductStatus가 ON_SALE이 아님 → PRODUCT_NOT_ON_SALE
-    // - 상품 미존재: 상품 코드로 조회 실패 → PRODUCT_NOT_FOUND
-    // - 재고 차감 API 실패: 외부 서비스 호출 실패 → INVENTORY_DEDUCTION_FAILED
-    // - 재고 검증 실패: validateProductInventory 실패 → INSUFFICIENT_INVENTORY 또는 PRODUCT_NOT_ON_SALE
-
     // ========== 2. 단일 상품 결제 실패 시 보상 로직 ==========
     // - 예치금 결제 실패: requestDepositPayment 실패 → 재고 롤백 필요
     // - 토스 결제 실패: completePaymentWithKey 실패 → 재고 롤백 필요
