@@ -2,8 +2,6 @@ package com.ll.payment.deposit.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
 import com.ll.payment.deposit.model.enums.DepositHistoryType;
-import com.ll.payment.deposit.model.enums.TransactionStatus;
-import com.ll.payment.deposit.model.exception.InvalidDepositHistoryStatusTransitionException;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,19 +31,14 @@ public class DepositHistory extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private DepositHistoryType historyType;
 
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private TransactionStatus transactionStatus;
-
     @Builder
-    public DepositHistory(Long depositId, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType, TransactionStatus transactionStatus) {
+    public DepositHistory(Long depositId, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType) {
         this.depositId = depositId;
         this.amount = amount;
         this.balanceBefore = balanceBefore;
         this.balanceAfter = balanceAfter;
         this.referenceCode = referenceCode;
         this.historyType = historyType;
-        this.transactionStatus = transactionStatus;
     }
 
     public static DepositHistory create(Long depositId, Long amount, Long balanceBefore, Long balanceAfter, String referenceCode, DepositHistoryType historyType) {
@@ -56,15 +49,7 @@ public class DepositHistory extends BaseEntity {
                 .balanceAfter(balanceAfter)
                 .referenceCode(referenceCode)
                 .historyType(historyType)
-                .transactionStatus(TransactionStatus.COMPLETED)
                 .build();
-    }
-
-    public void setTransactionCancelled() {
-        if ( transactionStatus != TransactionStatus.COMPLETED ) {
-            throw new InvalidDepositHistoryStatusTransitionException("거래 상태가 PENDING 이어야만 CANCELLED 로 변경할 수 있습니다.");
-        }
-        this.transactionStatus = TransactionStatus.CANCELLED;
     }
 
 }

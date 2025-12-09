@@ -2,7 +2,6 @@ package com.ll.payment.deposit.model.vo.response;
 
 import com.ll.payment.deposit.model.entity.DepositHistory;
 import com.ll.payment.deposit.model.enums.DepositHistoryType;
-import com.ll.payment.deposit.model.enums.TransactionStatus;
 
 import java.time.LocalDateTime;
 
@@ -13,7 +12,6 @@ public record DepositTransactionResponse(
         Long balanceBefore,
         Long balanceAfter,
         DepositHistoryType historyType,
-        TransactionStatus transactionStatus,
         String referenceCode,
         LocalDateTime createdAt
 ) {
@@ -25,7 +23,6 @@ public record DepositTransactionResponse(
                 depositHistory.getBalanceBefore(),
                 depositHistory.getBalanceAfter(),
                 depositHistory.getHistoryType(),
-                depositHistory.getTransactionStatus(),
                 depositHistory.getReferenceCode(),
                 depositHistory.getCreatedAt()
         );
