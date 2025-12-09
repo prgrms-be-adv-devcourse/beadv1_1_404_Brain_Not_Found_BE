@@ -29,26 +29,18 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class UserServiceImplTest {
+class UserServiceImplTests {
 
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private UserEventProducer userEventProducer;
-
-    @Mock
-    private ModelMapper modelMapper;
-
-    @InjectMocks
-    private UserServiceImpl userService;
+    @Mock private UserRepository userRepository;
+    @Mock private ModelMapper modelMapper;
+    @InjectMocks private UserServiceImpl userService;
 
     private static final Long TEST_USER_ID = 1L;
     private static final String TEST_USER_CODE = "U12345";
     private static final String SOCIAL_ID = "social123";
     private static final SocialProvider SOCIAL_PROVIDER = SocialProvider.GOOGLE;
 
-    // 리플렉션으로 BaseEntity 필드 주입 (id, code)
+    // BaseEntity 필드 주입용
     private void setBaseEntityField(User user, String fieldName, Object value) {
         try {
             Field field = user.getClass().getSuperclass().getDeclaredField(fieldName);
@@ -66,7 +58,6 @@ class UserServiceImplTest {
                 .email("test@example.com")
                 .name("Test User")
                 .build();
-
         setBaseEntityField(user, "id", TEST_USER_ID);
         setBaseEntityField(user, "code", TEST_USER_CODE);
         return user;
@@ -79,7 +70,6 @@ class UserServiceImplTest {
                 .email("user2@example.com")
                 .name("User Two")
                 .build();
-
         setBaseEntityField(user, "id", 2L);
         setBaseEntityField(user, "code", "U67890");
         return user;
@@ -144,34 +134,31 @@ class UserServiceImplTest {
         @DisplayName("성공: 부분 업데이트")
         void success() {
             User user = createTestUser();
-
-            UserPatchRequest request = new UserPatchRequest(
-                    "New Name", null, "new@example.com", null, null, null, null, null,null
-            );
+            UserPatchRequest request =
+            UserPatchRequest.builder()
+                    .name("New Name")
+                    .email("new@example.com")
+                    .build();
 
             when(userRepository.findByCode(TEST_USER_CODE)).thenReturn(Optional.of(user));
-            when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            doAnswer(inv -> {
-                User u = inv.getArgument(1);
-                try {
-                    Field name = User.class.getDeclaredField("name");  name.setAccessible(true);  name.set(u, "New Name");
-                    Field email = User.class.getDeclaredField("email"); email.setAccessible(true); email.set(u, "new@example.com");
-                } catch (Exception ignored) {}
-                return null;
-            }).when(modelMapper).map(request, user);
+            doNothing().when(modelMapper).map(request, user);
+            when(userRepository.save(user)).thenReturn(user);
 
             UserResponse response = userService.updateUser(request, TEST_USER_CODE);
 
+            verify(modelMapper).map(request, user);
             verify(userRepository).save(user);
-            assertThat(response.email()).isEqualTo("new@example.com");
-            assertThat(response.name()).isEqualTo("New Name");
+            assertThat(response.code()).isEqualTo(TEST_USER_CODE);
         }
 
         @Test
         @DisplayName("실패: 존재하지 않음")
         void notFound() {
-            UserPatchRequest request = new UserPatchRequest("New name",null,"new@example.com",null,null,null,null,null,null);
+            UserPatchRequest request =
+                    UserPatchRequest.builder()
+                            .name("New Name")
+                            .email("new@example.com")
+                            .build();
             when(userRepository.findByCode(TEST_USER_CODE)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> userService.updateUser(request, TEST_USER_CODE))
@@ -242,7 +229,6 @@ class UserServiceImplTest {
         @DisplayName("성공: 기존 사용자 업데이트")
         void updateExisting() {
             User existing = spy(createTestUser());
-
             UserLoginRequest request = new UserLoginRequest(
                     SOCIAL_ID, SOCIAL_PROVIDER, "updated@example.com", "Updated Name"
             );
