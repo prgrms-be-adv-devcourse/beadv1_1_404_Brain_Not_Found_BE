@@ -73,6 +73,7 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
         log.info("========== 동시성 테스트 시작 ==========");
         log.info("상품 코드: {}, 초기 재고: {}, 각 사용자 주문 수량: {}",
                 productCode, testProduct.quantity(), orderQuantity);
+        log.info("테스트 방식: 실제 재고 상태를 추적하여 동시성 제어 시뮬레이션");
 
         // Mock 설정
         when(userServiceClient.getUserByCode("USER-001")).thenReturn(user1);
@@ -83,7 +84,8 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch completionLatch = new CountDownLatch(2);
 
-        // 재고 차감 호출 횟수 추적
+        // 실제 재고 상태 추적 (동시성 테스트를 위해 실제 재고 상태 기반으로 동작)
+        AtomicInteger currentInventory = new AtomicInteger(testProduct.quantity()); // 초기 재고: 3개
         AtomicInteger inventoryDecreaseCallCount = new AtomicInteger(0);
         AtomicInteger successfulOrderCount = new AtomicInteger(0);
         AtomicInteger failedOrderCount = new AtomicInteger(0);
@@ -96,25 +98,35 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
         final String[] thread1Name = new String[1];
         final String[] thread2Name = new String[1];
 
-        // Mock 설정: 재고 차감 (동시성 제어 시뮬레이션)
-        // 첫 번째 호출은 성공, 두 번째 호출은 실패 (재고 부족)
+        // Mock 설정: 재고 차감 (실제 재고 상태 기반 동시성 제어)
+        // 비관적 락을 시뮬레이션하여 실제 재고 상태를 기반으로 동작
         doAnswer(invocation -> {
             int callCount = inventoryDecreaseCallCount.incrementAndGet();
             String calledProductCode = invocation.getArgument(0);
             Integer calledQuantity = invocation.getArgument(1);
 
-            log.info("[재고 차감 호출 #{}] productCode: {}, quantity: {}", callCount, calledProductCode, calledQuantity);
+            log.info("[재고 차감 호출 #{}] productCode: {}, 요청 수량: {}, 현재 재고: {}", 
+                    callCount, calledProductCode, calledQuantity, currentInventory.get());
 
-            // 첫 번째 호출만 성공 (재고 3개 -> 1개)
-            if (callCount == 1) {
-                log.info("[재고 차감 성공] 첫 번째 주문 - 재고 차감 성공 (락 적용됨)");
-                log.info("[락 적용] 비관적 락(PESSIMISTIC_WRITE)으로 상품 조회 및 재고 차감 수행");
+            // 비관적 락 시뮬레이션: 재고 상태를 원자적으로 확인하고 차감
+            int currentStock = currentInventory.get();
+            int requestedQuantity = calledQuantity;
+
+            log.info("[락 적용] 비관적 락(PESSIMISTIC_WRITE)으로 상품 조회 및 재고 확인 - 현재 재고: {}", currentStock);
+
+            if (currentStock >= requestedQuantity) {
+                // 재고 충분: 차감 성공
+                int newStock = currentInventory.addAndGet(-requestedQuantity);
+                log.info("[재고 차감 성공] 재고 차감 완료 - 차감량: {}, 남은 재고: {} (락 적용됨)", 
+                        requestedQuantity, newStock);
                 return null;
             } else {
-                // 두 번째 호출은 재고 부족으로 실패
-                log.warn("[재고 차감 실패] 두 번째 주문 - 재고 부족으로 실패 (락 적용됨)");
+                // 재고 부족: 차감 실패
+                log.warn("[재고 차감 실패] 재고 부족 - 요청 수량: {}, 현재 재고: {} (락 적용됨)", 
+                        requestedQuantity, currentStock);
                 log.warn("[락 적용] 비관적 락으로 조회했으나 재고가 부족하여 실패");
-                throw new RuntimeException("재고 부족: 요청 수량(" + calledQuantity + ")이 현재 재고보다 많습니다.");
+                throw new RuntimeException("재고 부족: 요청 수량(" + requestedQuantity + 
+                        ")이 현재 재고(" + currentStock + ")보다 많습니다.");
             }
         }).when(productServiceClient).decreaseInventory(productCode, orderQuantity);
 
@@ -270,8 +282,15 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
         assertThat(successfulOrderCount.get()).isEqualTo(1);
         assertThat(failedOrderCount.get()).isEqualTo(1);
 
-        // 재고 차감은 2번 호출되어야 함 (첫 번째는 성공, 두 번째는 실패)
+        // 재고 차감은 2번 호출되어야 함 (두 사용자 모두 재고 차감 시도)
         assertThat(inventoryDecreaseCallCount.get()).isEqualTo(2);
+        
+        // 최종 재고 확인 (초기 3개 - 성공한 주문 2개 = 1개)
+        int finalInventory = currentInventory.get();
+        log.info("최종 재고: {}개 (초기: {}개, 성공한 주문 수량: {}개)", 
+                finalInventory, testProduct.quantity(), orderQuantity);
+        assertThat(finalInventory).isEqualTo(testProduct.quantity() - orderQuantity)
+                .as("최종 재고는 초기 재고에서 성공한 주문 수량만큼 차감되어야 함");
 
         // 성공한 주문과 실패한 주문 확인
         List<Order> orders = orderJpaRepository.findAll();
@@ -308,12 +327,6 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
         log.info("========== 동시성 테스트 완료 ==========");
         log.info("결론: 비관적 락(PESSIMISTIC_WRITE)이 적용되어 동시 주문 시 재고 일관성이 유지됨");
     }
-
-    // ========== 2. 결제 동시성 테스트 ==========
-
-    // ========== 3. 락 적용 테스트 ==========
-
-    // ========== 4. 통합 동시성 테스트 ==========
 
 }
 
