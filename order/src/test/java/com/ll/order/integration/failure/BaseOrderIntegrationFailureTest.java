@@ -21,14 +21,18 @@ import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
+import com.ll.order.domain.repository.TransactionTracingRepository;
 import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.event.OrderEventService;
 import com.ll.order.domain.service.order.OrderService;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +54,19 @@ public abstract class BaseOrderIntegrationFailureTest {
 
     @Autowired
     protected OrderHistoryJpaRepository orderHistoryJpaRepository;
+
+    @Autowired
+    protected TransactionTracingRepository transactionTracingRepository;
+
+    @Autowired
+    protected PlatformTransactionManager transactionManager;
+
+    protected TransactionTemplate transactionTemplate;
+
+    @BeforeEach
+    void initTransactionTemplate() {
+        transactionTemplate = new TransactionTemplate(transactionManager);
+    }
 
     // 외부 서비스 모킹 (다른 마이크로서비스)
     @MockitoBean

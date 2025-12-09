@@ -81,11 +81,6 @@ class OrderIntegrationSuccessTest {
     @MockitoBean
     private CartServiceClient cartServiceClient;
 
-    // ========== 통합 테스트 전략 ==========
-    // ✅ 실제 사용: OrderService, Repository, OrderValidator, OrderInventoryService
-    // ✅ 모킹: 외부 마이크로서비스 (User, Product, Payment, Cart)
-    // ✅ 모킹: 이벤트/메시징 (Kafka 등 외부 인프라)
-
     // 이벤트/메시징 관련 - 모킹 (외부 인프라: Kafka 등)
     @MockitoBean
     private OrderEventProducer orderEventProducer;
@@ -95,9 +90,6 @@ class OrderIntegrationSuccessTest {
 
     @MockitoBean
     private OrderEventService orderEventService;
-
-    // OrderValidator, OrderInventoryService는 실제 빈 사용
-    // (Spring이 자동으로 주입하므로 @Autowired 불필요)
 
     // 테스트 데이터
     private UserResponse testUser;
@@ -138,18 +130,6 @@ class OrderIntegrationSuccessTest {
                 .build();
     }
 
-    // ========== 다이렉트 주문 통합 테스트 ==========
-
-    /**
-     * 통합 테스트: 다이렉트 주문 생성 - 예치금 결제 (DEPOSIT)
-     * <p>
-     * 검증 항목:
-     * 1. 실제 DB에 주문이 저장되는지 확인
-     * 2. 실제 OrderValidator가 재고 검증을 수행하는지 확인
-     * 3. 실제 트랜잭션이 동작하는지 확인
-     * 4. 외부 서비스 호출이 올바른지 확인
-     * 5. 예치금 결제가 성공하고 주문 상태가 COMPLETED로 변경되는지 확인
-     */
     @DisplayName("통합 테스트: 다이렉트 주문 생성 - 예치금 결제 (DEPOSIT)")
     @Test
     @Transactional
@@ -286,19 +266,6 @@ class OrderIntegrationSuccessTest {
         log.info("*****************************after assertions*****************************");
     }
 
-    /**
-     * 통합 테스트: 다이렉트 주문 생성 - 토스 결제 (TOSS_PAYMENT)
-     * <p>
-     * 검증 항목:
-     * 1. 실제 DB에 주문이 저장되는지 확인
-     * 2. 실제 OrderValidator가 재고 검증을 수행하는지 확인
-     * 3. 실제 트랜잭션이 동작하는지 확인
-     * 4. 외부 서비스 호출이 올바른지 확인
-     * 5. 토스 결제는 주문만 생성하고 결제는 하지 않음 (상태: CREATED)
-     * 6. 결제 완료 처리 후 상태가 COMPLETED로 변경되는지 확인
-     * 7. Payment API 호출 및 파라미터 검증
-     * 8. 주문 완료 이벤트 발행 검증
-     */
     @DisplayName("통합 테스트: 다이렉트 주문 생성 - 토스 결제 (TOSS_PAYMENT)")
     @Test
     @Transactional
