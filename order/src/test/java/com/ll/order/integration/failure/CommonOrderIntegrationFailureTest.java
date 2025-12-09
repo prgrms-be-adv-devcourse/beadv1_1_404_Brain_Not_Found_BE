@@ -429,36 +429,22 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         assertThat(tracingOpt).isPresent();
         TransactionTracing beforeTracing = tracingOpt.get();
         assertThat(beforeTracing).isNotNull();
-        
-        // 호출 전 상태 확인
-        log.info("=== 호출 전 상태 ===");
-        log.info("compensationStatus: {}", beforeTracing.getCompensationStatus());
-        log.info("compensationRetryCount: {}", beforeTracing.getCompensationRetryCount());
-        log.info("errorMessage: {}", beforeTracing.getErrorMessage());
-        
-        // 실제 CompensationService가 동작하여 상태가 변경되었는지 검증
-        // doCallRealMethod()로 설정했으므로 서버 코드에서 호출된 Mock이 실제 메서드를 실행했을 것임
-        // 서버 코드에서 이미 실행되었는지 확인
 
         // 트랜잭션 관리 검증: REQUIRES_NEW로 저장된 보상 상태 확인
         // 별도 트랜잭션에서 다시 조회하여 REQUIRES_NEW 동작 검증 (커밋 여부 확인)
-        log.info("=== 별도 트랜잭션에서 조회 시작 (커밋 여부 확인) ===");
-        TransactionTracing updatedTracing = transactionTemplate.execute(status -> {
-            Optional<TransactionTracing> updatedTracingOpt = transactionTracingRepository.findByOrderCode(orderCode);
-            if (updatedTracingOpt.isPresent()) {
-                TransactionTracing tracing = updatedTracingOpt.get();
-                log.info("별도 트랜잭션에서 조회 성공 - compensationStatus: {}, retryCount: {}, errorMessage: {}",
-                        tracing.getCompensationStatus(), tracing.getCompensationRetryCount(), tracing.getErrorMessage());
-                return tracing;
-            } else {
-                log.warn("별도 트랜잭션에서 TransactionTracing을 찾을 수 없습니다!");
-                return null;
-            }
-        });
-        log.info("=== 별도 트랜잭션에서 조회 완료 ===");
+        Optional<TransactionTracing> updatedTracingOpt = Optional.ofNullable(
+                transactionTemplate.execute(status -> {
+                    return transactionTracingRepository.findByOrderCode(orderCode);
+                })
+        ).orElse(Optional.empty());
 
         // 실제 CompensationService가 동작하여 상태가 변경되었는지 검증
-        assertThat(updatedTracing).isNotNull();
+        assertThat(updatedTracingOpt).isPresent();
+        TransactionTracing updatedTracing = updatedTracingOpt.get();
+        assertThat(updatedTracing.getCompensationStatus()).isEqualTo(CompensationStatus.FAILED);
+        assertThat(updatedTracing.getCompensationRetryCount()).isEqualTo(1);
+        assertThat(updatedTracing.getErrorMessage()).isNotNull();
+        assertThat(updatedTracing.getErrorMessage()).contains("Kafka 연결 실패");
         assertThat(updatedTracing.getCompensationStatus()).isEqualTo(CompensationStatus.FAILED);
         assertThat(updatedTracing.getCompensationRetryCount()).isEqualTo(1);
         assertThat(updatedTracing.getErrorMessage()).isNotNull();

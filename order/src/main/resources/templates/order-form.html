@@ -9,7 +9,11 @@
     <div class="container">
         <h2>주문 생성</h2>
         <form id="orderForm" method="POST" action="/orders/create">
-            <input type="hidden" name="userCode" id="userCode" value="USER-001">
+            <div class="form-group">
+                <label for="userCode">사용자 코드 (User Code) *</label>
+                <input type="text" id="userCode" name="userCode" required value="USER-001" placeholder="예: USER-001">
+                <small class="error">이 값은 X-User-Code 헤더로 서버에 전달됩니다.</small>
+            </div>
             
             <div class="form-group">
                 <label for="cartCode">장바구니 코드 *</label>

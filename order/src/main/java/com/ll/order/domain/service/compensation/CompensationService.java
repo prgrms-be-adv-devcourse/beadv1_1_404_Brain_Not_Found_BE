@@ -70,26 +70,17 @@ public class CompensationService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markCompensationFailed(String orderCode, String errorMessage) {
-        log.info("=== CompensationService.markCompensationFailed 호출됨 - orderCode: {}, errorMessage: {} ===", orderCode, errorMessage);
         try {
-            log.info("TransactionTracing 조회 시작 - orderCode: {}", orderCode);
             TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
                     .orElse(null);
-            log.info("TransactionTracing 조회 결과 - tracing: {}", tracing != null ? "존재함" : "null");
 
             if (tracing != null) {
-                log.info("보상 상태 변경 시작 - 현재 상태: {}", tracing.getCompensationStatus());
                 // 보상 시작 상태로 변경 (아직 시작하지 않았다면)
                 if (tracing.getCompensationStatus() == CompensationStatus.NONE) {
                     tracing.startCompensation();
-                    log.info("보상 시작 상태로 변경 완료");
                 }
                 // 보상 실패 상태로 변경
                 tracing.markCompensationFailed(errorMessage);
-                log.info("보상 실패 상태로 변경 완료 - retryCount: {}", tracing.getCompensationRetryCount());
-
-                log.info("보상 로직 실패 상태 저장 완료 - orderCode: {}, retryCount: {}",
-                        orderCode, tracing.getCompensationRetryCount());
             } else {
                 log.warn("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
             }
@@ -97,6 +88,5 @@ public class CompensationService {
             log.error("보상 로직 실패 상태 저장 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
         }
-        log.info("=== CompensationService.markCompensationFailed 종료 ===");
     }
 }
