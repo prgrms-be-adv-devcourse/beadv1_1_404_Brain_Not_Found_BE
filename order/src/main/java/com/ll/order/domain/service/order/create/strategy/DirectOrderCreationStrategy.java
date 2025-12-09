@@ -170,12 +170,5 @@ public class DirectOrderCreationStrategy extends AbstractOrderCreationService {
         return directRequest.paidType();
     }
 
-    @Override
-    protected String extractPaymentKey(Object request) {
-        if (!(request instanceof OrderDirectRequest directRequest)) {
-            throw new IllegalArgumentException("OrderDirectRequest 타입이 아닙니다.");
-        }
-        return directRequest.paymentKey();
-    }
 }
 

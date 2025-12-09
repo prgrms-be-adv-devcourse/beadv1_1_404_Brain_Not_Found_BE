@@ -181,12 +181,5 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
         return cartRequest.paidType();
     }
 
-    @Override
-    protected String extractPaymentKey(Object request) {
-        if (!(request instanceof OrderCartItemRequest cartRequest)) {
-            throw new IllegalArgumentException("OrderCartItemRequest 타입이 아닙니다.");
-        }
-        return cartRequest.paymentKey();
-    }
 }
 

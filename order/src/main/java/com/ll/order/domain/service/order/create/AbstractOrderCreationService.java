@@ -101,8 +101,6 @@ public abstract class AbstractOrderCreationService {
 
     protected abstract PaidType extractPaidType(Object request);
 
-    protected abstract String extractPaymentKey(Object request);
-
     // ========== 공통 메서드들 (하위 클래스에서 사용 가능) ==========
     protected UserResponse getUserInfo(String userCode) {
         return Optional.ofNullable(userServiceClient.getUserByCode(userCode))

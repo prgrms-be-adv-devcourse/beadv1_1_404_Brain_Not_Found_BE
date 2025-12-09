@@ -22,12 +22,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
-public class OrderController implements OrderControllerSwagger {
+public class OrderController implements OrderControllerSwagger { // TODO : 예치금 부족 시 토스로 예치금 충전
 
     private final OrderService orderService;
 
     @PostMapping("/cartItems")
-    // TODO 토스 보완 결제 시 paymentKey 필수 여부와 검증 로직 추가 필요
     public Object createCartItemOrder(
             @Valid @RequestBody OrderCartItemRequest request,
             @RequestHeader("X-User-Code") String userCode
