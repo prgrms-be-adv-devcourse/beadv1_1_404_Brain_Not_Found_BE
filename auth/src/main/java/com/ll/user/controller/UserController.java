@@ -10,7 +10,6 @@ import com.ll.user.model.vo.response.UserResponse;
 import com.ll.user.service.UserService;
 import com.ll.core.model.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
