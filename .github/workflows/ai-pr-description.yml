@@ -71,7 +71,7 @@ jobs:
           --arg prompt "$ESCAPED_PROMPT" \
           --arg diff "$DIFF" \
           '{
-            model: "gpt-5-mini",
+            model: "gpt-5.1",
             messages: [
               { role: "system", content: "너는 GitHub PR 요약 전문가야." },
               { role: "user",   content: $prompt },
