@@ -47,6 +47,10 @@ public class Deposit extends BaseEntity {
     public DepositHistory charge(Long amount, String referenceCode) {
         return increaseBalance(amount, referenceCode, DepositHistoryType.CHARGE);
     }
+
+    public DepositHistory settlement(Long amount, String referenceCode) {
+        return increaseBalance(amount, referenceCode, DepositHistoryType.SETTLEMENT);
+    }
     
     public DepositHistory refund(Long amount, String referenceCode) {
         return increaseBalance(amount, referenceCode, DepositHistoryType.REFUND);

@@ -73,8 +73,8 @@ public class DepositServiceImpl implements DepositService {
                 userCode,
                 request,
                 NO_VALIDATION,
-                (deposit, req) -> deposit.charge(req.amount(), req.referenceCode()),
-                DepositHistoryType.CHARGE_FAILED
+                (deposit, req) -> deposit.settlement(req.amount(), req.referenceCode()),
+                DepositHistoryType.SETTLEMENT_FAILED
         );
     }
 
