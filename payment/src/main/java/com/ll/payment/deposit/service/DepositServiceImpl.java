@@ -46,14 +46,22 @@ public class DepositServiceImpl implements DepositService {
         return DepositDeleteResponse.from(saved, request.closedReason());
     }
 
-    // TODO: 트랜잭션 처리 로직 개선 필요
     @Override
     @Transactional
     public DepositTransactionResponse chargeDeposit(String userCode, DepositTransactionRequest request) {
         isDuplicateTransaction(request.referenceCode());
-        Deposit deposit = findDepositByUserCode(userCode);
-        DepositHistory history = deposit.charge(request.amount(), request.referenceCode());
-        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
+        return doCharge(userCode, request);
+    }
+
+    @Override
+    public void validateSettlementForDeposit(String referenceCode) {
+        isDuplicateTransaction(referenceCode);
+    }
+
+    @Override
+    @Transactional
+    public void settlementDeposit(String userCode, DepositTransactionRequest request) {
+        doCharge(userCode, request);
     }
 
     @Override
@@ -106,6 +114,12 @@ public class DepositServiceImpl implements DepositService {
         if (!depositHistoryRepository.existsByReferenceCode(referenceCode)) {
             throw new RefundTargetNotFoundException();
         }
+    }
+
+    private DepositTransactionResponse doCharge(String userCode, DepositTransactionRequest request) {
+        Deposit deposit = findDepositByUserCode(userCode);
+        DepositHistory history = deposit.charge(request.amount(), request.referenceCode());
+        return DepositTransactionResponse.from(deposit.getCode(), depositHistoryRepository.save(history));
     }
 
     public static String refundCode(String ref) {

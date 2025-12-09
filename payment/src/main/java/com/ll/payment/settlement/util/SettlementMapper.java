@@ -9,6 +9,7 @@ public class SettlementMapper {
                 event.sellerCode(),
                 event.buyerCode(),
                 event.orderItemCode(),
+                event.productName(),
                 event.referenceCode(),
                 event.amount(),
                 event.settlementRate()

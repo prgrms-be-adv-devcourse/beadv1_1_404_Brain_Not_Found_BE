@@ -56,26 +56,12 @@ public class DepositHistory extends BaseEntity {
                 .balanceAfter(balanceAfter)
                 .referenceCode(referenceCode)
                 .historyType(historyType)
-                .transactionStatus(TransactionStatus.PENDING)
+                .transactionStatus(TransactionStatus.COMPLETED)
                 .build();
     }
 
-    public void setTransactionCompleted() {
-        if ( transactionStatus != TransactionStatus.PENDING ) {
-            throw new InvalidDepositHistoryStatusTransitionException("거래 상태가 PENDING 이어야만 COMPLETED 로 변경할 수 있습니다.");
-        }
-        this.transactionStatus = TransactionStatus.COMPLETED;
-    }
-
-    public void setTransactionFailed() {
-        if ( transactionStatus != TransactionStatus.PENDING ) {
-            throw new InvalidDepositHistoryStatusTransitionException("거래 상태가 PENDING 이어야만 FAILED 로 변경할 수 있습니다.");
-        }
-        this.transactionStatus = TransactionStatus.FAILED;
-    }
-
     public void setTransactionCancelled() {
-        if ( transactionStatus != TransactionStatus.PENDING ) {
+        if ( transactionStatus != TransactionStatus.COMPLETED ) {
             throw new InvalidDepositHistoryStatusTransitionException("거래 상태가 PENDING 이어야만 CANCELLED 로 변경할 수 있습니다.");
         }
         this.transactionStatus = TransactionStatus.CANCELLED;

@@ -22,6 +22,7 @@ public class OrderEventService {
                     buyerCode,
                     orderItem.getSellerCode(),
                     orderItem.getCode(),
+                    orderItem.getProductName(),
                     order.getCode(),
                     (long) orderItem.getPrice() * orderItem.getQuantity()
             );

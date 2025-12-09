@@ -24,3 +24,10 @@ management:
     propagation:
       consume: b3
       produce: b3_multi
+
+custom:
+  batch:
+    chunk:
+      size: 100
+    skip:
+      limit: 10

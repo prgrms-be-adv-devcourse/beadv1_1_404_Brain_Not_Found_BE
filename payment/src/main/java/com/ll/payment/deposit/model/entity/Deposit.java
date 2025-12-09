@@ -101,7 +101,7 @@ public class Deposit extends BaseEntity {
     }
 
     private void validateSufficientBalance(Long amount) {
-        if (amount == null || this.balance <= amount) {
+        if (amount == null || this.balance < amount) {
             throw new InsufficientDepositBalanceException();
         }
     }

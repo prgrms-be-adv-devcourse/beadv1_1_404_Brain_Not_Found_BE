@@ -39,10 +39,10 @@ public class LoggingAspect {
     @Pointcut("@within(org.springframework.kafka.annotation.KafkaListener)")
     public void kafkaListenerPointcut() {}
 
-    @Pointcut("@annotation(com.ll.core.logging.LogParams)")
+    @Pointcut("@annotation(com.ll.core.logging.LogParams) || @within(com.ll.core.logging.LogParams)")
     public void logParamsPointcut() {}
 
-    @Pointcut("controllerPointcut() || servicePointcut() || repositoryPointcut() || clientPointcut() || messagingPointcut() || kafkaListenerPointcut()")
+    @Pointcut("controllerPointcut() || servicePointcut() || repositoryPointcut() || clientPointcut() || messagingPointcut() || kafkaListenerPointcut() || logParamsPointcut()")
     public void allMethodsPointcut() {}
 
     @Around("allMethodsPointcut()")
@@ -60,15 +60,15 @@ public class LoggingAspect {
         }
     }
 
-    @Around("logParamsPointcut()")
-    public Object logParams(ProceedingJoinPoint pjp) throws Throwable {
-        Object[] args = pjp.getArgs();
-        log.info("[PARAMS] {} | params={}",
-                simpleSignature(pjp),
-                Arrays.stream(args).map(this::toJson).toList()
-        );
-        return pjp.proceed();
-    }
+//    @Around("logParamsPointcut()")
+//    public Object logParams(ProceedingJoinPoint pjp) throws Throwable {
+//        Object[] args = pjp.getArgs();
+//        log.info("[PARAMS] {} | params={}",
+//                simpleSignature(pjp),
+//                Arrays.stream(args).map(this::toJson).toList()
+//        );
+//        return pjp.proceed();
+//    }
 
     /* ==========================
         REST CONTROLLER LOGGING
