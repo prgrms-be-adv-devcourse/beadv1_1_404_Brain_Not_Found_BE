@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.BDDMockito.*;
 
@@ -99,9 +100,12 @@ import static org.mockito.BDDMockito.*;
                     .willReturn(tokens);
 
             //when
-            when(authService.refreshToken(request)).thenReturn(tokens);
+            Tokens result = authService.refreshToken(request);
 
             //then
+            assertThat(result).isNotNull();
+            assertThat(result.accessToken()).isEqualTo(NEW_ACCESS);
+            assertThat(result.refreshToken()).isEqualTo(NEW_REFRESH);
             verify(authAsyncService).asyncUpsert(USER_CODE, DEVICE_CODE, NEW_REFRESH);
             verify(redisService).saveRefreshToken(USER_CODE,DEVICE_CODE,NEW_REFRESH);
         }
@@ -132,9 +136,12 @@ import static org.mockito.BDDMockito.*;
                     .willReturn(tokens);
 
             //when
-            when(authService.refreshToken(request)).thenReturn(tokens);
+            Tokens result = authService.refreshToken(request);
 
             //then
+            assertThat(result).isNotNull();
+            assertThat(result.accessToken()).isEqualTo(NEW_ACCESS);
+            assertThat(result.refreshToken()).isEqualTo(NEW_REFRESH);
             verify(authAsyncService).asyncUpsert(USER_CODE, DEVICE_CODE, NEW_REFRESH);
             verify(redisService).saveRefreshToken(USER_CODE,DEVICE_CODE,NEW_REFRESH);
         }
@@ -165,9 +172,12 @@ import static org.mockito.BDDMockito.*;
                     .willReturn(tokens);
 
             //when
-            when(authService.refreshToken(request)).thenReturn(tokens);
+            Tokens result = authService.refreshToken(request);
 
             //then
+            assertThat(result).isNotNull();
+            assertThat(result.accessToken()).isEqualTo(NEW_ACCESS);
+            assertThat(result.refreshToken()).isEqualTo(NEW_REFRESH);
             verify(authAsyncService).asyncUpsert(USER_CODE, DEVICE_CODE, NEW_REFRESH);
         }
 
