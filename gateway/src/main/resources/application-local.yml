@@ -146,9 +146,9 @@ spring:
             - id: payment-api-docs
               uri: http://localhost:8087
               predicates:
-                - Path=/v3/api-docs/products
+                - Path=/v3/api-docs/payment
               filters:
-                - RewritePath=/v3/api-docs/products, /v3/api-docs
+                - RewritePath=/v3/api-docs/payment, /v3/api-docs
 
             - id: order-api-docs
               uri: http://localhost:8082
