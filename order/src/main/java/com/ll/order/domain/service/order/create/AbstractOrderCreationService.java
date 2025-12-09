@@ -22,6 +22,8 @@ import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
+import com.ll.order.domain.repository.TransactionTracingRepository;
+import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.event.OrderEventService;
 import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.OrderValidator;
@@ -40,6 +42,7 @@ public abstract class AbstractOrderCreationService {
     protected final OrderJpaRepository orderJpaRepository;
     protected final OrderItemJpaRepository orderItemJpaRepository;
     protected final OrderHistoryJpaRepository orderHistoryJpaRepository;
+    protected final TransactionTracingRepository transactionTracingRepository;
 
     protected final UserServiceClient userServiceClient;
     protected final ProductServiceClient productServiceClient;
@@ -50,6 +53,7 @@ public abstract class AbstractOrderCreationService {
     
     protected final OrderEventService orderEventService;
     protected final OrderInventoryService orderInventoryService;
+    protected final CompensationService compensationService;
 
     public final OrderCreateResponse createOrder(Object request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
@@ -61,6 +65,8 @@ public abstract class AbstractOrderCreationService {
         OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
         Order savedOrder = creationResult.order();
         List<OrderItem> orderItems = creationResult.orderItems();
+
+        createTransactionTracing(savedOrder);
 
         // 3. 재고 차감 (주문 생성 후, 결제 전) <- 락 적용
         updateProductInventory(savedOrder, orderItems);
@@ -127,6 +133,11 @@ public abstract class AbstractOrderCreationService {
         }
 
         return cartInfo;
+    }
+
+    protected void createTransactionTracing(Order order) {
+        // REQUIRES_NEW로 별도 트랜잭션에서 저장하여 메인 트랜잭션이 롤백되어도 유지되도록 함
+        compensationService.createTransactionTracing(order.getCode());
     }
 
     protected void updateProductInventory(Order order, List<OrderItem> orderItems) {

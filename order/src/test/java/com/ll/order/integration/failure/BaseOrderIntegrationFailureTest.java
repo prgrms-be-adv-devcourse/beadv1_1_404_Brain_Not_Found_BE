@@ -85,7 +85,7 @@ public abstract class BaseOrderIntegrationFailureTest {
     @MockitoBean
     protected OrderEventProducer orderEventProducer;
 
-    @MockitoBean
+    @Autowired
     protected CompensationService compensationService;
 
     @MockitoBean

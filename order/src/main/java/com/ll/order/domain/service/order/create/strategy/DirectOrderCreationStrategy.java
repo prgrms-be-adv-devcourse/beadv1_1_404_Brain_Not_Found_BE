@@ -20,6 +20,8 @@ import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
+import com.ll.order.domain.repository.TransactionTracingRepository;
+import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.order.create.AbstractOrderCreationService;
 import com.ll.order.domain.service.event.OrderEventService;
 import com.ll.order.domain.service.inventory.OrderInventoryService;
@@ -38,18 +40,21 @@ public class DirectOrderCreationStrategy extends AbstractOrderCreationService {
             OrderJpaRepository orderJpaRepository,
             OrderItemJpaRepository orderItemJpaRepository,
             OrderHistoryJpaRepository orderHistoryJpaRepository,
+            TransactionTracingRepository transactionTracingRepository,
             UserServiceClient userServiceClient,
             ProductServiceClient productServiceClient,
             CartServiceClient cartServiceClient,
             PaymentServiceClient paymentApiClient,
             OrderValidator orderValidator,
             OrderEventService orderEventService,
-            OrderInventoryService orderInventoryService
+            OrderInventoryService orderInventoryService,
+            CompensationService compensationService
     ) {
         super(orderJpaRepository, orderItemJpaRepository, orderHistoryJpaRepository,
+                transactionTracingRepository,
                 userServiceClient, productServiceClient, cartServiceClient,
                 paymentApiClient, orderValidator,
-                orderEventService, orderInventoryService);
+                orderEventService, orderInventoryService, compensationService);
     }
 
     @Override
