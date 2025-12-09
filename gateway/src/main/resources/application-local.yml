@@ -128,6 +128,34 @@ spring:
                 - Path=/api/login, /api/login/**, /login/**, /oauth2/**
                 - Method=GET
 
+            # Swagger
+            - id: user-api-docs
+              uri: http://localhost:8084
+              predicates:
+                - Path=/v3/api-docs/auth
+              filters:
+                - RewritePath=/v3/api-docs/auth, /v3/api-docs
+
+            - id: product-api-docs
+              uri: http://localhost:8085
+              predicates:
+                - Path=/v3/api-docs/products
+              filters:
+                - RewritePath=/v3/api-docs/products, /v3/api-docs
+
+            - id: payment-api-docs
+              uri: http://localhost:8087
+              predicates:
+                - Path=/v3/api-docs/payment
+              filters:
+                - RewritePath=/v3/api-docs/payment, /v3/api-docs
+
+            - id: order-api-docs
+              uri: http://localhost:8082
+              predicates:
+                - Path=/v3/api-docs/order
+              filters:
+                - RewritePath=/v3/api-docs/order, /v3/api-docs
 
 
 
@@ -141,4 +169,15 @@ logging:
   level:
     root: debug
 
-
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: user-service
+        url: /v3/api-docs/auth
+      - name: product-service
+        url: /v3/api-docs/products
+      - name: order-service
+        url: /v3/api-docs/order
+      - name: payment-service
+        url: /v3/api-docs/payment
