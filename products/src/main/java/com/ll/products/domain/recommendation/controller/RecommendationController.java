@@ -23,8 +23,12 @@ public class RecommendationController {
             @PathVariable String productCode,
             @RequestParam(defaultValue = "10") int limit
     ) {
+        long startTime = System.currentTimeMillis();
         log.info("유사 상품 추천 요청: productCode={}, limit={}", productCode, limit);
         List<RecommendationResponse> recommendations = recommendationService.recommendSimilarProducts(productCode, limit);
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        log.info("상품 코드 기반 추천 완료: productCode={}, 결과 개수={}, 소요시간={}ms", productCode, recommendations.size(), duration);
         return ResponseEntity.ok(recommendations);
     }
 
@@ -34,8 +38,15 @@ public class RecommendationController {
             @RequestParam String keyword,
             @RequestParam(defaultValue = "10") int limit
     ) {
+        long startTime = System.currentTimeMillis();
         log.info("검색어 기반 추천 요청: keyword={}, limit={}", keyword, limit);
+
         List<RecommendationResponse> recommendations = recommendationService.recommendProductsByKeyword(keyword, limit);
+
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        log.info("검색어 기반 추천 완료: keyword={}, 결과 개수={}, 소요시간={}ms", keyword, recommendations.size(), duration);
+
         return ResponseEntity.ok(recommendations);
     }
 

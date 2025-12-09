@@ -1,5 +1,6 @@
 package com.ll.products.domain.recommendation.service;
 
+import com.ll.products.domain.product.exception.ProductNotFoundException;
 import com.ll.products.domain.recommendation.document.ProductVectorPoint;
 import com.ll.products.domain.recommendation.dto.RecommendationResponse;
 import io.qdrant.client.QdrantClient;
@@ -27,7 +28,8 @@ public class VectorStoreService {
     private final QdrantClient qdrantClient;
     private final String qdrantCollectionName;
 
-    private static final int VECTOR_SIZE = 1536;
+    private static final int VECTOR_DIMENSION_SIZE = 3072;
+//    private static final int VECTOR_DIMENSION_SIZE = 1536;
 
     // 1. 상품 벡터 저장(단일)
     public void upsertProduct(ProductVectorPoint productVectorPoint) {
@@ -81,7 +83,32 @@ public class VectorStoreService {
         }
     }
 
-    // 4. 상품 코드로 삭제
+    // 4. 상품 코드로 벡터 조회
+    public float[] getVectorByProductCode(String productCode) {
+        try {
+            List<RetrievedPoint> points = qdrantClient.retrieveAsync(
+                    qdrantCollectionName,
+                    List.of(id(UUID.fromString(productCode))),
+                    true,
+                    true,
+                    null
+            ).get();
+            if (points.isEmpty()) {
+                throw new ProductNotFoundException(productCode);
+            }
+            float[] vector = getVector(points);
+            log.info("상품 벡터 조회 완료: productCode={}", productCode);
+            return vector;
+        } catch (ProductNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("벡터 조회 중 오류 발생", e);
+        }
+    }
+
+
+
+    // 5. 상품 코드로 삭제
     public void deleteProductByCode(String productCode) {
         try {
             Filter filter = Filter.newBuilder()
@@ -96,7 +123,7 @@ public class VectorStoreService {
         }
     }
 
-    // 5. 컬렉션 삭제 후 재생성
+    // 6. 컬렉션 삭제 후 재생성
     public void recreateCollection() {
         deleteCollection();
         createCollection();
@@ -104,6 +131,15 @@ public class VectorStoreService {
 
 
 
+    // point 내 vector 조회
+    private static float[] getVector(List<RetrievedPoint> points) {
+        List<Float> vectorList = points.get(0).getVectors().getVector().getDataList();
+        float[] vector = new float[vectorList.size()];
+        for (int i = 0; i < vectorList.size(); i++) {
+            vector[i] = vectorList.get(i) == null ? 0f : vectorList.get(i);
+        }
+        return vector;
+    }
 
     // 컬렉션 생성
     private void createCollection() {
@@ -112,7 +148,7 @@ public class VectorStoreService {
             qdrantClient.createCollectionAsync(
                     qdrantCollectionName,
                     VectorParams.newBuilder()
-                            .setSize(VECTOR_SIZE)
+                            .setSize(VECTOR_DIMENSION_SIZE)
                             .setDistance(Distance.Cosine)
                             .build()
             ).get();
@@ -142,7 +178,7 @@ public class VectorStoreService {
                 .build();
     }
 
-    // score -> response 변환
+    // scoredPoint -> response 변환
     private RecommendationResponse convertToRecommendation(ScoredPoint scoredPoint) {
         Map<String, Value> payload = scoredPoint.getPayloadMap();
         return RecommendationResponse.builder()
