@@ -1,4 +1,4 @@
-package com.ll.common.config;
+package com.ll.products.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
@@ -16,7 +16,7 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .servers(
                         List.of(new Server().url("http://localhost:8000"), // 게이트웨이 테스트 Server localhost:8000/swagger-ui.html
-                                new Server().url("http://localhost:8084"))) // 로컬 테스트 Server localhost:8084/swagger-ui.html
+                                new Server().url("http://localhost:8085"))) // 로컬 테스트 Server localhost:8085/swagger-ui.html
                 .info(
                         new Info().title("Gooream").description("Gooream API 명세서")
                 );

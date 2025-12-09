@@ -128,6 +128,14 @@ spring:
                 - Path=/api/login, /api/login/**, /login/**, /oauth2/**
                 - Method=GET
 
+            # History
+            - id: history-route
+              uri: http://localhost:8085
+              predicates:
+                - Path=/api/history, /api/history/**
+                - Method=GET
+              filters:
+                - name: TokenAuthenticationFilter
             # Swagger
             - id: user-api-docs
               uri: http://localhost:8084
