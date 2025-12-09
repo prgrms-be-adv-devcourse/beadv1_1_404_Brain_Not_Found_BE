@@ -216,7 +216,7 @@ public class DataInitializer implements CommandLineRunner {
         log.info("3. 상품 데이터 CSV 파일에서 로드 중...");
 
         try {
-            ClassPathResource resource = new ClassPathResource("data/products.csv");
+            ClassPathResource resource = new ClassPathResource("data/products_720.csv");
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
                 reader.readLine();
