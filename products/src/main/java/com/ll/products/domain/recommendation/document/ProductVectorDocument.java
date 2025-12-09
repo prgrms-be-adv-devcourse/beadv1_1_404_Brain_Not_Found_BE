@@ -53,9 +53,6 @@ public class ProductVectorDocument {
         if (categoryName != null && !categoryName.isBlank()) {
             text.append("카테고리: ").append(categoryName).append(". ");
         }
-        if (price != null) {
-            text.append("가격: ").append(String.format("%,d원", price)).append(". ");
-        }
         return text.toString();
     }
 }

@@ -2,6 +2,7 @@ package com.ll.products.domain.recommendation.service;
 
 import com.ll.products.domain.product.exception.ProductNotFoundException;
 import com.ll.products.domain.product.model.entity.Product;
+import com.ll.products.domain.product.model.entity.ProductStatus;
 import com.ll.products.domain.product.repository.ProductRepository;
 import com.ll.products.domain.recommendation.document.ProductVectorDocument;
 import com.ll.products.domain.recommendation.document.ProductVectorPoint;
@@ -23,13 +24,11 @@ public class RecommendationService {
     private final EmbeddingService embeddingService;
     private final VectorStoreService vectorStoreService;
 
-    private static final int BATCH_SIZE = 50;
+    private static final int BATCH_SIZE = 500;
 
     // 1. 유사 상품 추천
-    @Transactional(readOnly = true)
     public List<RecommendationResponse> recommendSimilarProducts(String productCode, int limit) {
-        Product product = findProductByCode(productCode);
-        float[] embedding = generateProductEmbedding(product);
+        float[] embedding = vectorStoreService.getVectorByProductCode(productCode);
         List<RecommendationResponse> recommendations = vectorStoreService.searchSimilarProducts(embedding, limit + 1);
         return excludeSelfProduct(recommendations, productCode, limit);
     }
@@ -67,7 +66,7 @@ public class RecommendationService {
     // 모든 상품 재색인
     public void reindexAllProducts() {
         vectorStoreService.recreateCollection();
-        List<Product> products = productRepository.findAllByIsDeletedFalse();
+        List<Product> products = productRepository.findAllByIsDeletedFalseAndStatus(ProductStatus.ON_SALE);
         log.info("전체 상품 재색인 시작: 총 {}개", products.size());
         if (products.isEmpty()) {
             log.info("인덱싱할 상품이 없습니다.");
@@ -157,20 +156,22 @@ public class RecommendationService {
     }
 
     // 배치 실패 시 개별 인덱싱
+    // 현재 10,000 건의 데이터 테스트를 위해 batch size 500 설정. 개별 인덱싱 임시 비활성화.
     private int[] fallbackIndexing(List<Product> batch) {
-        int success = 0;
-        int fail = 0;
-
-        for (Product product : batch) {
-            try {
-                indexProduct(product);
-                success++;
-            } catch (Exception e) {
-                log.error("상품 색인 실패: {}", product.getCode(), e);
-                fail++;
-            }
-        }
-        return new int[]{success, fail};
+        throw new RuntimeException("상품 인덱싱 실패. 개별 인덱싱 하기엔 데이터가 너무 많으니 오류 수정하세요.");
+//        int success = 0;
+//        int fail = 0;
+//
+//        for (Product product : batch) {
+//            try {
+//                indexProduct(product);
+//                success++;
+//            } catch (Exception e) {
+//                log.error("상품 색인 실패: {}", product.getCode(), e);
+//                fail++;
+//            }
+//        }
+//        return new int[]{success, fail};
     }
 
     // 인덱싱 결과 record

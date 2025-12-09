@@ -1,5 +1,6 @@
 package com.ll.products.domain.product.repository;
 
+import com.ll.products.domain.product.model.entity.ProductStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -25,6 +26,11 @@ public interface ProductRepository extends JpaRepository<Product, Long>, Product
            "LEFT JOIN FETCH p.category " +
            "WHERE p.isDeleted = false")
     List<Product> findAllByIsDeletedFalse();
+
+    @Query("SELECT DISTINCT p FROM Product p " +
+            "LEFT JOIN FETCH p.category " +
+            "WHERE p.isDeleted = false AND p.status = :status")
+    List<Product> findAllByIsDeletedFalseAndStatus(@Param("status") ProductStatus status);
 
     /**
      * 비관적 락을 사용하여 상품 조회 (재고 수정 시 동시성 제어)

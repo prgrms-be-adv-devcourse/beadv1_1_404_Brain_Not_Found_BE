@@ -30,3 +30,7 @@ management:
     propagation:
       consume: b3
       produce: b3_multi
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
