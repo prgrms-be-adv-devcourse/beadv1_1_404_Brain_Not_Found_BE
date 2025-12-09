@@ -8,6 +8,10 @@ import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
+import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
+import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
+import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
+import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
 import com.ll.order.domain.model.vo.InventoryDeduction;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
@@ -18,6 +22,8 @@ import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
+import com.ll.order.domain.repository.TransactionTracingRepository;
+import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.event.OrderEventService;
 import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.OrderValidator;
@@ -36,6 +42,7 @@ public abstract class AbstractOrderCreationService {
     protected final OrderJpaRepository orderJpaRepository;
     protected final OrderItemJpaRepository orderItemJpaRepository;
     protected final OrderHistoryJpaRepository orderHistoryJpaRepository;
+    protected final TransactionTracingRepository transactionTracingRepository;
 
     protected final UserServiceClient userServiceClient;
     protected final ProductServiceClient productServiceClient;
@@ -46,6 +53,7 @@ public abstract class AbstractOrderCreationService {
     
     protected final OrderEventService orderEventService;
     protected final OrderInventoryService orderInventoryService;
+    protected final CompensationService compensationService;
 
     public final OrderCreateResponse createOrder(Object request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
@@ -57,6 +65,8 @@ public abstract class AbstractOrderCreationService {
         OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
         Order savedOrder = creationResult.order();
         List<OrderItem> orderItems = creationResult.orderItems();
+
+        createTransactionTracing(savedOrder);
 
         // 3. 재고 차감 (주문 생성 후, 결제 전) <- 락 적용
         updateProductInventory(savedOrder, orderItems);
@@ -91,8 +101,6 @@ public abstract class AbstractOrderCreationService {
 
     protected abstract PaidType extractPaidType(Object request);
 
-    protected abstract String extractPaymentKey(Object request);
-
     // ========== 공통 메서드들 (하위 클래스에서 사용 가능) ==========
     protected UserResponse getUserInfo(String userCode) {
         return Optional.ofNullable(userServiceClient.getUserByCode(userCode))
@@ -125,9 +133,16 @@ public abstract class AbstractOrderCreationService {
         return cartInfo;
     }
 
+    protected void createTransactionTracing(Order order) {
+        // REQUIRES_NEW로 별도 트랜잭션에서 저장하여 메인 트랜잭션이 롤백되어도 유지되도록 함
+        compensationService.createTransactionTracing(order.getCode());
+    }
+
     protected void updateProductInventory(Order order, List<OrderItem> orderItems) {
         List<String> failedProducts = new ArrayList<>();
         List<InventoryDeduction> successfulDeductions = new ArrayList<>();
+        boolean hasFailed = false;
+        OrderStatus previousStatus = order.getOrderStatus();
 
         for (OrderItem orderItem : orderItems) {
             // 재고 감소 (동기 API 호출) <- 비관적 락 적용 시점
@@ -144,6 +159,27 @@ public abstract class AbstractOrderCreationService {
                 log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}",
                         orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
                 failedProducts.add(orderItem.getProductCode());
+                
+                // 첫 번째 실패 발생 시 즉시 주문 상태 변경 및 이력 저장 <- 여러 상상
+                if (!hasFailed) {
+                    hasFailed = true;
+                    order.changeStatus(OrderStatus.FAILED);
+                    orderJpaRepository.save(order);
+
+                    // 주문 상태 변경 이력 저장 (재고 차감 실패)
+                    String errorMessage = String.format("재고 차감 실패 - productCode: %s, error: %s",
+                            orderItem.getProductCode(), e.getMessage());
+                    OrderHistoryEntity failHistory = OrderHistoryBuilder.builder()
+                            .order(order)
+                            .orderItems(orderItems)
+                            .actionType(OrderHistoryActionType.STATUS_CHANGE)
+                            .previousStatus(previousStatus)
+                            .reason("재고 차감 실패")
+                            .errorMessage(errorMessage)
+                            .createdBy("SYSTEM")
+                            .build();
+                    orderHistoryJpaRepository.save(failHistory);
+                }
             }
         }
 

@@ -17,6 +17,22 @@ public class CompensationService {
     private final TransactionTracingRepository transactionTracingRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void createTransactionTracing(String orderCode) {
+        try {
+            TransactionTracing tracing = TransactionTracing.builder()
+                    .orderCode(orderCode)
+                    .build();
+            transactionTracingRepository.save(tracing);
+            log.debug("TransactionTracing 생성 완료 - orderCode: {}", orderCode);
+        } catch (Exception e) {
+            log.error("TransactionTracing 생성 실패 - orderCode: {}, error: {}",
+                    orderCode, e.getMessage(), e);
+            // TransactionTracing 생성 실패는 치명적이지 않으므로 예외를 던지지 않음
+            // 보상 로직이 동작하지 않을 수 있지만, 주문 생성은 계속 진행
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markCompensationStarted(String orderCode) {
         try {
             TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
@@ -65,11 +81,8 @@ public class CompensationService {
                 }
                 // 보상 실패 상태로 변경
                 tracing.markCompensationFailed(errorMessage);
-
-                log.debug("보상 로직 실패 상태 저장 완료 - orderCode: {}, retryCount: {}",
-                        orderCode, tracing.getCompensationRetryCount());
             } else {
-                log.debug("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
+                log.warn("TransactionTracing을 찾을 수 없습니다. orderCode: {}", orderCode);
             }
         } catch (Exception e) {
             log.error("보상 로직 실패 상태 저장 실패 - orderCode: {}, error: {}",
