@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
@@ -95,14 +97,16 @@ public class OrderController implements OrderControllerSwagger {
     @GetMapping("/payment/success")
     public RedirectView paymentSuccess(
             @RequestParam String paymentKey,
-            @RequestParam String orderId,
+            @RequestParam("orderId") String orderCode,
             @RequestParam String amount
     ) {
         try {
-            orderService.completePaymentWithKey(orderId, paymentKey);
-            return new RedirectView("/orders/payment/success-page?orderId=" + orderId + "&amount=" + amount);
+            // orderId 파라미터는 실제로 orderCode이므로 그대로 사용
+            orderService.completePaymentWithKey(orderCode, paymentKey);
+            return new RedirectView("/orders/payment/success-page?orderId=" + orderCode + "&amount=" + amount);
         } catch (Exception e) {
-            return new RedirectView("/orders/payment/fail-page?error=" + e.getMessage());
+            String encodedErrorMessage = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+            return new RedirectView("/orders/payment/fail-page?error=" + encodedErrorMessage);
         }
     }
 
@@ -110,7 +114,7 @@ public class OrderController implements OrderControllerSwagger {
     public RedirectView paymentFail(
             @RequestParam(required = false) String errorCode,
             @RequestParam(required = false) String errorMessage,
-            @RequestParam(required = false) String orderId
+            @RequestParam(required = false) String orderId // 토스 결제 위젯에서 전달되는 orderId는 실제로 orderCode입니다
     ) {
         return new RedirectView("/orders/payment/fail-page?errorCode=" + 
                (errorCode != null ? errorCode : "") + 

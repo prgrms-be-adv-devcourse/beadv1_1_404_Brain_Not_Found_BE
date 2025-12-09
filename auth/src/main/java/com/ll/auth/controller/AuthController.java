@@ -35,7 +35,7 @@ public class AuthController {
             HttpServletResponse response
     ){
         authService.logoutUser(refreshToken,deviceCode);
-        CookieUtil.expiredCookie(response);
+        CookieUtil.expiredAuthCookie(response);
         return ResponseEntity.ok().build();
     }
 }

@@ -71,5 +71,11 @@ public class PaymentViewController {
         model.addAttribute("orderId", orderId);
         return "payment-fail";
     }
+
+    // 주문 생성 폼 페이지
+    @GetMapping("/create-form")
+    public String orderFormPage() {
+        return "order-form";
+    }
 }
 
