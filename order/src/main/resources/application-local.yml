@@ -163,3 +163,7 @@ management:
 
 current:
   domain: "http://localhost:8082"
+swagger:
+  servers:
+    - "http://localhost:8000"
+    - "http://localhost:8082"
