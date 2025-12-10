@@ -33,6 +33,7 @@ class UserServiceImplTests {
 
     @Mock private UserRepository userRepository;
     @Mock private ModelMapper modelMapper;
+    @Mock private UserEventProducer userEventProducer;
     @InjectMocks private UserServiceImpl userService;
 
     private static final Long TEST_USER_ID = 1L;
