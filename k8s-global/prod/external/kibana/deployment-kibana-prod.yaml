@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+  name: kibana-dpy-prod
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana-prod
+
+  template:
+    metadata:
+      labels:
+        app: kibana-prod
+
+    spec:
+      containers:
+        - name: kibana-pod-prod
+          image: docker.elastic.co/kibana/kibana:9.2.1
+          ports:
+            - containerPort: 5601
+          envFrom:
+            - configMapRef:
+                name: kibana-config-prod

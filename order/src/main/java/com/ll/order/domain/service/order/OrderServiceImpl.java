@@ -26,6 +26,7 @@ import com.ll.order.domain.service.order.create.strategy.DirectOrderCreationStra
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class OrderServiceImpl implements OrderService {
+
+    @Value("${current.domain}")
+    private String currentDomain;
 
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
@@ -198,7 +202,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         String orderName = "주문번호: " + response.orderCode();
-        String redirectUrl = String.format("/orders/payment?orderId=%d&orderName=%s&amount=%d",
+        String redirectUrl = String.format(currentDomain + "/orders/payment?orderId=%d&orderName=%s&amount=%d",
                 response.id(),
                 URLEncoder.encode(orderName, StandardCharsets.UTF_8),
                 response.totalPrice());
