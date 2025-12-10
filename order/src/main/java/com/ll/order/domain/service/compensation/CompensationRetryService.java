@@ -3,7 +3,6 @@ package com.ll.order.domain.service.compensation;
 import com.ll.core.model.exception.BaseException;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
-import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.TransactionTracing;
@@ -12,6 +11,7 @@ import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.order.domain.repository.TransactionTracingRepository;
+import com.ll.order.domain.service.event.InventoryRollbackEventOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,9 +30,9 @@ public class CompensationRetryService {
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
 
-    private final OrderEventProducer orderEventProducer;
     private final PaymentServiceClient paymentServiceClient;
     private final CompensationService compensationService;
+    private final InventoryRollbackEventOutboxService inventoryRollbackEventOutboxService;
 
     @Value("${order.compensation.max-retry-count:5}")
     private Integer maxRetryCount;
@@ -86,7 +86,7 @@ public class CompensationRetryService {
             List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
 
             // 보상 로직 실행
-            boolean compensationSuccess = executeCompensation(order, orderItems, tracing);
+            boolean compensationSuccess = executeCompensation(order, orderItems, orderCode);
 
             if (compensationSuccess) {
                 // 보상 완료 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
@@ -111,11 +111,11 @@ public class CompensationRetryService {
         }
     }
 
-    private boolean executeCompensation(Order order, List<OrderItem> orderItems, TransactionTracing tracing) {
+    private boolean executeCompensation(Order order, List<OrderItem> orderItems, String orderCode) {
         boolean allSuccess = true;
 
         // 1. 재고 롤백 (항상 필요)
-        boolean inventoryRollbackSuccess = rollbackInventory(orderItems);
+        boolean inventoryRollbackSuccess = rollbackInventory(orderItems, orderCode);
         if (!inventoryRollbackSuccess) {
             allSuccess = false;
         }
@@ -131,21 +131,24 @@ public class CompensationRetryService {
         return allSuccess;
     }
 
-    private boolean rollbackInventory(List<OrderItem> orderItems) {
+    private boolean rollbackInventory(List<OrderItem> orderItems, String orderCode) {
         boolean allSuccess = true;
 
         for (OrderItem orderItem : orderItems) {
             try {
-                orderEventProducer.sendInventoryRollback(
+                // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
+                // 별도 프로세스가 Outbox를 읽어서 Kafka에 발행
+                inventoryRollbackEventOutboxService.saveToOutbox(
+                        orderCode,
                         orderItem.getProductCode(),
                         orderItem.getQuantity()
                 );
-                log.debug("재고 롤백 이벤트 재발행 성공 - productCode: {}, quantity: {}",
-                        orderItem.getProductCode(), orderItem.getQuantity());
+                log.debug("재고 롤백 이벤트 Outbox 저장 완료 - orderCode: {}, productCode: {}, quantity: {}",
+                        orderCode, orderItem.getProductCode(), orderItem.getQuantity());
             } catch (Exception e) {
                 allSuccess = false;
-                log.error("재고 롤백 이벤트 재발행 실패 - productCode: {}, quantity: {}, error: {}",
-                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
+                log.error("재고 롤백 이벤트 Outbox 저장 실패 - orderCode: {}, productCode: {}, quantity: {}, error: {}",
+                        orderCode, orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
             }
         }
 

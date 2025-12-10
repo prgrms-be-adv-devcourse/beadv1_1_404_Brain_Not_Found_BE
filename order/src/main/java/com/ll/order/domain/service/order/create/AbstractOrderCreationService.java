@@ -58,8 +58,7 @@ public abstract class AbstractOrderCreationService {
     public final OrderCreateResponse createOrder(Object request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
 
-        // 1. 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
-        validateInventory(request, userCode); // 얘한테 userCode 생김
+        validateInventory(request, userCode);
 
         // 2. 주문 및 주문 상품 데이터 생성
         OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
@@ -68,10 +67,8 @@ public abstract class AbstractOrderCreationService {
 
         createTransactionTracing(savedOrder);
 
-        // 3. 재고 차감 (주문 생성 후, 결제 전) <- 락 적용
-        updateProductInventory(savedOrder, orderItems);
+        updateProductInventory(savedOrder, orderItems); // (주문 생성 후, 결제 전) <- 락 적용
 
-        // 4. 결제 처리 (별도 트랜잭션)
         PaidType paidType = extractPaidType(request);
         switch (paidType) {
             case DEPOSIT:

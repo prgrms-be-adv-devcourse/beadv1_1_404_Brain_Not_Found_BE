@@ -7,10 +7,6 @@ import com.ll.order.domain.model.enums.order.OrderStatus;
 
 import java.util.List;
 
-/**
- * 주문 이력 생성을 위한 Builder 패턴 구현
- * OrderHistoryEntity.create() 호출의 복잡성을 캡슐화하고 가독성을 향상시킴
- */
 public class OrderHistoryBuilder {
     private Order order;
     private List<OrderItem> orderItems;
@@ -92,7 +88,6 @@ public class OrderHistoryBuilder {
         );
     }
 
-    // 편의 메서드: 주문 생성 이력
     public static OrderHistoryEntity createOrderHistory(Order order, List<OrderItem> orderItems) {
         return builder()
                 .order(order)
@@ -104,7 +99,6 @@ public class OrderHistoryBuilder {
                 .build();
     }
 
-    // 편의 메서드: 결제 성공 이력
     public static OrderHistoryEntity createPaymentSuccessHistory(
             Order order, List<OrderItem> orderItems, OrderStatus previousStatus, String paymentType) {
         return builder()
@@ -117,7 +111,6 @@ public class OrderHistoryBuilder {
                 .build();
     }
 
-    // 편의 메서드: 결제 실패 이력
     public static OrderHistoryEntity createPaymentFailHistory(
             Order order, List<OrderItem> orderItems, OrderStatus previousStatus, String paymentType, String errorMessage) {
         return builder()
@@ -131,7 +124,6 @@ public class OrderHistoryBuilder {
                 .build();
     }
 
-    // 편의 메서드: 주문 상태 변경 이력
     public static OrderHistoryEntity createStatusChangeHistory(
             Order order, List<OrderItem> orderItems, OrderStatus previousStatus, String reason, String createdBy) {
         return builder()
