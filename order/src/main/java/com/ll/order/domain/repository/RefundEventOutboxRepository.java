@@ -1,6 +1,6 @@
 package com.ll.order.domain.repository;
 
-import com.ll.order.domain.model.entity.RefundEventOutbox;
+import com.ll.order.domain.model.entity.event.RefundEventOutbox;
 import com.ll.order.domain.model.enums.order.OutboxStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

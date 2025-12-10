@@ -3,7 +3,7 @@ package com.ll.order.domain.service.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.vo.kafka.RefundEvent;
-import com.ll.order.domain.model.entity.RefundEventOutbox;
+import com.ll.order.domain.model.entity.event.RefundEventOutbox;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.enums.order.OutboxStatus;
 import com.ll.order.domain.repository.RefundEventOutboxRepository;
@@ -11,8 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 

@@ -37,7 +37,7 @@ public class CompensationRetryService {
     @Value("${order.compensation.max-retry-count:5}")
     private Integer maxRetryCount;
 
-//     실패한 보상 로직을 재시도합니다.
+    //     실패한 보상 로직을 재시도합니다.
     @Transactional
     public int retryFailedCompensations() {
         // 재시도 대상 조회: 보상 상태가 FAILED이고, 재시도 횟수가 최대값 미만인 것
@@ -72,7 +72,7 @@ public class CompensationRetryService {
     @Transactional
     public void retryCompensation(TransactionTracing tracing) {
         String orderCode = tracing.getOrderCode();
-        
+
         // 보상 시작 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
         compensationService.markCompensationStarted(orderCode);
 
@@ -91,12 +91,12 @@ public class CompensationRetryService {
             if (compensationSuccess) {
                 // 보상 완료 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
                 compensationService.markCompensationCompleted(orderCode);
-                
+
                 log.debug("보상 로직 재시도 성공 - orderCode: {}", orderCode);
             } else {
                 // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
                 compensationService.markCompensationFailed(orderCode, "보상 로직 실행 중 일부 실패");
-                
+
                 log.warn("보상 로직 재시도 부분 실패 - orderCode: {}", orderCode);
                 throw new RuntimeException("보상 로직 실행 중 일부 실패");
             }
@@ -104,7 +104,7 @@ public class CompensationRetryService {
         } catch (Exception e) {
             // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
             compensationService.markCompensationFailed(orderCode, e.getMessage());
-            
+
             log.error("보상 로직 재시도 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
             throw e;
@@ -133,6 +133,8 @@ public class CompensationRetryService {
 
     private boolean rollbackInventory(List<OrderItem> orderItems, String orderCode) {
         boolean allSuccess = true;
+        boolean hasFailure = false;
+        String lastErrorMessage = null;
 
         for (OrderItem orderItem : orderItems) {
             try {
@@ -147,9 +149,17 @@ public class CompensationRetryService {
                         orderCode, orderItem.getProductCode(), orderItem.getQuantity());
             } catch (Exception e) {
                 allSuccess = false;
-                log.error("재고 롤백 이벤트 Outbox 저장 실패 - orderCode: {}, productCode: {}, quantity: {}, error: {}",
-                        orderCode, orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
+                hasFailure = true;
+                lastErrorMessage = String.format(
+                        "재고 롤백 이벤트 Outbox 저장 실패 - orderCode: %s, productCode: %s, quantity: %d, error: %s",
+                        orderCode, orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage());
+                log.error(lastErrorMessage, e);
             }
+        }
+
+        // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
+        if (hasFailure && orderCode != null) {
+            compensationService.markCompensationFailed(orderCode, lastErrorMessage);
         }
 
         return allSuccess;

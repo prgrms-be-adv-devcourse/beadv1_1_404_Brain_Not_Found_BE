@@ -1,7 +1,7 @@
 package com.ll.order.domain.repository;
 
-import com.ll.order.domain.model.entity.InventoryRollbackEventOutbox;
-import com.ll.order.domain.model.entity.InventoryRollbackEventOutbox.CompensationOutboxStatus;
+import com.ll.order.domain.model.entity.event.InventoryRollbackEventOutbox;
+import com.ll.order.domain.model.entity.event.InventoryRollbackEventOutbox.CompensationOutboxStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

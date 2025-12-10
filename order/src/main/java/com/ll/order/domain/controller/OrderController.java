@@ -42,7 +42,7 @@ public class OrderController implements OrderControllerSwagger { // TODO : 예�
     @PostMapping("/direct")
     public Object createDirectOrder(
             @Valid @RequestBody OrderDirectRequest request,
-                @RequestHeader("X-User-Code") String userCode
+            @RequestHeader("X-User-Code") String userCode
     ) {
         OrderCreateResponse response = orderService.createDirectOrder(request, userCode);
 
@@ -67,7 +67,7 @@ public class OrderController implements OrderControllerSwagger { // TODO : 예�
     // TODO 상품 상세 응답에 외부 상품 정보 포함하거나 불필요 호출 제거 검토
     public ResponseEntity<BaseResponse<OrderDetailResponse>> getOrderDetails(
             @PathVariable String orderCode,
-                @RequestHeader("X-User-Code") String userCode
+            @RequestHeader("X-User-Code") String userCode
     ) {
         OrderDetailResponse response = orderService.findOrderDetails(orderCode);
 
@@ -78,7 +78,7 @@ public class OrderController implements OrderControllerSwagger { // TODO : 예�
     public ResponseEntity<BaseResponse<OrderStatusUpdateResponse>> updateOrderStatus(
             @PathVariable String orderCode,
             @Valid @RequestBody OrderStatusUpdateRequest request,
-                @RequestHeader("X-User-Code") String userCode
+            @RequestHeader("X-User-Code") String userCode
     ) {
         OrderStatusUpdateResponse response = orderService.updateOrderStatus(orderCode, request, userCode);
 
@@ -115,10 +115,10 @@ public class OrderController implements OrderControllerSwagger { // TODO : 예�
             @RequestParam(required = false) String errorMessage,
             @RequestParam(required = false) String orderId // 토스 결제 위젯에서 전달되는 orderId는 실제로 orderCode입니다
     ) {
-        return new RedirectView("/orders/payment/fail-page?errorCode=" + 
-               (errorCode != null ? errorCode : "") + 
-               "&errorMessage=" + (errorMessage != null ? errorMessage : "") +
-               "&orderId=" + (orderId != null ? orderId : ""));
+        return new RedirectView("/orders/payment/fail-page?errorCode=" +
+                (errorCode != null ? errorCode : "") +
+                "&errorMessage=" + (errorMessage != null ? errorMessage : "") +
+                "&orderId=" + (orderId != null ? orderId : ""));
     }
 
 }
