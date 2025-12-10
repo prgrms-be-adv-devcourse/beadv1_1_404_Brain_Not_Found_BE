@@ -2,6 +2,7 @@ package com.ll.payment.deposit;
 
 import com.ll.payment.deposit.model.entity.Deposit;
 import com.ll.payment.deposit.repository.DepositRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,7 +12,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.concurrent.CountDownLatch;
 import static org.assertj.core.api.Assertions.assertThat;
 
+// Lock 은 실제 DB 에서만 기능하기 때문에 Mock 을 사용하지 않은 통합 테스트로 작성합니다.
 @SpringBootTest
+@DisplayName("findByUserCode 에 걸린 Lock 검증 테스트")
 public class DepositLockTest {
 
     @Autowired
@@ -45,7 +48,6 @@ public class DepositLockTest {
 
 
     // ---------------------- 스레드 작업 --------------------- //
-
     private Runnable t1Task(CountDownLatch latch) {
         return () -> runInTransaction(() -> {
             findByUserCodeWithLock();
@@ -67,7 +69,6 @@ public class DepositLockTest {
 
 
     // ---------------------- 트랜잭션 템플릿 메서드 --------------------- //
-
     private void runInTransaction(Runnable runnable) {
         TransactionTemplate tt = new TransactionTemplate(transactionManager);
         tt.execute(status -> {
@@ -78,7 +79,6 @@ public class DepositLockTest {
 
 
     // ---------------------- 유틸리티 메서드 --------------------- //
-
     private long measure(Runnable action) {
         long start = System.currentTimeMillis();
         action.run();

@@ -80,20 +80,14 @@ public class Deposit extends BaseEntity {
     }
 
     public Deposit setClosed() {
-        if (this.depositStatus == DepositStatus.CLOSED) {
-            throw new InvalidDepositStatusTransitionException();
-        }
-        if (this.balance > 0) {
-            throw new DepositBalanceNotEmptyException();
-        }
+        validateActive();
+        validateBalanceNotEmpty();
         this.depositStatus = DepositStatus.CLOSED;
         return this;
     }
 
     public Deposit setActive() {
-        if (this.depositStatus == DepositStatus.ACTIVE) {
-            throw new DepositAlreadyExistsException();
-        }
+        validateInactive();
         this.depositStatus = DepositStatus.ACTIVE;
         return this;
     }
@@ -101,6 +95,18 @@ public class Deposit extends BaseEntity {
     private void validateActive() {
         if (this.depositStatus != DepositStatus.ACTIVE) {
             throw new InvalidDepositStatusTransitionException();
+        }
+    }
+
+    private void validateInactive() {
+        if (this.depositStatus == DepositStatus.ACTIVE) {
+            throw new DepositAlreadyExistsException();
+        }
+    }
+
+    private void validateBalanceNotEmpty() {
+        if (this.balance > 0) {
+            throw new DepositBalanceNotEmptyException();
         }
     }
 
