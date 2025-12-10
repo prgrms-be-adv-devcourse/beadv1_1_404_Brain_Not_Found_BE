@@ -36,9 +36,6 @@ import static org.mockito.Mockito.*;
 @Slf4j
 class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest {
 
-    // 실제 CompensationService를 사용하기 위해 Mock 설정을 변경
-    // Mock의 markCompensationFailed 메서드가 실제 메서드를 호출하도록 설정
-
     private UserResponse testUser;
     private ProductResponse testProduct1;
     private ProductResponse testProduct2;
@@ -49,8 +46,7 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         testProduct1 = createTestProduct("PROD-001", 10, 10000);
         testProduct2 = createTestProduct("PROD-002", 5, 15000);
     }
-    // ========== 1. 재고 차감 실패 시 보상 로직 ==========
-    
+
     @DisplayName("보상 로직: 다이렉트 주문 - 단일 상품 재고 차감 실패 (롤백 대상 없음)")
     @Test
     @Transactional
