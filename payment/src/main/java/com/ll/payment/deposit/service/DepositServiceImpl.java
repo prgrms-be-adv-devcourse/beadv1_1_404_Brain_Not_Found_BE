@@ -36,6 +36,7 @@ public class DepositServiceImpl implements DepositService {
     }
 
     @Override
+    @Transactional
     public DepositResponse createDeposit(String userCode) {
         return DepositResponse.from(depositRepository.findByUserCode(userCode)
                 .map(exit -> depositRepository.save(exit.setActive()))
@@ -43,11 +44,13 @@ public class DepositServiceImpl implements DepositService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public DepositResponse getDepositByUserCode(String userCode) {
         return DepositResponse.from(findDepositByUserCode(userCode));
     }
 
     @Override
+    @Transactional
     public DepositDeleteResponse deleteDepositByUserCode(String userCode, DepositDeleteRequest request) {
         Deposit deposit = findDepositByUserCode(userCode);
         Deposit saved = depositRepository.save(deposit.setClosed());
