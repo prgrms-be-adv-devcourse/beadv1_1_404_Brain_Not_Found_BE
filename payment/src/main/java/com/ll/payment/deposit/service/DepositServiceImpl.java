@@ -39,14 +39,8 @@ public class DepositServiceImpl implements DepositService {
     @Transactional
     public DepositResponse createDeposit(String userCode) {
         return DepositResponse.from(depositRepository.findByUserCode(userCode)
-                .map(exit -> depositRepository.save(exit.setActive()))
+                .map(Deposit::setActive)
                 .orElseGet(() -> depositRepository.save(Deposit.createInitialDeposit(userCode))));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public DepositResponse getDepositByUserCode(String userCode) {
-        return DepositResponse.from(findDepositByUserCode(userCode));
     }
 
     @Override
@@ -58,6 +52,12 @@ public class DepositServiceImpl implements DepositService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public DepositResponse getDepositByUserCode(String userCode) {
+        return DepositResponse.from(findDepositByUserCodeWithOutLock(userCode));
+    }
+
+    @Override
     @Transactional
     public DepositTransactionResponse chargeDeposit(String userCode, DepositTransactionRequest request) {
         return executeDepositTransaction(
@@ -66,18 +66,6 @@ public class DepositServiceImpl implements DepositService {
                 depositHistoryService::validateDuplicate,
                 (deposit, req) -> deposit.charge(req.amount(), req.referenceCode()),
                 DepositHistoryType.CHARGE_FAILED
-        );
-    }
-
-    @Override
-    @Transactional
-    public void settlementDeposit(String userCode, DepositTransactionRequest request) {
-        executeDepositTransaction(
-                userCode,
-                request,
-                NO_VALIDATION,
-                (deposit, req) -> deposit.settlement(req.amount(), req.referenceCode()),
-                DepositHistoryType.SETTLEMENT_FAILED
         );
     }
 
@@ -118,9 +106,21 @@ public class DepositServiceImpl implements DepositService {
     }
 
     @Override
+    @Transactional
+    public void settlementDeposit(String userCode, DepositTransactionRequest request) {
+        executeDepositTransaction(
+                userCode,
+                request,
+                NO_VALIDATION,
+                (deposit, req) -> deposit.settlement(req.amount(), req.referenceCode()),
+                DepositHistoryType.SETTLEMENT_FAILED
+        );
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public DepositHistoryPageResponse getDepositHistoryByUserCode(String userCode, LocalDateTime fromDate, LocalDateTime toDate, Pageable pageable) {
-        Deposit deposit = findDepositByUserCode(userCode);
+        Deposit deposit = findDepositByUserCodeWithOutLock(userCode);
         Page<DepositHistory> histories = depositHistoryService.getDepositHistory(deposit, fromDate, toDate, pageable);
         return DepositHistoryPageResponse.from(userCode, histories.map(DepositHistoryResponse::from));
     }
@@ -148,6 +148,11 @@ public class DepositServiceImpl implements DepositService {
 
     private Deposit findDepositByUserCode(String userCode) {
         return depositRepository.findByUserCode(userCode)
+                .orElseThrow(DepositNotFoundException::new);
+    }
+
+    private Deposit findDepositByUserCodeWithOutLock(String userCode) {
+        return depositRepository.findByUserCodeWithOutLock(userCode)
                 .orElseThrow(DepositNotFoundException::new);
     }
 
