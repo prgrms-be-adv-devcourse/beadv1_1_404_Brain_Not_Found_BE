@@ -5,43 +5,63 @@ spring:
   cloud:
     discovery:
       enabled: false   # Eureka 클라이언트 비활성화
+
   # Database Configuration
   datasource:
-    url: jdbc:h2:mem:orderdb
-    driver-class-name: org.h2.Driver
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    # MySQL 컨테이너 연결 설정 (docker-compose.yml의 order-mysql 컨테이너 사용)
+    # 컨테이너 실행: docker-compose up -d
+    url: jdbc:mysql://localhost:3307/orderdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: kissmyass
+    password: dickhead
+    
+    # H2 인메모리 DB를 사용하려면 아래 설정으로 변경
+    # url: jdbc:h2:mem:orderdb
+    # driver-class-name: org.h2.Driver
+    # username: ${DB_USER:sa}
+    # password: ${DB_PASSWORD:}
 
-  # H2 Console
+  # H2 Console (H2 사용 시에만 활성화)
   h2:
     console:
-      enabled: true
+      enabled: false  # MySQL 사용 시 false로 설정
       path: /h2-console
 
   # JPA Configuration
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: create-drop  # 개발 환경에서는 create-drop, 운영에서는 update 또는 validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
+        dialect: org.hibernate.dialect.MySQLDialect  # MySQL 사용
+        # H2를 사용하는 경우 아래로 변경
+        # dialect: org.hibernate.dialect.H2Dialect
 
   kafka:
     bootstrap-servers:
       - localhost:9092
 
-  # External Service URLs
+# Mock Server 설정
+mock:
+  enabled: true  # Mock 서버 활성화 (로컬 개발 환경에서 다른 모듈의 API를 모킹)
+
+# External Service URLs
+  # Mock 서버 사용 시 (mock.enabled=true): User, Product, Cart는 localhost:8082 (Order 서버와 같은 포트)
+  # Payment 서비스는 실제 서버 실행 필요 (토스 결제 API 호출 등)
 external:
   user-service:
-    url: http://localhost:8083
+    url: http://localhost:8082  # Mock 사용 시: 8082
+    # url: http://localhost:8083  # 실제 서비스 포트
   product-service:
-    url: http://localhost:8085
+    url: http://localhost:8082  # Mock 사용 시: 8082
+    # url: http://localhost:8085  # 실제 서비스 포트
   cart-service:
-    url: http://localhost:8089
+    url: http://localhost:8082  # Mock 사용 시: 8082
+    # url: http://localhost:8089  # 실제 서비스 포트
   payment-service:
-    url: http://localhost:8087
+    url: http://localhost:8087  # 실제 Payment 서버 포트 (토스 결제 API 호출 필요)
 
   # Payment Configuration
 payment:
@@ -140,3 +160,10 @@ management:
   zipkin:
     tracing:
       endpoint: http://localhost:9411/api/v2/spans
+
+current:
+  domain: "http://localhost:8082"
+swagger:
+  servers:
+    - "http://localhost:8000"
+    - "http://localhost:8082"

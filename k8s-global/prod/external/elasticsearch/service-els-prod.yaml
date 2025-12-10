@@ -1,0 +1,15 @@
+apiVersion: v1
+
+kind: Service
+
+metadata:
+  name: els-svc-prod
+
+spec:
+
+  selector:
+    app: els-prod
+
+  ports:
+    - targetPort: 9200
+      port: 9200

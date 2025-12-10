@@ -19,8 +19,8 @@ jobs:
       - name: Update Issue number in PR body
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
-          BRANCH_NAME=${{ github.head_ref }}
-          ISSUE_NUMBER=$(echo "$BRANCH_NAME" | grep -oE '[0-9]+$')
+          TITLE="${{ github.event.pull_request.title }}"
+          ISSUE_NUMBER=$(echo "$TITLE" | grep -oP '\[\K[0-9]+(?=\])' | head -1)
           PR_BODY=$(gh pr view $PR_NUMBER --json body -q '.body')
           
           UPDATED_BODY=$(echo "$PR_BODY" | sed "s/- 관련 이슈 번호:.*/- 관련 이슈 번호: #$ISSUE_NUMBER/")
@@ -44,6 +44,7 @@ jobs:
         shell: bash
         run: |
           DIFF=$(gh pr diff ${{ github.event.pull_request.number }} | base64 -w 0)
+          echo "$DIFF" > diff.txt
           
           PR_PROMPT="
           아래 base64 diff를 디코딩한 후, 변경 사항을 의미 단위별 주제로 분류하고 번호 매겨 작성하라. 각 번호(주요 주제) 아래 핵심 내용을 불릿으로 정리한 중첩 목록(nested list) 형태로 요약하라.
@@ -60,6 +61,7 @@ jobs:
           9) 라인 단위 설명 금지.
           10) 이모티콘 사용 금지.
           11) 실제로 변경되지 않은 내용을 이용해 주제 혹은 하위 bullet 내용을 작성하는 것은 금지.
+          12) 라인 앞 글자가 + 면 추가된 코드, - 면 삭제된 코드.
           
           base64 diff:
           "
@@ -68,9 +70,9 @@ jobs:
           
           jq -n \
           --arg prompt "$ESCAPED_PROMPT" \
-          --arg diff "$DIFF" \
+          --rawfile diff diff.txt \
           '{
-            model: "gpt-5-mini",
+            model: "gpt-5.1",
             messages: [
               { role: "system", content: "너는 GitHub PR 요약 전문가야." },
               { role: "user",   content: $prompt },

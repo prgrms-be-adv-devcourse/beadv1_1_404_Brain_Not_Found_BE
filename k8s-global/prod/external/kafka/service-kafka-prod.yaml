@@ -1,0 +1,17 @@
+apiVersion: v1
+
+kind: Service
+
+metadata:
+  name: kafka-svc-prod
+
+spec:
+
+  selector:
+    app: kafka-prod
+
+  ports:
+    - name: internal
+      port: 9090
+      targetPort: 9090
+

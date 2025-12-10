@@ -31,6 +31,9 @@ public class Settlement extends BaseEntity {
     @Column( name = "order_item_code", nullable = false )
     private String orderItemCode;
 
+    @Column( name = "product_name", nullable = false )
+    private String productName;
+
     @Column( name = "reference_code", nullable = false )
     private String referenceCode;
 
@@ -39,6 +42,7 @@ public class Settlement extends BaseEntity {
     private SettlementStatus settlementStatus;
 
     @Column( name = "total_amount", nullable = false )
+    @Setter
     private Long totalAmount;
 
     @Column( name = "settlement_rate", nullable = false )
@@ -60,21 +64,23 @@ public class Settlement extends BaseEntity {
     private LocalDateTime errorDate;
 
     @Builder
-    public Settlement(String sellerCode, String buyerCode, String orderItemCode, String referenceCode, SettlementStatus settlementStatus, Long totalAmount, BigDecimal settlementRate) {
+    public Settlement(String sellerCode, String buyerCode, String orderItemCode, String productName, String referenceCode, SettlementStatus settlementStatus, Long totalAmount, BigDecimal settlementRate) {
         this.sellerCode = sellerCode;
         this.buyerCode = buyerCode;
         this.orderItemCode = orderItemCode;
+        this.productName = productName;
         this.referenceCode = referenceCode;
         this.settlementStatus = settlementStatus;
         this.totalAmount = totalAmount;
         this.settlementRate = settlementRate;
     }
 
-    public static Settlement create(String sellerCode, String buyerCode, String orderItemCode, String referenceCode, Long totalAmount, BigDecimal settlementRate) {
+    public static Settlement create(String sellerCode, String buyerCode, String orderItemCode, String productName, String referenceCode, Long totalAmount, BigDecimal settlementRate) {
         Settlement settlement = Settlement.builder()
                 .sellerCode(sellerCode)
                 .buyerCode(buyerCode)
                 .orderItemCode(orderItemCode)
+                .productName(productName)
                 .referenceCode(referenceCode)
                 .settlementStatus(SettlementStatus.CREATED)
                 .totalAmount(totalAmount)
@@ -107,20 +113,20 @@ public class Settlement extends BaseEntity {
         this.settlementStatus = SettlementStatus.REFUNDED;
     }
 
-    public Long calculateSettlementCommission() {
+    public Long calculateSettlementBalance() {
         return BigDecimal.valueOf(this.totalAmount)
                 .multiply(this.settlementRate)
                 .setScale(0, RoundingMode.DOWN)
                 .longValue();
     }
 
-    public Long calculateSettlementBalance(Long commission) {
+    public Long calculateSettlementCommission(Long commission) {
         return this.totalAmount - commission;
     }
 
     public void process() {
-        Long commission = calculateSettlementCommission();
-        Long balance = calculateSettlementBalance(commission);
+        Long balance = calculateSettlementBalance();
+        Long commission = calculateSettlementCommission(balance);
         this.settlementCommission = commission;
         this.settlementBalance = balance;
     }

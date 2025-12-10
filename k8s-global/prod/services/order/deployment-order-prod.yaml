@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+#이 파일 정의
+metadata:
+  name: order-dpy-prod
+#동작 정의
+spec:
+  replicas: 1
+#  제어할 라벨
+  selector:
+    matchLabels:
+      app: order-prod
+#      pod 정의
+  template:
+    metadata:
+      labels:
+        app: order-prod
+#        컨테이너 정의
+    spec:
+      containers:
+        - name: order-pod-prod
+          image: yuio7279/order
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: order-config-prod
+            - secretRef:
+                name: order-secret-prod
+      restartPolicy: Always

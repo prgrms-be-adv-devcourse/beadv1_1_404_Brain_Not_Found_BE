@@ -1,5 +1,6 @@
 package com.ll.products.domain.search.controller;
 import com.ll.core.model.response.BaseResponse;
+import com.ll.products.domain.history.service.HistoryFacadeService;
 import com.ll.products.domain.search.dto.ProductSearchResponse;
 import com.ll.products.domain.search.service.ProductSearchService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class ProductSearchController {
 
     private final ProductSearchService productSearchService;
+    private final HistoryFacadeService historyFacadeService;
 
     @GetMapping("/search")
     public ResponseEntity<BaseResponse<Page<ProductSearchResponse>>> search(
@@ -25,8 +27,12 @@ public class ProductSearchController {
             @RequestParam(required = false) Integer minPrice,
             @RequestParam(required = false) Integer maxPrice,
             @RequestParam(required = false) String status,
+            @RequestHeader(value = "X-User-Code",required = false ) String userCode,
             @PageableDefault(size = 20) Pageable pageable
     ) {
+        if(userCode != null){
+            historyFacadeService.saveSearch(userCode,keyword);
+        }
         log.debug("상품 검색 API 호출: keyword={}, categoryId={}, price={}-{}, status={}, pageable={}",
                 keyword, categoryId, minPrice, maxPrice, status, pageable);
         Page<ProductSearchResponse> result = productSearchService.search(keyword, categoryId, minPrice, maxPrice, status, pageable);

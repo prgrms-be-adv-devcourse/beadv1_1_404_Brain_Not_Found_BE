@@ -26,6 +26,7 @@ import com.ll.order.domain.service.order.create.strategy.DirectOrderCreationStra
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class OrderServiceImpl implements OrderService {
+
+    @Value("${current.domain}")
+    private String currentDomain;
 
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
@@ -198,34 +202,14 @@ public class OrderServiceImpl implements OrderService {
         }
 
         String orderName = "주문번호: " + response.orderCode();
-        String redirectUrl = String.format("/orders/payment?orderId=%d&orderName=%s&amount=%d",
+        String redirectUrl = String.format(currentDomain + "/orders/payment?orderId=%d&orderName=%s&amount=%d",
                 response.id(),
                 URLEncoder.encode(orderName, StandardCharsets.UTF_8),
                 response.totalPrice());
         return Optional.of(redirectUrl);
     }
 
-    @Override
-    public OrderValidateResponse validateOrder(OrderValidateRequest request) {
-        List<OrderValidateResponse.ItemInfo> itemInfos = orderValidator.validateProducts(request.products());
-
-        int totalQuantity = itemInfos.stream()
-                .mapToInt(OrderValidateResponse.ItemInfo::requestedQuantity)
-                .sum();
-
-        long totalAmount = itemInfos.stream()
-                .mapToLong(item -> (long) item.price() * item.requestedQuantity())
-                .sum();
-
-        return OrderValidateResponse.from(
-                request.buyerCode(),
-                totalQuantity,
-                totalAmount,
-                itemInfos
-        );
-    }
-
-    // 주문 취소 처리 -> 환불 처리(동기) + 환불 이벤트 발행(비동기) + 재고 복구 요청
+    // 주문 취소 처리 -> 환불 처리(동기) + 환불 이벤트 발행(비동기) + 재고 복구 요청 ( 비동기 )
     // 부모 트랜잭션 ( updateOrderStatus ) 에서 호출되는 메서드
     private void handleOrderCancellation(Order order) {
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());

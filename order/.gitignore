@@ -37,3 +37,5 @@ out/
 .vscode/
 
 *.md
+!docs/toss_payment_order_creation_guide.md
+

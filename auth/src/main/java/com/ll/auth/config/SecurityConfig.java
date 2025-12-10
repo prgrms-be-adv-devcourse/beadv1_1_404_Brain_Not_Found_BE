@@ -47,9 +47,10 @@ public class SecurityConfig {
                                 "/login/**",
                                 "/api/auth/**",     // 로그인, 리프레시
                                 "/h2-console/**",
-                                "/api/users/**"
+                                "/api/users/**",
+                                "/swagger-ui/**"
                         ).permitAll()
-                        .anyRequest().authenticated()  // 나머지는 JWT 필요
+                        .anyRequest().permitAll()  // 나머지는 JWT 필요
                 )
 
                 // 5. OAuth2 로그인 (세션 사용, 예외)

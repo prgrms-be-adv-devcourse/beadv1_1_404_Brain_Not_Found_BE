@@ -1,12 +1,11 @@
 # 도커 컨테이너 내부에서 실행될 때 사용
-
 spring:
   # MySQL 데이터베이스 설정
   datasource:
     url: ${PRODUCT_DB_URL}
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
 
   jpa:
     hibernate:
@@ -19,28 +18,41 @@ spring:
 
   # Elasticsearch 설정
   elasticsearch:
-    uris: http://elasticsearch-1:9200
+    uris: http://els-svc-prod.default.svc.cluster.local:9200
 
   kafka:
     bootstrap-servers:
-      - ${KAFKA_1_CONTAINER_NAME}:9090
+      - http://kafka-svc-prod.default.svc.cluster.local:9090
     consumer:
       group-id: product-service
       properties:
         allow.auto.create.topics: false
 
 
+
 api:
   user:
-    base-url: http://user:8083
+    base-url: http://auth-svc-prod.default.svc.cluster.local:8084
 
-eureka:
-  client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: ${DISCOVERY_URL}
 
 logging:
   level:
     root: info
+
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET}
+      base-url: https://${AWS_S3_BUCKET}.s3.${AWS_REGION:ap-northeast-2}.amazonaws.com
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    region:
+      static: ${AWS_REGION:ap-northeast-2}
+    stack:
+      auto: false
+
+management:
+  zipkin:
+    tracing:
+      endpoint: http://zipkin-svc-prod.default.svc.cluster.local:9411/api/v2/spans
