@@ -28,6 +28,26 @@ spring:
       auto-offset-reset: earliest
       enable-auto-commit: false
 
+  # Elasticsearch 비활성화 (동시성 테스트에서는 불필요)
+  elasticsearch:
+    uris: ""
+
+  # AutoConfiguration 제외 (동시성 테스트에서 불필요한 자동 설정 제외)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration
+      - org.springframework.boot.actuate.autoconfigure.elasticsearch.ElasticsearchRestHealthContributorAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration
+
+  # OpenAI 설정 (테스트에서는 비활성화)
+  ai:
+    openai:
+      api-key: test-api-key  # 더미 키 (실제 사용 안 함)
+      embedding:
+        enabled: false  # Embedding 비활성화
+
 # 로깅 설정 (동시성 테스트 디버깅용)
 logging:
   level:
@@ -66,4 +86,11 @@ management:
   health:
     elasticsearch:
       enabled: false
+
+# Qdrant 설정 (테스트에서는 비활성화)
+qdrant:
+  enabled: false  # QdrantConfig 비활성화 (실제 Qdrant 서버 연결 불필요)
+  host: localhost
+  port: 6334
+  collection-name: products_test
 

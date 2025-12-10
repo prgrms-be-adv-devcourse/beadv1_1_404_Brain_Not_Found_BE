@@ -18,6 +18,9 @@ import com.ll.products.domain.product.event.ProductEventListener;
 import com.ll.products.domain.search.repository.ProductSearchRepository;
 import com.ll.products.domain.search.service.ProductSearchService;
 import com.ll.products.domain.search.controller.ProductSearchController;
+import com.ll.products.domain.recommendation.service.VectorStoreService;
+import com.ll.products.domain.recommendation.service.RecommendationService;
+import com.ll.products.domain.recommendation.service.EmbeddingService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,11 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(properties = {
-    "spring.elasticsearch.uris=",  // Elasticsearch 비활성화
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchClientAutoConfiguration,org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration,org.springframework.boot.actuate.autoconfigure.elasticsearch.ElasticsearchRestHealthContributorAutoConfiguration",
-    "management.health.elasticsearch.enabled=false"
-})
+@SpringBootTest
 @ActiveProfiles("test")
 @DisplayName("상품 재고 동시성 테스트")
 class ProductInventoryConcurrencyTest {
@@ -60,6 +59,16 @@ class ProductInventoryConcurrencyTest {
 
     @MockitoBean
     private ProductSearchController productSearchController;
+
+    // Qdrant/임베딩 관련 빈 모킹 (동시성 테스트에서는 불필요)
+    @MockitoBean
+    private EmbeddingService embeddingService;
+
+    @MockitoBean
+    private VectorStoreService vectorStoreService;
+
+    @MockitoBean
+    private RecommendationService recommendationService;
 
     // 테스트용 상품
     private Product testProduct;
