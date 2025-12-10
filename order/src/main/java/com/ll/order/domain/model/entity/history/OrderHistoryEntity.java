@@ -99,7 +99,9 @@ public class OrderHistoryEntity extends BaseEntity {
         orderHistory.totalPrice = order.getTotalPrice();
         orderHistory.orderType = order.getOrderType();
         orderHistory.previousStatus = previousStatus;
-        orderHistory.currentStatus = order.getOrderStatus();
+        orderHistory.currentStatus = (actionType == OrderHistoryActionType.CREATE) 
+                ? OrderStatus.CREATED 
+                : order.getOrderStatus();
         orderHistory.statusChangedAt = LocalDateTime.now();
         orderHistory.actionType = actionType;
         

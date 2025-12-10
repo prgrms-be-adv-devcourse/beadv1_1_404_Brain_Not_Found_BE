@@ -138,6 +138,8 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
                 cartRequest.paymentKey()
         );
 
+        OrderStatus previousStatus = order.getOrderStatus();
+
         try {
             paymentApiClient.requestDepositPayment(orderPaymentRequest);
 
@@ -146,7 +148,7 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
 
             // 주문 상태 변경 이력 저장 (결제 성공)
             OrderHistoryEntity successHistory = OrderHistoryBuilder.createPaymentSuccessHistory(
-                    order, orderItems, order.getOrderStatus(), "예치금");
+                    order, orderItems, previousStatus, "예치금");
             orderHistoryJpaRepository.save(successHistory);
 
             // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)

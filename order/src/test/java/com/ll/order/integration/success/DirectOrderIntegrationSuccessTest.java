@@ -1,10 +1,5 @@
-package com.ll.order.integration;
+package com.ll.order.integration.success;
 
-import com.ll.order.domain.client.CartServiceClient;
-import com.ll.order.domain.client.PaymentServiceClient;
-import com.ll.order.domain.client.ProductServiceClient;
-import com.ll.order.domain.client.UserServiceClient;
-import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
@@ -12,34 +7,14 @@ import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.order.OrderType;
 import com.ll.order.domain.model.enums.payment.PaidType;
-import com.ll.order.domain.model.enums.product.ProductStatus;
-import com.ll.order.domain.model.enums.user.AccountStatus;
-import com.ll.order.domain.model.enums.user.Grade;
-import com.ll.order.domain.model.enums.user.Role;
-import com.ll.order.domain.model.enums.user.SocialProvider;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderPaymentRequest;
 import com.ll.order.domain.model.vo.response.order.OrderCreateResponse;
-import com.ll.order.domain.model.vo.response.product.ProductResponse;
-import com.ll.order.domain.model.vo.response.user.UserResponse;
-import com.ll.order.domain.repository.OrderHistoryJpaRepository;
-import com.ll.order.domain.repository.OrderItemJpaRepository;
-import com.ll.order.domain.repository.OrderJpaRepository;
-import com.ll.order.domain.service.compensation.CompensationService;
-import com.ll.order.domain.service.event.OrderEventService;
-import com.ll.order.domain.service.order.OrderService;
-
 import lombok.extern.slf4j.Slf4j;
-
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Transactional;
 import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,86 +25,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@DisplayName("주문-결제-재고 통합 테스트")
+@DisplayName("다이렉트 주문-결제-재고 통합 테스트")
 @Slf4j
-class OrderIntegrationSuccessTest {
+class DirectOrderIntegrationSuccessTest extends BaseOrderIntegrationSuccessTest {
 
-    @Autowired
-    private OrderService orderService;
-
-    @Autowired
-    private OrderJpaRepository orderJpaRepository;
-
-    @Autowired
-    private OrderItemJpaRepository orderItemJpaRepository;
-
-    @Autowired
-    private OrderHistoryJpaRepository orderHistoryJpaRepository;
-
-    // 외부 서비스 모킹 (다른 마이크로서비스)
-    @MockitoBean
-    private UserServiceClient userServiceClient;
-
-    @MockitoBean
-    private ProductServiceClient productServiceClient;
-
-    @MockitoBean
-    private PaymentServiceClient paymentServiceClient;
-
-    @MockitoBean
-    private CartServiceClient cartServiceClient;
-
-    // 이벤트/메시징 관련 - 모킹 (외부 인프라: Kafka 등)
-    @MockitoBean
-    private OrderEventProducer orderEventProducer;
-
-    @MockitoBean
-    private CompensationService compensationService;
-
-    @MockitoBean
-    private OrderEventService orderEventService;
-
-    // 테스트 데이터
-    private UserResponse testUser;
-    private ProductResponse testProduct;
-
-    @BeforeEach
-    void setUp() {
-        // 테스트 사용자 설정
-        testUser = new UserResponse(
-                1L,
-                "USER-001",
-                "test_social_id",
-                SocialProvider.KAKAO,
-                "test@test.com",
-                "홍길동",
-                Role.USER,
-                null,
-                5L,
-                Grade.BRONZE,
-                AccountStatus.ACTIVE,
-                null,
-                null,
-                null,
-                null
-        );
-
-        // 테스트 상품 설정 (재고: 10개)
-        testProduct = ProductResponse.builder()
-                .id(1L)
-                .code("PROD-001")
-                .name("테스트상품")
-                .sellerCode("SELLER-001")
-                .sellerName("판매자1")
-                .quantity(10) // 초기 재고
-                .price(10000)
-                .status(ProductStatus.ON_SALE)
-                .images(null)
-                .build();
-    }
-
+    // ========== 다이렉트 주문 통합 테스트 ==========
     @DisplayName("통합 테스트: 다이렉트 주문 생성 - 예치금 결제 (DEPOSIT)")
     @Test
     @Transactional
