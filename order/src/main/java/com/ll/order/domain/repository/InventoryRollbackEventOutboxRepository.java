@@ -11,7 +11,7 @@ import java.util.List;
 public interface InventoryRollbackEventOutboxRepository extends JpaRepository<InventoryRollbackEventOutbox, Long> {
     
     @Query("""
-            SELECT o FROM InventoryRollbackEventOutbox o 
+            SELECT o FROM InventoryRollbackEventOutbox o
             WHERE o.status = :status AND o.retryCount < :maxRetryCount
             """)
     List<InventoryRollbackEventOutbox> findByStatusAndRetryCountLessThan(

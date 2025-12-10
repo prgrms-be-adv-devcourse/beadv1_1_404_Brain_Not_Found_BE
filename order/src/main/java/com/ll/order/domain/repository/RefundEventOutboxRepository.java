@@ -11,7 +11,7 @@ import java.util.List;
 public interface RefundEventOutboxRepository extends JpaRepository<RefundEventOutbox, Long> {
     
     @Query("""
-            SELECT o FROM RefundEventOutbox o 
+            SELECT o FROM RefundEventOutbox o
             WHERE o.status = :status AND o.retryCount < :maxRetryCount
             """)
     List<RefundEventOutbox> findByStatusAndRetryCountLessThan(

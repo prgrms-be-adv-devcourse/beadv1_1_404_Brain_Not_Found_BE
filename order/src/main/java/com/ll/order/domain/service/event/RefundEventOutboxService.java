@@ -31,62 +31,43 @@ public class RefundEventOutboxService {
     // PENDING 상태의 이벤트를 Kafka에 발행
     @Transactional // 없으면 self invocation 경고 발생
     public int publishPendingEvents() {
-        List<RefundEventOutbox> pendingEvents = refundEventOutboxRepository
-                .findByStatusAndRetryCountLessThan(OutboxStatus.PENDING, maxRetryCount);
-
-        if (pendingEvents.isEmpty()) {
-            log.debug("발행할 PENDING 상태의 환불 이벤트가 없습니다.");
-            return 0;
-        }
-
-        log.debug("PENDING 상태의 환불 이벤트 발행 시작 - 대상: {}개", pendingEvents.size());
-
-        int successCount = 0;
-        int failureCount = 0;
-
-        for (RefundEventOutbox outbox : pendingEvents) {
-            try {
-                publishEvent(outbox);  // Self injection을 통해 프록시를 거쳐 호출
-                successCount++;
-            } catch (Exception e) {
-                failureCount++;
-                log.error("환불 이벤트 발행 실패 - outboxId: {}, referenceCode: {}, error: {}",
-                        outbox.getId(), outbox.getReferenceCode(), e.getMessage(), e);
-            }
-        }
-
-        log.debug("환불 이벤트 발행 완료 - 성공: {}개, 실패: {}개", successCount, failureCount);
-        return successCount;
+        return publishEventsByStatus(OutboxStatus.PENDING, "발행");
     }
 
     // FAILED 상태의 이벤트를 재발행
     @Transactional
     public int republishFailedEvents() {
-        List<RefundEventOutbox> failedEvents = refundEventOutboxRepository
-                .findByStatusAndRetryCountLessThan(OutboxStatus.FAILED, maxRetryCount);
+        return publishEventsByStatus(OutboxStatus.FAILED, "재발행");
+    }
 
-        if (failedEvents.isEmpty()) {
-            log.debug("재발행할 실패한 환불 이벤트가 없습니다.");
+    // 상태별 이벤트 발행 공통 메서드
+    @Transactional
+    public int publishEventsByStatus(OutboxStatus status, String action) {
+        List<RefundEventOutbox> events = refundEventOutboxRepository
+                .findByStatusAndRetryCountLessThan(status, maxRetryCount);
+
+        if (events.isEmpty()) {
+            log.debug("{}할 {} 상태의 환불 이벤트가 없습니다.", action, status);
             return 0;
         }
 
-        log.debug("실패한 환불 이벤트 재발행 시작 - 대상: {}개", failedEvents.size());
+        log.debug("{} 상태의 환불 이벤트 {} 시작 - 대상: {}개", status, action, events.size());
 
         int successCount = 0;
         int failureCount = 0;
 
-        for (RefundEventOutbox outbox : failedEvents) {
+        for (RefundEventOutbox outbox : events) {
             try {
                 publishEvent(outbox);  // Self injection을 통해 프록시를 거쳐 호출
                 successCount++;
             } catch (Exception e) {
                 failureCount++;
-                log.error("환불 이벤트 재발행 실패 - outboxId: {}, referenceCode: {}, error: {}",
-                        outbox.getId(), outbox.getReferenceCode(), e.getMessage(), e);
+                log.error("환불 이벤트 {} 실패 - outboxId: {}, referenceCode: {}, error: {}",
+                        action, outbox.getId(), outbox.getReferenceCode(), e.getMessage(), e);
             }
         }
 
-        log.debug("환불 이벤트 재발행 완료 - 성공: {}개, 실패: {}개", successCount, failureCount);
+        log.debug("환불 이벤트 {} 완료 - 성공: {}개, 실패: {}개", action, successCount, failureCount);
         return successCount;
     }
 

@@ -4,6 +4,7 @@ import com.ll.core.model.exception.BaseException;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.TransactionTracing;
+import com.ll.order.domain.model.entity.event.InventoryRollbackEventOutbox;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
@@ -17,15 +18,18 @@ import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
 import com.ll.order.domain.model.vo.response.order.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
+import com.ll.order.domain.repository.InventoryRollbackEventOutboxRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,15 +40,23 @@ import static org.mockito.Mockito.*;
 @Slf4j
 class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest {
 
+    @Autowired
+    protected InventoryRollbackEventOutboxRepository inventoryRollbackEventOutboxRepository;
+
     private UserResponse testUser;
     private ProductResponse testProduct1;
     private ProductResponse testProduct2;
 
     @BeforeEach
-    void setUp() {
+    void setUpTestData() {
         testUser = createTestUser();
         testProduct1 = createTestProduct("PROD-001", 10, 10000);
         testProduct2 = createTestProduct("PROD-002", 5, 15000);
+        
+        transactionTemplate.execute(status -> {
+            inventoryRollbackEventOutboxRepository.deleteAll();
+            return null;
+        });
     }
 
     @DisplayName("보상 로직: 다이렉트 주문 - 단일 상품 재고 차감 실패 (롤백 대상 없음)")
@@ -78,8 +90,21 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
                     assertThat(baseException.getErrorCode()).isEqualTo(OrderErrorCode.INVENTORY_DEDUCTION_FAILED);
                 });
 
-        // 롤백 호출 없음 (성공한 재고 차감이 없으므로)
-        verify(orderEventProducer, never()).sendInventoryRollback(anyString(), anyInt());
+        // 롤백 호출 없음 (성공한 재고 차감이 없으므로) - Outbox 패턴: Outbox에 저장되지 않아야 함
+        // 이전 테스트의 데이터를 제외하기 위해 생성된 주문의 orderCode로 필터링
+        List<Order> ordersInTest = orderJpaRepository.findAll();
+        assertThat(ordersInTest).hasSize(1);
+        Order savedOrderInTest = ordersInTest.getFirst();
+        String orderCodeInTest = savedOrderInTest.getCode();
+        
+        // 별도 트랜잭션에서 Outbox 데이터 조회 (REQUIRES_NEW로 저장되어 롤백되지 않음)
+        List<InventoryRollbackEventOutbox> rollbackOutboxEvents = transactionTemplate.execute(status -> {
+            return inventoryRollbackEventOutboxRepository.findAll()
+                    .stream()
+                    .filter(outbox -> orderCodeInTest.equals(outbox.getOrderCode()))
+                    .collect(Collectors.toList());
+        });
+        assertThat(rollbackOutboxEvents).isEmpty();
 
         // 재고 차감 호출 확인 (주문 생성 완료 후 재고 차감 단계까지 도달했음을 의미)
         verify(productServiceClient, times(1)).decreaseInventory("PROD-001", 2);
@@ -157,18 +182,31 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
                     assertThat(baseException.getErrorCode()).isEqualTo(OrderErrorCode.INVENTORY_DEDUCTION_FAILED);
                 });
 
-        // 성공한 재고 차감만 롤백 이벤트 발행
-        ArgumentCaptor<String> productCodeCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Integer> quantityCaptor = ArgumentCaptor.forClass(Integer.class);
+        // 성공한 재고 차감만 롤백 이벤트 Outbox에 저장됨 - Outbox 패턴 검증
+        Order savedOrder = orderJpaRepository.findAll().getFirst();
+        String orderCode = savedOrder.getCode();
         
-        verify(orderEventProducer, times(1)).sendInventoryRollback(
-                productCodeCaptor.capture(),
-                quantityCaptor.capture()
-        );
-        assertThat(productCodeCaptor.getValue()).isEqualTo("PROD-001");
-        assertThat(quantityCaptor.getValue()).isEqualTo(2);
-        // 실패한 상품(PROD-002)은 롤백 이벤트 발행되지 않음
-        verify(orderEventProducer, never()).sendInventoryRollback("PROD-002", 1);
+        // 별도 트랜잭션에서 Outbox 데이터 조회 (REQUIRES_NEW로 저장되어 롤백되지 않음)
+        List<InventoryRollbackEventOutbox> rollbackOutboxEvents = transactionTemplate.execute(status -> {
+            return inventoryRollbackEventOutboxRepository.findAll()
+                    .stream()
+                    .filter(outbox -> orderCode.equals(outbox.getOrderCode()))
+                    .collect(Collectors.toList());
+        });
+        if (rollbackOutboxEvents == null) {
+            rollbackOutboxEvents = Collections.emptyList();
+        }
+        
+        assertThat(rollbackOutboxEvents).hasSize(1);
+        InventoryRollbackEventOutbox rollbackOutbox = rollbackOutboxEvents.get(0);
+        assertThat(rollbackOutbox.getProductCode()).isEqualTo("PROD-001");
+        assertThat(rollbackOutbox.getQuantity()).isEqualTo(2);
+        assertThat(rollbackOutbox.getStatus()).isEqualTo(InventoryRollbackEventOutbox.CompensationOutboxStatus.PENDING);
+        
+        // 실패한 상품(PROD-002)은 롤백 이벤트 Outbox에 저장되지 않음
+        boolean hasProd002 = rollbackOutboxEvents.stream()
+                .anyMatch(outbox -> "PROD-002".equals(outbox.getProductCode()));
+        assertThat(hasProd002).isFalse();
         // 재고 차감 호출 확인
         verify(productServiceClient, times(1)).decreaseInventory("PROD-001", 2);
         verify(productServiceClient, times(1)).decreaseInventory("PROD-002", 1);
@@ -181,7 +219,6 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         assertThat(orderCount).isEqualTo(1);
 
         // 주문 상태가 FAILED로 변경되었는지 확인
-        Order savedOrder = orderJpaRepository.findAll().getFirst();
         assertThat(savedOrder.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
 
         // OrderItem이 저장되었는지 확인
@@ -206,7 +243,6 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
 
         // 트랜잭션 관리 검증: TransactionTracing이 생성되었지만 보상 로직은 실행되지 않음
         // (이벤트 발행이 성공했으므로 보상 상태 저장 불필요)
-        String orderCode = savedOrder.getCode();
         Optional<TransactionTracing> tracingOpt = transactionTracingRepository.findByOrderCode(orderCode);
         assertThat(tracingOpt).isPresent();
         TransactionTracing tracing = tracingOpt.get();
@@ -250,17 +286,28 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
                     assertThat(baseException.getErrorCode()).isEqualTo(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
                 });
 
-        // 재고 롤백 호출 확인
-        ArgumentCaptor<String> productCodeCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Integer> quantityCaptor = ArgumentCaptor.forClass(Integer.class);
-
-        verify(orderEventProducer, times(1)).sendInventoryRollback(
-                productCodeCaptor.capture(),
-                quantityCaptor.capture()
-        );
-
-        assertThat(productCodeCaptor.getValue()).isEqualTo("PROD-001");
-        assertThat(quantityCaptor.getValue()).isEqualTo(2);
+        // 재고 롤백 이벤트 Outbox에 저장됨 - Outbox 패턴 검증
+        List<Order> allOrders = orderJpaRepository.findAll();
+        assertThat(allOrders).hasSize(1);
+        Order failedOrder = allOrders.getFirst();
+        String failedOrderCode = failedOrder.getCode();
+        
+        // 별도 트랜잭션에서 Outbox 데이터 조회 (REQUIRES_NEW로 저장되어 롤백되지 않음)
+        List<InventoryRollbackEventOutbox> rollbackOutboxEvents = transactionTemplate.execute(status -> {
+            return inventoryRollbackEventOutboxRepository.findAll()
+                    .stream()
+                    .filter(outbox -> failedOrderCode.equals(outbox.getOrderCode()))
+                    .collect(Collectors.toList());
+        });
+        if (rollbackOutboxEvents == null) {
+            rollbackOutboxEvents = Collections.emptyList();
+        }
+        
+        assertThat(rollbackOutboxEvents).hasSize(1);
+        InventoryRollbackEventOutbox rollbackOutbox = rollbackOutboxEvents.get(0);
+        assertThat(rollbackOutbox.getProductCode()).isEqualTo("PROD-001");
+        assertThat(rollbackOutbox.getQuantity()).isEqualTo(2);
+        assertThat(rollbackOutbox.getStatus()).isEqualTo(InventoryRollbackEventOutbox.CompensationOutboxStatus.PENDING);
 
         // 재고 차감 호출 확인
         verify(productServiceClient, times(1)).decreaseInventory("PROD-001", 2);
@@ -272,17 +319,14 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         verify(orderEventService, never()).publishOrderCompletedEvents(any(), any(), anyString());
 
         // 주문이 생성되고 FAILED 상태로 변경되었는지 확인
-        List<Order> orders = orderJpaRepository.findAll();
-        assertThat(orders).hasSize(1);
-        Order savedOrder = orders.getFirst();
-        assertThat(savedOrder.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
+        assertThat(failedOrder.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
 
         // OrderItem이 저장되었는지 확인
         long orderItemCount = orderItemJpaRepository.count();
         assertThat(orderItemCount).isEqualTo(1);
 
         // OrderHistory가 저장되었는지 확인 (결제 실패 이력)
-        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(savedOrder.getId());
+        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(failedOrder.getId());
         assertThat(orderHistories).isNotEmpty();
         
         // 결제 실패 이력이 저장되었는지 확인
@@ -327,8 +371,29 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
                     assertThat(baseException.getErrorCode()).isEqualTo(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
                 });
 
-        // 재고 롤백 호출 확인 (모든 상품에 대해)
-        verify(orderEventProducer, times(2)).sendInventoryRollback(anyString(), anyInt());
+        // 재고 롤백 이벤트 Outbox에 저장됨 (모든 상품에 대해) - Outbox 패턴 검증
+        List<Order> allOrders = orderJpaRepository.findAll();
+        assertThat(allOrders).hasSize(1);
+        Order failedOrder = allOrders.getFirst();
+        String failedOrderCode = failedOrder.getCode();
+        
+        // 별도 트랜잭션에서 Outbox 데이터 조회 (REQUIRES_NEW로 저장되어 롤백되지 않음)
+        List<InventoryRollbackEventOutbox> rollbackOutboxEvents = transactionTemplate.execute(status -> {
+            return inventoryRollbackEventOutboxRepository.findAll()
+                    .stream()
+                    .filter(outbox -> failedOrderCode.equals(outbox.getOrderCode()))
+                    .collect(Collectors.toList());
+        });
+        if (rollbackOutboxEvents == null) {
+            rollbackOutboxEvents = Collections.emptyList();
+        }
+        
+        assertThat(rollbackOutboxEvents).hasSize(2);
+        assertThat(rollbackOutboxEvents.stream().map(InventoryRollbackEventOutbox::getProductCode))
+                .containsExactlyInAnyOrder("PROD-001", "PROD-002");
+        assertThat(rollbackOutboxEvents.stream().allMatch(
+                outbox -> outbox.getStatus() == InventoryRollbackEventOutbox.CompensationOutboxStatus.PENDING))
+                .isTrue();
 
         // 재고 차감 호출 확인
         verify(productServiceClient, times(1)).decreaseInventory("PROD-001", 2);
@@ -341,17 +406,14 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         verify(orderEventService, never()).publishOrderCompletedEvents(any(), any(), anyString());
 
         // 주문이 생성되고 FAILED 상태로 변경되었는지 확인
-        List<Order> orders = orderJpaRepository.findAll();
-        assertThat(orders).hasSize(1);
-        Order savedOrder = orders.getFirst();
-        assertThat(savedOrder.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
+        assertThat(failedOrder.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
 
         // OrderItem이 저장되었는지 확인
         long orderItemCount = orderItemJpaRepository.count();
         assertThat(orderItemCount).isEqualTo(2);
 
         // OrderHistory가 저장되었는지 확인 (결제 실패 이력)
-        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(savedOrder.getId());
+        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(failedOrder.getId());
         assertThat(orderHistories).isNotEmpty();
         
         // 결제 실패 이력이 저장되었는지 확인
@@ -367,8 +429,7 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
 
         // 트랜잭션 관리 검증: TransactionTracing이 생성되었지만 보상 로직은 실행되지 않음
         // (이벤트 발행이 성공했으므로 보상 상태 저장 불필요)
-        String orderCode = savedOrder.getCode();
-        Optional<TransactionTracing> tracingOpt = transactionTracingRepository.findByOrderCode(orderCode);
+        Optional<TransactionTracing> tracingOpt = transactionTracingRepository.findByOrderCode(failedOrderCode);
         assertThat(tracingOpt).isPresent();
         TransactionTracing tracing = tracingOpt.get();
         // TransactionTracing은 생성되었지만, 보상 로직이 호출되지 않았으므로 상태는 NONE
@@ -403,9 +464,9 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         doThrow(new RuntimeException("결제 처리 실패"))
                 .when(paymentServiceClient).requestDepositPayment(any(OrderPaymentRequest.class));
 
-        // 이벤트 발행 실패 Mock 설정 (보상 로직 실패 시나리오)
-        doThrow(new RuntimeException("Kafka 연결 실패"))
-                .when(orderEventProducer).sendInventoryRollback(anyString(), anyInt());
+        // Outbox 패턴에서는 이벤트 발행 실패는 스케줄러에서 처리되므로,
+        // Outbox 저장은 성공하고 스케줄러에서 발행 실패하는 시나리오로 테스트
+        // 현재는 Outbox 저장 성공만 검증
 
         // when & then - 예외 발생 검증
         assertThatThrownBy(() -> orderService.createDirectOrder(request, userCode))
@@ -418,6 +479,24 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         // 주문이 생성되었는지 확인
         Order savedOrder = orderJpaRepository.findAll().getFirst();
         String orderCode = savedOrder.getCode();
+        
+        // 재고 롤백 이벤트 Outbox에 저장됨 - Outbox 패턴 검증
+        // 별도 트랜잭션에서 Outbox 데이터 조회 (REQUIRES_NEW로 저장되어 롤백되지 않음)
+        List<InventoryRollbackEventOutbox> rollbackOutboxEvents = transactionTemplate.execute(status -> {
+            return inventoryRollbackEventOutboxRepository.findAll()
+                    .stream()
+                    .filter(outbox -> orderCode.equals(outbox.getOrderCode()))
+                    .collect(Collectors.toList());
+        });
+        if (rollbackOutboxEvents == null) {
+            rollbackOutboxEvents = Collections.emptyList();
+        }
+        
+        assertThat(rollbackOutboxEvents).hasSize(1);
+        InventoryRollbackEventOutbox rollbackOutbox = rollbackOutboxEvents.get(0);
+        assertThat(rollbackOutbox.getProductCode()).isEqualTo("PROD-001");
+        assertThat(rollbackOutbox.getQuantity()).isEqualTo(2);
+        assertThat(rollbackOutbox.getStatus()).isEqualTo(InventoryRollbackEventOutbox.CompensationOutboxStatus.PENDING);
 
         // TransactionTracing이 주문 생성 시점에 생성되었는지 확인
         // 메인 트랜잭션 내에서 조회 (createOrderWithItems의 트랜잭션이 커밋되었으므로 조회 가능)
@@ -434,17 +513,13 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
                 })
         ).orElse(Optional.empty());
 
-        // 실제 CompensationService가 동작하여 상태가 변경되었는지 검증
+        // Outbox 저장 성공 시나리오: 보상 상태는 NONE으로 유지됨 (정상 동작)
         assertThat(updatedTracingOpt).isPresent();
         TransactionTracing updatedTracing = updatedTracingOpt.get();
-        assertThat(updatedTracing.getCompensationStatus()).isEqualTo(CompensationStatus.FAILED);
-        assertThat(updatedTracing.getCompensationRetryCount()).isEqualTo(1);
-        assertThat(updatedTracing.getErrorMessage()).isNotNull();
-        assertThat(updatedTracing.getErrorMessage()).contains("Kafka 연결 실패");
-        assertThat(updatedTracing.getCompensationStatus()).isEqualTo(CompensationStatus.FAILED);
-        assertThat(updatedTracing.getCompensationRetryCount()).isEqualTo(1);
-        assertThat(updatedTracing.getErrorMessage()).isNotNull();
-        assertThat(updatedTracing.getErrorMessage()).contains("Kafka 연결 실패");
+        assertThat(updatedTracing.getCompensationStatus()).isEqualTo(CompensationStatus.NONE);
+        assertThat(updatedTracing.getCompensationRetryCount()).isEqualTo(0);
+        // Outbox 저장이 성공했으므로 에러 메시지는 없어야 함
+        assertThat(updatedTracing.getErrorMessage()).isNull();
         // REQUIRES_NEW 트랜잭션으로 인해 메인 트랜잭션이 롤백되어도 보상 상태는 유지됨을 확인
         // 별도 트랜잭션에서 조회했으므로 실제로 저장되었음을 검증
     }
@@ -495,17 +570,23 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
                     assertThat(baseException.getErrorCode()).isEqualTo(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
                 });
 
-        // 재고 롤백 호출 확인
-        ArgumentCaptor<String> productCodeCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Integer> quantityCaptor = ArgumentCaptor.forClass(Integer.class);
-
-        verify(orderEventProducer, times(1)).sendInventoryRollback(
-                productCodeCaptor.capture(),
-                quantityCaptor.capture()
-        );
-
-        assertThat(productCodeCaptor.getValue()).isEqualTo("PROD-001");
-        assertThat(quantityCaptor.getValue()).isEqualTo(2);
+        // 재고 롤백 이벤트 Outbox에 저장됨 - Outbox 패턴 검증
+        // 별도 트랜잭션에서 Outbox 데이터 조회 (REQUIRES_NEW로 저장되어 롤백되지 않음)
+        List<InventoryRollbackEventOutbox> rollbackOutboxEvents = transactionTemplate.execute(status -> {
+            return inventoryRollbackEventOutboxRepository.findAll()
+                    .stream()
+                    .filter(outbox -> orderCode.equals(outbox.getOrderCode()))
+                    .collect(Collectors.toList());
+        });
+        if (rollbackOutboxEvents == null) {
+            rollbackOutboxEvents = Collections.emptyList();
+        }
+        
+        assertThat(rollbackOutboxEvents).hasSize(1);
+        InventoryRollbackEventOutbox rollbackOutbox = rollbackOutboxEvents.get(0);
+        assertThat(rollbackOutbox.getProductCode()).isEqualTo("PROD-001");
+        assertThat(rollbackOutbox.getQuantity()).isEqualTo(2);
+        assertThat(rollbackOutbox.getStatus()).isEqualTo(InventoryRollbackEventOutbox.CompensationOutboxStatus.PENDING);
 
         // 결제 완료 처리 호출 확인
         verify(paymentServiceClient, times(1)).requestTossPayment(any(OrderPaymentRequest.class));

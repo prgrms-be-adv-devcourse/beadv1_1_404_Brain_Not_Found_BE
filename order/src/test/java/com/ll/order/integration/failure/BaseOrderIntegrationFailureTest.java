@@ -32,6 +32,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
@@ -65,7 +67,9 @@ public abstract class BaseOrderIntegrationFailureTest {
 
     @BeforeEach
     void initTransactionTemplate() {
-        transactionTemplate = new TransactionTemplate(transactionManager);
+        DefaultTransactionDefinition definition = new DefaultTransactionDefinition();
+        definition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        transactionTemplate = new TransactionTemplate(transactionManager, definition);
     }
 
     // 외부 서비스 모킹 (다른 마이크로서비스)
