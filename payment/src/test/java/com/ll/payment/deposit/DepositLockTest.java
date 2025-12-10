@@ -9,6 +9,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.concurrent.CountDownLatch;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 public class DepositLockTest {
@@ -19,6 +20,7 @@ public class DepositLockTest {
     private PlatformTransactionManager transactionManager;
     private final String USER_1 = "user1";
     private final Long MS_TO_WAIT = 2000L;
+    private Long WAITED = null;
 
     @Test
     void pessimisticLock_should_block_second_transaction() throws Exception {
@@ -34,6 +36,11 @@ public class DepositLockTest {
 
         t1.join();
         t2.join();
+
+        // WAITED 가 대략 MS_TO_WAIT 이상이어야 함을 검사 assert
+        assertThat(WAITED).isNotNull();
+        assertThat(WAITED).isGreaterThanOrEqualTo(MS_TO_WAIT);
+
     }
 
 
@@ -52,13 +59,14 @@ public class DepositLockTest {
         return () -> runInTransaction(() -> {
             waitLatch(latch);
             System.out.println("T2: 락 시도");
-            long waited = measure(this::findByUserCodeWithLock);
-            System.out.println("T2: 락 획득됨 (대기 시간: " + waited + "ms)");
+            WAITED = measure(this::findByUserCodeWithLock);
+            System.out.println("T2: 락 획득됨 (대기 시간: " + WAITED + "ms)");
+            // Repository 에서 Lock 을 지우면 바로 Lock 획득
         });
     }
 
 
-    // ---------------------- 유틸리티 메서드 --------------------- //
+    // ---------------------- 트랜잭션 템플릿 메서드 --------------------- //
 
     private void runInTransaction(Runnable runnable) {
         TransactionTemplate tt = new TransactionTemplate(transactionManager);
@@ -67,6 +75,9 @@ public class DepositLockTest {
             return null;
         });
     }
+
+
+    // ---------------------- 유틸리티 메서드 --------------------- //
 
     private long measure(Runnable action) {
         long start = System.currentTimeMillis();
