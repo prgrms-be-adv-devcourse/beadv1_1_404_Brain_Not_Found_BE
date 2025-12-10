@@ -66,3 +66,7 @@ logging:
     org.springframework.security.oauth2: INFO
     com.ll.auth.handler: INFO
 
+management:
+  zipkin:
+    tracing:
+      endpoint: http://zipkin-svc-dev.dev.svc.cluster.local:9411/api/v2/spans
