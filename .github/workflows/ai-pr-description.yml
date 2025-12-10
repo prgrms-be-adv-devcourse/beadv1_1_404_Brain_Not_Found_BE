@@ -44,6 +44,7 @@ jobs:
         shell: bash
         run: |
           DIFF=$(gh pr diff ${{ github.event.pull_request.number }} | base64 -w 0)
+          echo "$DIFF" > diff.txt
           
           PR_PROMPT="
           아래 base64 diff를 디코딩한 후, 변경 사항을 의미 단위별 주제로 분류하고 번호 매겨 작성하라. 각 번호(주요 주제) 아래 핵심 내용을 불릿으로 정리한 중첩 목록(nested list) 형태로 요약하라.
@@ -69,7 +70,7 @@ jobs:
           
           jq -n \
           --arg prompt "$ESCAPED_PROMPT" \
-          --arg diff "$DIFF" \
+          --rawfile diff diff.txt \
           '{
             model: "gpt-5.1",
             messages: [
