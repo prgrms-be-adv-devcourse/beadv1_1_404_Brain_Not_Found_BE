@@ -89,3 +89,8 @@ qdrant:
   host: localhost
   port: 6334
   collection-name: products
+
+swagger:
+  servers:
+    - "http://localhost:8000"
+    - "http://localhost:8085"
