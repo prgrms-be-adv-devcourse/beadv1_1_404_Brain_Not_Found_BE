@@ -1,0 +1,88 @@
+package com.ll.payment.deposit;
+
+import com.ll.payment.deposit.model.entity.Deposit;
+import com.ll.payment.deposit.repository.DepositRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.concurrent.CountDownLatch;
+
+@SpringBootTest
+public class DepositLockTest {
+
+    @Autowired
+    private DepositRepository depositRepository;
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+    private final String USER_1 = "user1";
+    private final Long MS_TO_WAIT = 2000L;
+
+    @Test
+    void pessimisticLock_should_block_second_transaction() throws Exception {
+        depositRepository.save(Deposit.createInitialDeposit(USER_1));
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Thread t1 = new Thread(t1Task(latch));
+        Thread t2 = new Thread(t2Task(latch));
+
+        t1.start();
+        t2.start();
+
+        t1.join();
+        t2.join();
+    }
+
+
+    // ---------------------- 스레드 작업 --------------------- //
+
+    private Runnable t1Task(CountDownLatch latch) {
+        return () -> runInTransaction(() -> {
+            findByUserCodeWithLock();
+            System.out.println("T1: 락 획득");
+            latch.countDown();
+            sleep(MS_TO_WAIT);
+        });
+    }
+
+    private Runnable t2Task(CountDownLatch latch) {
+        return () -> runInTransaction(() -> {
+            waitLatch(latch);
+            System.out.println("T2: 락 시도");
+            long waited = measure(this::findByUserCodeWithLock);
+            System.out.println("T2: 락 획득됨 (대기 시간: " + waited + "ms)");
+        });
+    }
+
+
+    // ---------------------- 유틸리티 메서드 --------------------- //
+
+    private void runInTransaction(Runnable runnable) {
+        TransactionTemplate tt = new TransactionTemplate(transactionManager);
+        tt.execute(status -> {
+            runnable.run();
+            return null;
+        });
+    }
+
+    private long measure(Runnable action) {
+        long start = System.currentTimeMillis();
+        action.run();
+        return System.currentTimeMillis() - start;
+    }
+
+    private void waitLatch(CountDownLatch latch) {
+        try { latch.await(); } catch (InterruptedException ignored) {}
+    }
+
+    private void sleep(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException ignored) {}
+    }
+
+    private void findByUserCodeWithLock() {
+        depositRepository.findByUserCode(USER_1);
+    }
+}
