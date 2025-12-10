@@ -8,6 +8,7 @@ import com.ll.order.domain.model.vo.response.order.*;
 import com.ll.order.domain.service.order.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -25,6 +26,9 @@ import java.util.Map;
 public class OrderController implements OrderControllerSwagger { // TODO : 예치금 부족 시 토스로 예치금 충전
 
     private final OrderService orderService;
+
+    @Value("${current.domain}")
+    private String currentDomain;
 
     @PostMapping("/cartItems")
     public Object createCartItemOrder(
@@ -102,10 +106,11 @@ public class OrderController implements OrderControllerSwagger { // TODO : 예�
         try {
             // orderId 파라미터는 실제로 orderCode이므로 그대로 사용
             orderService.completePaymentWithKey(orderCode, paymentKey);
-            return new RedirectView("/orders/payment/success-page?orderId=" + orderCode + "&amount=" + amount);
+            return new RedirectView(currentDomain + "/orders/payment/success-page?orderId=" + orderCode + "&amount=" + amount);
+
         } catch (Exception e) {
             String encodedErrorMessage = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
-            return new RedirectView("/orders/payment/fail-page?error=" + encodedErrorMessage);
+            return new RedirectView(currentDomain + "/orders/payment/fail-page?error=" + encodedErrorMessage);
         }
     }
 
@@ -115,10 +120,10 @@ public class OrderController implements OrderControllerSwagger { // TODO : 예�
             @RequestParam(required = false) String errorMessage,
             @RequestParam(required = false) String orderId // 토스 결제 위젯에서 전달되는 orderId는 실제로 orderCode입니다
     ) {
-        return new RedirectView("/orders/payment/fail-page?errorCode=" + 
-               (errorCode != null ? errorCode : "") + 
-               "&errorMessage=" + (errorMessage != null ? errorMessage : "") +
-               "&orderId=" + (orderId != null ? orderId : ""));
+        return new RedirectView(currentDomain + "/orders/payment/fail-page?errorCode=" +
+                (errorCode != null ? errorCode : "") +
+                "&errorMessage=" + (errorMessage != null ? errorMessage : "") +
+                "&orderId=" + (orderId != null ? orderId : ""));
     }
 
 }
