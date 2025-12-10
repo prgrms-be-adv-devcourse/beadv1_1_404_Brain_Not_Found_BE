@@ -8,6 +8,7 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 @Configuration
@@ -21,6 +22,24 @@ public class BatchSchemaInitializer {
 
     @PostConstruct
     public void init() {
+        if (isBatchSchemaInitialized()) {
+            return;
+        }
+
+        runBatchSchema();
+    }
+
+    private boolean isBatchSchemaInitialized() {
+        try (Connection conn = dataSource.getConnection()) {
+            try (ResultSet rs = conn.getMetaData().getTables(null, null, "BATCH_JOB_INSTANCE", null)) {
+                return rs.next(); // 테이블이 존재하면 true
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to check batch schema", e);
+        }
+    }
+
+    private void runBatchSchema() {
         String script;
 
         try (Connection conn = dataSource.getConnection()) {
@@ -39,7 +58,6 @@ public class BatchSchemaInitializer {
         }
 
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator(new ClassPathResource(script));
-
         DatabasePopulatorUtils.execute(populator, dataSource);
     }
 }
