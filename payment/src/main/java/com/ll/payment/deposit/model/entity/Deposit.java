@@ -47,6 +47,10 @@ public class Deposit extends BaseEntity {
     public DepositHistory charge(Long amount, String referenceCode) {
         return increaseBalance(amount, referenceCode, DepositHistoryType.CHARGE);
     }
+
+    public DepositHistory settlement(Long amount, String referenceCode) {
+        return increaseBalance(amount, referenceCode, DepositHistoryType.SETTLEMENT);
+    }
     
     public DepositHistory refund(Long amount, String referenceCode) {
         return increaseBalance(amount, referenceCode, DepositHistoryType.REFUND);
@@ -101,7 +105,7 @@ public class Deposit extends BaseEntity {
     }
 
     private void validateSufficientBalance(Long amount) {
-        if (amount == null || this.balance <= amount) {
+        if (amount == null || this.balance < amount) {
             throw new InsufficientDepositBalanceException();
         }
     }

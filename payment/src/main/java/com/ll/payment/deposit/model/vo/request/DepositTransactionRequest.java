@@ -14,4 +14,15 @@ public record DepositTransactionRequest(
     public static DepositTransactionRequest of(Long amount, String referenceCode) {
         return new DepositTransactionRequest(amount, referenceCode);
     }
+
+    public static DepositTransactionRequest of(Long amount, String productName, String orderItemCode) {
+        String safeProductName = productName.replace(" ", "_");
+        String referenceCode = String.format(
+                "SETTLE-%s-%s",
+                safeProductName,
+                orderItemCode
+        );
+        return new DepositTransactionRequest(amount, referenceCode);
+    }
+
 }
