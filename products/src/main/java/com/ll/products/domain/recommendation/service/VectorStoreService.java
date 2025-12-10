@@ -9,11 +9,13 @@ import io.qdrant.client.grpc.Points.*;
 import io.qdrant.client.grpc.JsonWithInt.Value;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import static io.qdrant.client.ConditionFactory.*;
 import static io.qdrant.client.PointIdFactory.id;
@@ -64,14 +66,7 @@ public class VectorStoreService {
     // 3. 유사 상품 검색
     public List<RecommendationResponse> searchSimilarProducts(float[] embedding, int limit) {
         try {
-            List<ScoredPoint> scoredPoints = qdrantClient.searchAsync(
-                    SearchPoints.newBuilder()
-                            .setCollectionName(qdrantCollectionName)
-                            .addAllVector(convertToList(embedding))
-                            .setLimit(limit)
-                            .setWithPayload(WithPayloadSelector.newBuilder().setEnable(true).build())
-                            .build()
-            ).get();
+            List<ScoredPoint> scoredPoints = getScoredPoints(embedding, limit);
             List<RecommendationResponse> results = scoredPoints.stream()
                     .map(this::convertToRecommendation)
                     .toList();
@@ -213,5 +208,21 @@ public class VectorStoreService {
             list.add(val);
         }
         return list;
+    }
+
+    private List<ScoredPoint> getScoredPoints(float[] embedding, int limit) throws Exception {
+        Filter filter = Filter.newBuilder()
+                .addMust(matchKeyword("status", "ON_SALE"))
+                .build();
+        List<ScoredPoint> scoredPoints = qdrantClient.searchAsync(
+                SearchPoints.newBuilder()
+                        .setCollectionName(qdrantCollectionName)
+                        .addAllVector(convertToList(embedding))
+                        .setLimit(limit)
+                        .setFilter(filter)
+                        .setWithPayload(WithPayloadSelector.newBuilder().setEnable(true).build())
+                        .build()
+        ).get();
+        return scoredPoints;
     }
 }

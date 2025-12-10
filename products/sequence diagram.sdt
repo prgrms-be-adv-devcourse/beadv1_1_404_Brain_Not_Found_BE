@@ -46,7 +46,7 @@
 {"type":"METHOD","_classDescription":{"_className":"com.ll.products.domain.product.model.entity.InventoryHistory","separator":".","_attributes":["public"],"supers":["com.ll.core.model.persistence.BaseEntity"],"@type":"classDescription"},"language":"JAVA","_methodName":"markAsSuccess","_attributes":["public"],"_argNames":["beforeQuantity","afterQuantity"],"_argTypes":["java.lang.Integer","java.lang.Integer"],"_returnType":"void","offset":8360,"@type":"methodDescription"}
 )
 (
-{"type":"METHOD","_classDescription":{"_className":"com.ll.products.domain.product.event.ProductEvent","separator":".","_attributes":["public"],"supers":["org.springframework.context.ApplicationEvent"],"@type":"classDescription"},"language":"JAVA","_methodName":"updated","_attributes":["public","static"],"_argNames":["source","product"],"_argTypes":["java.lang.Object","com.ll.products.domain.product.model.entity.Product"],"_returnType":"com.ll.products.domain.product.event.ProductEvent","offset":8789,"@type":"methodDescription"}
+{"type":"METHOD","_classDescription":{"_className":"com.ll.products.domain.product.event.ProductsEvent","separator":".","_attributes":["public"],"supers":["org.springframework.context.ApplicationEvent"],"@type":"classDescription"},"language":"JAVA","_methodName":"updated","_attributes":["public","static"],"_argNames":["source","product"],"_argTypes":["java.lang.Object","com.ll.products.domain.product.model.entity.Product"],"_returnType":"com.ll.products.domain.product.event.ProductsEvent","offset":8789,"@type":"methodDescription"}
 )
 )
 )

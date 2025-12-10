@@ -24,7 +24,7 @@ spring:
     bootstrap-servers:
       - localhost:9092
     consumer:
-      group-id: product-service
+      group-id: product-indexing-group
       properties:
         allow.auto.create.topics: false
   data:
