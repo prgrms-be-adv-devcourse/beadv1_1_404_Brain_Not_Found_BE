@@ -39,7 +39,6 @@ public class InventoryRollbackEventOutboxService {
             log.debug("발행할 PENDING 상태의 재고 롤백 이벤트가 없습니다.");
             return 0;
         }
-
         log.debug("PENDING 상태의 재고 롤백 이벤트 발행 시작 - 대상: {}개", pendingEvents.size());
 
         int successCount = 0;
@@ -70,7 +69,6 @@ public class InventoryRollbackEventOutboxService {
             log.debug("재발행할 실패한 재고 롤백 이벤트가 없습니다.");
             return 0;
         }
-
         log.debug("실패한 재고 롤백 이벤트 재발행 시작 - 대상: {}개", failedEvents.size());
 
         int successCount = 0;
@@ -102,17 +100,16 @@ public class InventoryRollbackEventOutboxService {
                 throw new RuntimeException("InventoryEvent 역직렬화 실패 - outboxId: " + outbox.getId(), e);
             }
 
+            outbox.markAsPublished();
+            inventoryRollbackEventOutboxRepository.save(outbox);
+
             orderEventProducer.sendInventoryRollback(
                     inventoryEvent.productCode(),
                     inventoryEvent.quantity()
             );
 
-            outbox.markAsPublished();
-            inventoryRollbackEventOutboxRepository.save(outbox);
-
             log.debug("재고 롤백 이벤트 발행 성공 - outboxId: {}, referenceCode: {}, retryCount: {}",
                     outbox.getId(), outbox.getReferenceCode(), outbox.getRetryCount());
-
         } catch (Exception e) {
             outbox.incrementRetryCount(e.getMessage());
 
