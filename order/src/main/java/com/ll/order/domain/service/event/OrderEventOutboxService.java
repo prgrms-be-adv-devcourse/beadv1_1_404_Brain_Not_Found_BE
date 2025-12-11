@@ -103,17 +103,14 @@ public class OrderEventOutboxService {
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("OrderEvent 역직렬화 실패 - outboxId: " + outbox.getId(), e);
             }
-
-            // 이벤트 발행 시도
-            orderEventProducer.sendOrder(orderEvent);
-
-            // 발행 성공 시 상태 변경
+            // db 먼저 반영 - 오류나면 롤백되니까
             outbox.markAsPublished();
-            orderEventOutboxRepository.save(outbox);
+
+            // 이벤트 발행
+            orderEventProducer.sendOrder(orderEvent);
 
             log.debug("이벤트 발행 성공 - outboxId: {}, referenceCode: {}, retryCount: {}",
                     outbox.getId(), outbox.getReferenceCode(), outbox.getRetryCount());
-
         } catch (Exception e) {
             // 발행 실패 시 재시도 횟수 증가
             outbox.incrementRetryCount(e.getMessage());
