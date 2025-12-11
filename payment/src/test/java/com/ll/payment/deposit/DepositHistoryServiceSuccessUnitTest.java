@@ -16,6 +16,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -37,12 +39,14 @@ public class DepositHistoryServiceSuccessUnitTest {
     private final Long AMOUNT_SETUP = 1000L;
 
     private Deposit deposit;
+    private DepositHistory depositPaymentHistory;
     private DepositTransactionRequest depositTransactionRequest;
 
     @BeforeEach
     void setUp() {
         deposit = Deposit.createInitialDeposit(USER_CODE);
         deposit.charge(AMOUNT_SETUP, REF_CODE);
+        depositPaymentHistory = deposit.payment(AMOUNT_SETUP, REF_CODE);
         depositTransactionRequest = new DepositTransactionRequest(AMOUNT_SETUP, REF_CODE);
     }
 
@@ -62,13 +66,13 @@ public class DepositHistoryServiceSuccessUnitTest {
         String refundCode = DepositHistoryServiceImpl.refundCode(REF_CODE);
 
         when(depositHistoryRepository.existsByReferenceCode(refundCode)).thenReturn(false);
-        when(depositHistoryRepository.existsByReferenceCode(REF_CODE)).thenReturn(true);
+        when(depositHistoryRepository.findByReferenceCode(REF_CODE)).thenReturn(Optional.ofNullable(depositPaymentHistory));
 
         // when & then
         assertDoesNotThrow(() -> depositHistoryService.validateDuplicateForRefund(depositTransactionRequest));
 
         verify(depositHistoryRepository).existsByReferenceCode(refundCode);
-        verify(depositHistoryRepository).existsByReferenceCode(REF_CODE);
+        verify(depositHistoryRepository).findByReferenceCode(REF_CODE);
     }
 
     @Test
@@ -96,10 +100,10 @@ public class DepositHistoryServiceSuccessUnitTest {
         DepositHistory saved = captor.getValue();
 
         assertEquals(AMOUNT, saved.getAmount());
-        assertEquals(AMOUNT_SETUP, saved.getBalanceBefore());
-        assertEquals(AMOUNT_SETUP, saved.getBalanceAfter());
+        assertEquals(0L, saved.getBalanceBefore());
+        assertEquals(0L, saved.getBalanceAfter());
         assertTrue(saved.getReferenceCode().contains(REF_CODE));
-        assertTrue(saved.getReferenceCode().contains(ex.getClass().getSimpleName()));
+        assertTrue(saved.getReferenceCode().contains(ex.getMessage()));
         assertEquals(DepositHistoryType.CHARGE_FAILED, saved.getHistoryType());
     }
 }

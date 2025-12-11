@@ -11,6 +11,7 @@ import com.ll.payment.deposit.model.vo.response.DepositResponse;
 import com.ll.payment.deposit.model.vo.response.DepositTransactionResponse;
 import com.ll.payment.deposit.repository.DepositRepository;
 import com.ll.payment.deposit.service.DepositHistoryService;
+import com.ll.payment.deposit.service.DepositHistoryServiceImpl;
 import com.ll.payment.deposit.service.DepositServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -94,6 +95,16 @@ public class DepositServiceSuccessUnitTest {
         assertEquals(balance, transactionResponse.balanceAfter());
         assertEquals(charge, transactionResponse.historyType());
         assertEquals(REF_CODE, transactionResponse.referenceCode());
+    }
+
+    private void assertTransactionResponseRefund(Long balance) {
+        assertNotNull(transactionResponse);
+        assertEquals(deposit.getBalance(), balance);
+        assertEquals(deposit.getCode(), transactionResponse.depositCode());
+        assertEquals(AMOUNT, transactionResponse.amount());
+        assertEquals(balance, transactionResponse.balanceAfter());
+        assertEquals(DepositHistoryType.REFUND, transactionResponse.historyType());
+        assertEquals(DepositHistoryServiceImpl.refundCode(REF_CODE), transactionResponse.referenceCode());
     }
 
     private void assertDeleteResponse() {
@@ -228,6 +239,6 @@ public class DepositServiceSuccessUnitTest {
 
         // then
         verifyRefundSuccessFlow();
-        assertTransactionResponse(AMOUNT, DepositHistoryType.REFUND);
+        assertTransactionResponseRefund(AMOUNT);
     }
 }
