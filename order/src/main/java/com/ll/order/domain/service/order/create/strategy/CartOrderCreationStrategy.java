@@ -150,6 +150,7 @@ public class CartOrderCreationStrategy extends AbstractOrderCreationService {
             orderHistoryJpaRepository.save(successHistory);
 
             // 주문 완료 이벤트 발행 (주문 상태가 COMPLETED일 때)
+            // 왜 완료가 돼야 발행하는가 = 이벤트 소비자가 settlement여서 결제까지 완료돼야 정산이 진행될 수 있음
             orderEventService.publishOrderCompletedEvents(order, orderItems, order.getBuyerCode());
 
             log.debug("예치금 결제 완료 - orderCode: {}, amount: {}",

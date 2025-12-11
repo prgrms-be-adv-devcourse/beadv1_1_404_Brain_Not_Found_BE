@@ -1,4 +1,4 @@
-package com.ll.order.domain.model.entity;
+package com.ll.order.domain.model.entity.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.persistence.BaseEntity;

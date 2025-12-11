@@ -2,31 +2,39 @@ package com.ll.order.domain.service.order;
 
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.vo.kafka.RefundEvent;
-import com.ll.order.domain.client.*;
+import com.ll.order.domain.client.PaymentServiceClient;
+import com.ll.order.domain.client.ProductServiceClient;
+import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
-import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
-import com.ll.order.domain.model.vo.request.*;
-import com.ll.order.domain.model.vo.response.order.*;
+import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
+import com.ll.order.domain.model.vo.request.OrderDirectRequest;
+import com.ll.order.domain.model.vo.request.OrderPaymentRequest;
+import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
+import com.ll.order.domain.model.vo.response.order.OrderCreateResponse;
+import com.ll.order.domain.model.vo.response.order.OrderDetailResponse;
+import com.ll.order.domain.model.vo.response.order.OrderPageResponse;
+import com.ll.order.domain.model.vo.response.order.OrderStatusUpdateResponse;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.order.domain.service.compensation.CompensationService;
+import com.ll.order.domain.service.event.InventoryRollbackEventOutboxService;
 import com.ll.order.domain.service.event.OrderEventService;
+import com.ll.order.domain.service.event.RefundEventOutboxService;
 import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.create.strategy.CartOrderCreationStrategy;
 import com.ll.order.domain.service.order.create.strategy.DirectOrderCreationStrategy;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,16 +42,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class OrderServiceImpl implements OrderService {
-
-    @Value("${current.domain}")
-    private String currentDomain;
 
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
@@ -53,12 +59,13 @@ public class OrderServiceImpl implements OrderService {
     private final ProductServiceClient productServiceClient;
     private final PaymentServiceClient paymentApiClient;
 
-    private final OrderEventProducer orderEventProducer;
     private final OrderValidator orderValidator;
     
     private final CompensationService compensationService;
     private final OrderEventService orderEventService;
     private final OrderInventoryService orderInventoryService;
+    private final RefundEventOutboxService refundEventOutboxService;
+    private final InventoryRollbackEventOutboxService inventoryRollbackEventOutboxService;
 
     // Strategy 패턴을 위한 주문 생성 전략들
     private final CartOrderCreationStrategy cartOrderCreationStrategy;
@@ -115,9 +122,7 @@ public class OrderServiceImpl implements OrderService {
         if (target == OrderStatus.CANCELLED) {
             handleOrderCancellation(order);
         }
-
         order.changeStatus(target);
-        orderJpaRepository.save(order);
 
         // 주문 상태 변경 이력 저장
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
@@ -202,7 +207,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         String orderName = "주문번호: " + response.orderCode();
-        String redirectUrl = String.format(currentDomain + "/orders/payment?orderId=%d&orderName=%s&amount=%d",
+        String redirectUrl = String.format("/orders/payment?orderId=%d&orderName=%s&amount=%d",
                 response.id(),
                 URLEncoder.encode(orderName, StandardCharsets.UTF_8),
                 response.totalPrice());
@@ -236,7 +241,8 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 2. 환불 이벤트 발행 (비동기) + 재고 복구 이벤트 발행 (비동기)
+        // 2. 환불 이벤트 발행 (Outbox 패턴. 정산에서 이벤트 소비) + 재고 복구 이벤트 발행 (Outbox 패턴)
+        // TODO : 환불 처리도 비동기로 처리할 수 있도록.
         for (OrderItem orderItem : orderItems) {
             if (buyerCode != null) {
                 RefundEvent refundEvent = RefundEvent.from(
@@ -245,21 +251,37 @@ public class OrderServiceImpl implements OrderService {
                         order.getCode(),
                         (long) orderItem.getPrice() * orderItem.getQuantity()
                 );
-                orderEventProducer.sendRefund(refundEvent);
-                log.debug("Refund event sent - orderCode: {}, orderItemCode: {}, amount: {}",
-                        order.getCode(), orderItem.getCode(), refundEvent.amount());
+                // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
+                // 왜 와이. 트랜잭션 롤백되면 카프카는 이벤트를 발행하고 db는 롤백되어 데이터 불일치 발생 가능. 
+                // db 트랜잭션 커밋이 될때만 아웃박스에 저장됨. 롤백되면 함께 롤백
+                // 별도 프로세스가 Outbox를 읽어서 Kafka에 발행
+                try {
+                    refundEventOutboxService.saveToOutbox(refundEvent, order.getCode());
+                    log.debug("환불 이벤트 Outbox 저장 완료 - orderCode: {}, orderItemCode: {}, amount: {}",
+                            order.getCode(), orderItem.getCode(), refundEvent.amount());
+                } catch (Exception e) {
+                    String errorMessage = String.format("환불 이벤트 Outbox 저장 실패 - orderCode: %s, orderItemCode: %s, error: %s",
+                            order.getCode(), orderItem.getCode(), e.getMessage());
+                    log.error(errorMessage, e);
+                    // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
+                    compensationService.markCompensationFailed(order.getCode(), errorMessage);
+                }
             }
 
-            // 재고 복구 이벤트 발행 (Kafka 이벤트로 비동기 처리)
+            // 재고 복구 이벤트 발행 (Outbox 패턴)
             try {
-                orderEventProducer.sendInventoryRollback(orderItem.getProductCode(), orderItem.getQuantity());
-                log.debug("재고 복구 이벤트 발행 완료 - productCode: {}, quantity: {}",
-                        orderItem.getProductCode(), orderItem.getQuantity());
+                inventoryRollbackEventOutboxService.saveToOutbox(
+                        order.getCode(),
+                        orderItem.getProductCode(),
+                        orderItem.getQuantity()
+                );
+                log.debug("재고 복구 이벤트 Outbox 저장 완료 - orderCode: {}, productCode: {}, quantity: {}",
+                        order.getCode(), orderItem.getProductCode(), orderItem.getQuantity());
             } catch (Exception e) {
-                String errorMessage = String.format("재고 복구 이벤트 발행 실패 - productCode: %s, quantity: %d, error: %s",
-                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage());
+                String errorMessage = String.format("재고 복구 이벤트 Outbox 저장 실패 - orderCode: %s, productCode: %s, quantity: %d, error: %s",
+                        order.getCode(), orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage());
                 log.error(errorMessage, e);
-                // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
+                // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
                 compensationService.markCompensationFailed(order.getCode(), errorMessage);
             }
         }

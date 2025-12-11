@@ -3,7 +3,7 @@ package com.ll.order.domain.service.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.vo.kafka.OrderEvent;
-import com.ll.order.domain.model.entity.OrderEventOutbox;
+import com.ll.order.domain.model.entity.event.OrderEventOutbox;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.enums.order.OutboxStatus;
 import com.ll.order.domain.repository.OrderEventOutboxRepository;

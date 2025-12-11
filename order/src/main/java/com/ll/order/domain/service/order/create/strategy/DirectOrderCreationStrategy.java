@@ -76,16 +76,6 @@ public class DirectOrderCreationStrategy extends AbstractOrderCreationService {
 
         ProductResponse productInfo = getProductInfo(directRequest.productCode());
 
-        log.debug("상품 정보 조회 완료 - id: {}, code: {}, name: {}, sellerCode: {}, sellerName: {}, quantity: {}, price: {}, status: {}",
-                productInfo.id(),
-                productInfo.code(),
-                productInfo.name(),
-                productInfo.sellerCode(),
-                productInfo.sellerName(),
-                productInfo.quantity(),
-                productInfo.price(),
-                productInfo.status());
-
         Order order = Order.create(
                 userInfo.id(),
                 userInfo.code(),
@@ -104,7 +94,6 @@ public class DirectOrderCreationStrategy extends AbstractOrderCreationService {
         );
         orderItemJpaRepository.save(orderItem);
 
-        // 주문 생성 이력 저장
         OrderHistoryEntity orderHistory = OrderHistoryBuilder.createOrderHistory(savedOrder, List.of(orderItem));
         orderHistoryJpaRepository.save(orderHistory);
 

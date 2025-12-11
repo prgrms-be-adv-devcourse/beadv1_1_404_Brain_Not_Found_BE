@@ -1,4 +1,4 @@
-package com.ll.order.domain.model.entity;
+package com.ll.order.domain.model.entity.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.persistence.BaseEntity;
@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "order_event_outbox")
-public class OrderEventOutbox extends BaseEntity {
+public class OrderEventOutbox extends BaseEntity { // 성공 시 발행해야 하는 이벤트만 저장
 
     @Column(nullable = false, name = "reference_code")
     private String referenceCode;
