@@ -1,12 +1,12 @@
 package com.ll.payment.payment.service.refund;
 
+import com.ll.core.model.enums.PaymentRefundNotificationStatus;
 import com.ll.core.model.exception.BaseException;
 import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.payment.deposit.service.DepositService;
 import com.ll.payment.payment.exception.PaymentErrorCode;
 import com.ll.payment.payment.model.entity.Payment;
 import com.ll.payment.payment.model.entity.PaymentHistoryEntity;
-import com.ll.payment.payment.model.enums.PaidType;
 import com.ll.payment.payment.model.enums.PaymentStatus;
 import com.ll.payment.payment.model.vo.request.PaymentRefundRequest;
 import com.ll.payment.payment.repository.PaymentHistoryJpaRepository;
@@ -65,7 +65,7 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
                 }
             }
 
-            payment.markRefund(LocalDateTime.now());
+            payment.refund(LocalDateTime.now());
             paymentJpaRepository.save(payment);
 
             // 환불 완료 이력 저장
@@ -74,13 +74,28 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
 
             // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
             // 별도 프로세스가 Outbox를 읽어서 주문 서비스에 알림 전송
-            paymentRefundNotificationOutboxService.saveToOutbox(request.orderCode(), "REFUNDED");
+            paymentRefundNotificationOutboxService.saveToOutbox(
+                    request.orderCode(), 
+                    PaymentRefundNotificationStatus.REFUNDED.getValue()
+            );
             
             return payment;
         } catch (Exception e) {
             // 환불 실패 이력 저장
             PaymentHistoryEntity refundFailHistory = PaymentHistoryEntity.createRefundFailHistory(payment, refundAmount, e.getMessage());
             paymentHistoryJpaRepository.save(refundFailHistory);
+
+            // 환불 실패하면 order 모듈에게 알림 전송하여 보상 로직 트리거 작동
+            try {
+                paymentRefundNotificationOutboxService.saveToOutbox(
+                        request.orderCode(), 
+                        PaymentRefundNotificationStatus.REFUND_FAILED.getValue()
+                );
+                log.debug("환불 실패 알림 Outbox 저장 완료 - orderCode: {}, error: {}", request.orderCode(), e.getMessage());
+            } catch (Exception notificationException) {
+                log.error("환불 실패 알림 Outbox 저장 실패 - orderCode: {}, error: {}", 
+                        request.orderCode(), notificationException.getMessage(), notificationException);
+            }
 
             throw e;
         }

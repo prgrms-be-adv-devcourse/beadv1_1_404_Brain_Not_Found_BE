@@ -1,5 +1,6 @@
 package com.ll.order.domain.service.order;
 
+import com.ll.core.model.enums.PaymentRefundNotificationStatus;
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
@@ -216,6 +217,30 @@ public class OrderServiceImpl implements OrderService {
         return Optional.of(redirectUrl);
     }
 
+    @Override
+    @Transactional
+    public void handlePaymentRefundNotification(String orderCode, String status) {
+        log.debug("환불 알림 수신 - orderCode: {}, status: {}", orderCode, status);
+
+        try {
+            PaymentRefundNotificationStatus notificationStatus = PaymentRefundNotificationStatus.from(status);
+            
+            switch (notificationStatus) {
+                case REFUND_FAILED -> {
+                    // 환불 실패 시 보상 트랜잭션 트리거
+                    String errorMessage = String.format("Payment 서비스에서 환불 처리 실패 - orderCode: %s", orderCode);
+                    compensationService.compensationFailed(orderCode, errorMessage);
+                    log.warn("{}, 보상 트랜잭션 트리거", errorMessage);
+                }
+                case REFUNDED -> {
+                    log.debug("환불 성공 알림 수신 - orderCode: {}", orderCode);
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("알 수 없는 환불 알림 상태 - orderCode: {}, status: {}", orderCode, status);
+        }
+    }
+
     // 주문 취소 처리(비동기) -> 환불 요청 이벤트 발행 + 환불 이벤트 발행 + 재고 복구 요청
     private void handleOrderCancellation(Order order) {
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
@@ -238,7 +263,7 @@ public class OrderServiceImpl implements OrderService {
                         order.getCode(), e.getMessage());
                 log.error(errorMessage, e);
                 // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
-                compensationService.markCompensationFailed(order.getCode(), errorMessage);
+                compensationService.compensationFailed(order.getCode(), errorMessage);
             }
         }
 
@@ -260,7 +285,7 @@ public class OrderServiceImpl implements OrderService {
                             order.getCode(), orderItem.getCode(), e.getMessage());
                     log.error(errorMessage, e);
                     // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
-                    compensationService.markCompensationFailed(order.getCode(), errorMessage);
+                    compensationService.compensationFailed(order.getCode(), errorMessage);
                 }
             }
 
@@ -278,7 +303,7 @@ public class OrderServiceImpl implements OrderService {
                         order.getCode(), orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage());
                 log.error(errorMessage, e);
                 // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
-                compensationService.markCompensationFailed(order.getCode(), errorMessage);
+                compensationService.compensationFailed(order.getCode(), errorMessage);
             }
         }
     }

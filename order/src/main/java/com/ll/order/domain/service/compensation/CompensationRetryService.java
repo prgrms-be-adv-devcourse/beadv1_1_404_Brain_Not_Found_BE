@@ -74,7 +74,7 @@ public class CompensationRetryService {
         String orderCode = tracing.getOrderCode();
 
         // 보상 시작 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
-        compensationService.markCompensationStarted(orderCode);
+        compensationService.compensationStarted(orderCode);
 
         try {
             Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
@@ -90,12 +90,12 @@ public class CompensationRetryService {
 
             if (compensationSuccess) {
                 // 보상 완료 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
-                compensationService.markCompensationCompleted(orderCode);
+                compensationService.compensationCompleted(orderCode);
 
                 log.debug("보상 로직 재시도 성공 - orderCode: {}", orderCode);
             } else {
                 // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
-                compensationService.markCompensationFailed(orderCode, "보상 로직 실행 중 일부 실패");
+                compensationService.compensationFailed(orderCode, "보상 로직 실행 중 일부 실패");
 
                 log.warn("보상 로직 재시도 부분 실패 - orderCode: {}", orderCode);
                 throw new RuntimeException("보상 로직 실행 중 일부 실패");
@@ -103,7 +103,7 @@ public class CompensationRetryService {
 
         } catch (Exception e) {
             // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
-            compensationService.markCompensationFailed(orderCode, e.getMessage());
+            compensationService.compensationFailed(orderCode, e.getMessage());
 
             log.error("보상 로직 재시도 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
@@ -159,7 +159,7 @@ public class CompensationRetryService {
 
         // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
         if (hasFailure && orderCode != null) {
-            compensationService.markCompensationFailed(orderCode, lastErrorMessage);
+            compensationService.compensationFailed(orderCode, lastErrorMessage);
         }
 
         return allSuccess;

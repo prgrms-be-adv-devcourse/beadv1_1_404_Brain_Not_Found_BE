@@ -2,7 +2,8 @@ package com.ll.payment.payment.service.event;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ll.payment.global.client.OrderServiceClient;
+import com.ll.core.model.vo.kafka.PaymentRefundNotificationEvent;
+import com.ll.payment.payment.messaging.producer.PaymentEventProducer;
 import com.ll.payment.payment.model.entity.event.PaymentRefundNotificationOutbox;
 import com.ll.payment.payment.model.enums.PaymentOutboxStatus;
 import com.ll.payment.payment.model.vo.PaymentRefundNotificationPayload;
@@ -22,7 +23,7 @@ import java.util.List;
 public class PaymentRefundNotificationOutboxService {
 
     private final PaymentRefundNotificationOutboxRepository paymentRefundNotificationOutboxRepository;
-    private final OrderServiceClient orderServiceClient;
+    private final PaymentEventProducer paymentEventProducer;
     private final ObjectMapper objectMapper;
 
     @Value("${payment.outbox.max-retry-count:5}")
@@ -72,7 +73,7 @@ public class PaymentRefundNotificationOutboxService {
         return successCount;
     }
 
-    // 알림을 주문 서비스에 전송
+    // 알림을 Kafka로 order에게 발행
     @Transactional
     public void publishNotification(PaymentRefundNotificationOutbox outbox) {
         try {
@@ -84,17 +85,21 @@ public class PaymentRefundNotificationOutboxService {
             }
             outbox.markAsPublished();
 
-            orderServiceClient.updateOrderStatus(payload.orderCode(), payload.status());
+            PaymentRefundNotificationEvent event = PaymentRefundNotificationEvent.of(
+                    payload.orderCode(), 
+                    payload.status()
+            );
+            paymentEventProducer.sendPaymentRefundNotification(event);
 
-            log.debug("환불 알림 전송 성공 - outboxId: {}, orderCode: {}, retryCount: {}",
-                    outbox.getId(), payload.orderCode(), outbox.getRetryCount());
+            log.debug("환불 알림 이벤트 발행 성공 - outboxId: {}, orderCode: {}, status: {}, retryCount: {}",
+                    outbox.getId(), payload.orderCode(), payload.status(), outbox.getRetryCount());
         } catch (Exception e) {
             outbox.incrementRetryCount(e.getMessage());
 
             if (outbox.getRetryCount() >= maxRetryCount) {
                 outbox.markAsFailed("최대 재시도 횟수 초과: " + e.getMessage());
                 PaymentRefundNotificationPayload payload = extractPayload(outbox);
-                log.warn("환불 알림 전송 최대 재시도 횟수 초과 - outboxId: {}, orderCode: {}, retryCount: {}",
+                log.warn("환불 알림 이벤트 발행 최대 재시도 횟수 초과 - outboxId: {}, orderCode: {}, retryCount: {}",
                         outbox.getId(), payload != null ? payload.orderCode() : "unknown", outbox.getRetryCount());
             } else {
                 outbox.markAsFailed(e.getMessage());

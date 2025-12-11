@@ -32,3 +32,6 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.hibernate.stat: DEBUG
 
+current:
+  domain: "http://localhost:8082"
+
