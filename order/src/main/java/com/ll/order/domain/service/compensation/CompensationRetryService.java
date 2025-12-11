@@ -1,17 +1,18 @@
 package com.ll.order.domain.service.compensation;
 
 import com.ll.core.model.exception.BaseException;
-import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.TransactionTracing;
 import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import com.ll.order.domain.model.enums.order.OrderStatus;
+import com.ll.order.domain.model.vo.PaymentRefundRequestEvent;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.order.domain.repository.TransactionTracingRepository;
 import com.ll.order.domain.service.event.InventoryRollbackEventOutboxService;
+import com.ll.order.domain.service.event.PaymentRefundRequestEventOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,9 +31,9 @@ public class CompensationRetryService {
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
 
-    private final PaymentServiceClient paymentServiceClient;
     private final CompensationService compensationService;
     private final InventoryRollbackEventOutboxService inventoryRollbackEventOutboxService;
+    private final PaymentRefundRequestEventOutboxService paymentRefundRequestEventOutboxService;
 
     @Value("${order.compensation.max-retry-count:5}")
     private Integer maxRetryCount;
@@ -167,18 +168,20 @@ public class CompensationRetryService {
 
     private boolean refundPayment(Order order) {
         try {
-            paymentServiceClient.requestRefund(
+            PaymentRefundRequestEvent refundRequestEvent = PaymentRefundRequestEvent.from(
                     order.getId(),
                     order.getCode(),
                     order.getBuyerCode(),
                     order.getTotalPrice(),
                     "보상 로직 재시도 - 주문 취소"
             );
-            log.debug("환불 처리 재시도 성공 - orderCode: {}, amount: {}",
+            // 이벤트 발행으로 환불 요청 (일관성 유지)
+            paymentRefundRequestEventOutboxService.saveToOutbox(refundRequestEvent, order.getCode());
+            log.debug("환불 요청 이벤트 Outbox 저장 완료 (보상 재시도) - orderCode: {}, amount: {}",
                     order.getCode(), order.getTotalPrice());
             return true;
         } catch (Exception e) {
-            log.error("환불 처리 재시도 실패 - orderCode: {}, amount: {}, error: {}",
+            log.error("환불 요청 이벤트 Outbox 저장 실패 (보상 재시도) - orderCode: {}, amount: {}, error: {}",
                     order.getCode(), order.getTotalPrice(), e.getMessage(), e);
             return false;
         }
