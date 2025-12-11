@@ -1,7 +1,7 @@
 package com.ll.order.domain.service.order;
 
 import com.ll.core.model.exception.BaseException;
-import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
+import com.ll.order.domain.model.vo.PaymentRefundRequestEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;

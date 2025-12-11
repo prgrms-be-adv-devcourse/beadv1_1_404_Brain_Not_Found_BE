@@ -4,7 +4,7 @@ import com.fasterxml.uuid.Generators;
 import com.ll.core.config.kafka.KafkaEventPublisher;
 import com.ll.core.model.vo.kafka.InventoryEvent;
 import com.ll.core.model.vo.kafka.OrderEvent;
-import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
+import com.ll.order.domain.model.vo.PaymentRefundRequestEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;

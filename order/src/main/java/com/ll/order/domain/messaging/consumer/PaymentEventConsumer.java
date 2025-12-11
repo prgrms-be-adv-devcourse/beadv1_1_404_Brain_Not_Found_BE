@@ -1,7 +1,7 @@
 package com.ll.order.domain.messaging.consumer;
 
 import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
-import com.ll.core.model.vo.kafka.PaymentRefundNotificationEvent;
+import com.ll.order.domain.model.vo.PaymentRefundNotificationEvent;
 import com.ll.order.domain.service.order.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

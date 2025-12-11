@@ -2,7 +2,7 @@ package com.ll.order.domain.model.entity.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.persistence.BaseEntity;
-import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
+import com.ll.order.domain.model.vo.PaymentRefundRequestEvent;
 import com.ll.order.domain.model.enums.order.OutboxStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
