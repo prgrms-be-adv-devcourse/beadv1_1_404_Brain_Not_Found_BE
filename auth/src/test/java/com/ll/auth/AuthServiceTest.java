@@ -1,5 +1,6 @@
 package com.ll.auth;
 
+import com.ll.auth.exception.DeviceCodeNotProvidedException;
 import com.ll.auth.exception.TokenNotFoundException;
 import com.ll.auth.exception.TokenNotProvidedException;
 import com.ll.auth.model.entity.Auth;
@@ -73,7 +74,7 @@ import static org.mockito.BDDMockito.*;
             TokenValidRequest request = new TokenValidRequest(EXIST_REFRESH,null);
 
             //when & then
-            assertThrows(TokenNotProvidedException.class, () -> {
+            assertThrows(DeviceCodeNotProvidedException.class, () -> {
                 authService.refreshToken(request);
             });
         }

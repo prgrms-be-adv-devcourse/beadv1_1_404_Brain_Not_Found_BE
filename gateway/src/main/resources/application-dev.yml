@@ -4,17 +4,6 @@ spring:
       server:
         webflux:
           routes:
-#            - id: zipkin-route
-#              uri: http://zipkin-svc-dev.dev.svc.cluster.local:9411
-#              predicates:
-#                - Path=/zipkin
-#            - id: kibana-route
-#              uri: http://kibana-svc-dev.dev.svc.cluster.local:5601
-#              predicates:
-#                - Path=/kibana
-#            - filters:
-#                - StripPrefix=1
-
 
             #  Deposit (PAYMENT)
             - id: deposit-route-protected
@@ -46,6 +35,8 @@ spring:
               predicates:
                 - Path=/api/carts, /api/carts/**
                 - Method=GET, POST, DELETE
+              filters:
+                - name: TokenAuthenticationFilter
 
             - id: product-route-getAll-protected  # 상품 목록 조회 R 관리자용 인증
               uri: http://product-svc-dev.dev.svc.cluster.local:8085
@@ -90,9 +81,9 @@ spring:
             - id: order-route-pg
               uri: http://order-svc-dev.dev.svc.cluster.local:8082
               predicates:
-                - Path=/api/orders/payment/**, /api/orders/payment, /orders/payment /orders/payment/**
-                - Method=GET
+                - Path=/orders/**, /orders/payment/**, /api/orders/payment/**, /api/orders/payment
               order: 1
+
             - id: order-route-protected
               uri: http://order-svc-dev.dev.svc.cluster.local:8082
               predicates:
@@ -150,8 +141,6 @@ spring:
                 - Path=/api/auth
                 - Method=POST
               order: 2
-              filters:
-                - name: TokenAuthenticationFilter
 
             - id: auth-route-protected
               uri: http://auth-svc-dev.dev.svc.cluster.local:8084
@@ -188,3 +177,8 @@ custom:
 logging:
   level:
     root: debug
+
+management:
+  zipkin:
+    tracing:
+      endpoint: http://zipkin-svc-dev.dev.svc.cluster.local:9411/api/v2/spans

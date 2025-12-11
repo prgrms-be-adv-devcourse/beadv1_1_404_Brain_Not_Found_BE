@@ -3,8 +3,6 @@ package com.ll.payment.settlement.messaging.consumer;
 import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
 import com.ll.core.model.vo.kafka.OrderEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
-import com.ll.core.model.vo.kafka.SettlementEvent;
-import com.ll.core.model.vo.kafka.enums.OrderEventType;
 import com.ll.payment.settlement.service.SettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,24 +16,13 @@ public class SettlementEventConsumer {
 
     private final SettlementService settlementService;
 
-    @KafkaListener(topics = "settlement-event.dlq", groupId = "settlement-service")
-    public void handleSettlementDLQ(KafkaEventEnvelope<SettlementEvent> event) {
-        settlementService.failByDlqEvent(event.payload());
-    }
-
     @KafkaListener(topics = "order-event", groupId = "settlement-service")
     public void handleOrderEvent(KafkaEventEnvelope<OrderEvent> event) {
-        if ( event.payload().orderEventType() != OrderEventType.ORDER_COMPLETED ) {
-            return;
-        }
         settlementService.createSettlement(event.payload());
     }
 
     @KafkaListener(topics = "order-event.dlq", groupId = "settlement-service")
     public void handleOrderDLQ(KafkaEventEnvelope<OrderEvent> event) {
-        if ( event.payload().orderEventType() != OrderEventType.ORDER_COMPLETED ) {
-            return;
-        }
     }
 
     @KafkaListener(topics = "refund-event", groupId = "settlement-service")

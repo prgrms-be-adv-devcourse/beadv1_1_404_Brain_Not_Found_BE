@@ -28,6 +28,6 @@ spec:
                 name: payment-config-dev
             - secretRef:
                 name: payment-secret-dev
-#            - secretRef:
-#                name: payment-secret-key-dev
+            - secretRef:
+                name: payment-secret-key-dev
       restartPolicy: Always

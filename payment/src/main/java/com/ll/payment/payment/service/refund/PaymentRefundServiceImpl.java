@@ -184,7 +184,7 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
             log.warn("예치금 환불에는 buyerCode가 필요합니다.");
             throw new BaseException(PaymentErrorCode.BUYER_CODE_REQUIRED);
         }
-        depositService.chargeDeposit(
+        depositService.refundDeposit(
                 buyerCode,
                 new DepositTransactionRequest((long) refundAmount, createReferenceCode(payment.getOrderId()))
         );

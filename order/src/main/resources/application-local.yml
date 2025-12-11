@@ -160,3 +160,10 @@ management:
   zipkin:
     tracing:
       endpoint: http://localhost:9411/api/v2/spans
+
+current:
+  domain: "http://localhost:8082"
+swagger:
+  servers:
+    - "http://localhost:8000"
+    - "http://localhost:8082"

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-config-prod
+data:
+  ORDER_DB_URL: jdbc:mysql://order-db-svc-prod:3310/order_db
+  SPRING_PROFILES_ACTIVE : prod

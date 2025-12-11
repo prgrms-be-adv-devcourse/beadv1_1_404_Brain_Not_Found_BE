@@ -15,25 +15,23 @@ spring:
 
   kafka:
     bootstrap-servers:
-      - ${KAFKA_1_CONTAINER_NAME}:9090
+      - http://kafka-svc-prod.default.svc.cluster.local:9090
+    consumer:
+      group-id: order-service
+      properties:
+        allow.auto.create.topics: false
 
-eureka:
-  client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: ${DISCOVERY_URL}
 
 # External Service URLs
 external:
   user-service:
-    url: http://user:8083
+    url: http://auth-svc-prod.default.svc.cluster.local:8084
   product-service:
-    url: http://product:8085
-  cart-service:
-    url: http://cart:8089
+    url: http://product-svc-prod.default.svc.cluster.local:8085
+  #  cart-service:
+  #    url: http://cart:8089
   payment-service:
-    url: http://order:8087
+    url: http://payment-svc-prod.default.svc.cluster.local:8087
 
   # Payment Configuration
 payment:
@@ -43,3 +41,102 @@ payment:
 logging:
   level:
     root: info
+
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentService:
+        slidingWindowSize: 20           # 최근 20개 호출 기준
+        failureRateThreshold: 50        # 실패율 50% 이상이면 Open
+        waitDurationInOpenState: 30s    # 30초 동안 Open 유지
+        permittedNumberOfCallsInHalfOpenState: 3
+      productService:
+        slidingWindowSize: 20           # 최근 20개 호출 기준
+        failureRateThreshold: 50        # 실패율 50% 이상이면 Open
+        waitDurationInOpenState: 30s    # 30초 동안 Open 유지
+        permittedNumberOfCallsInHalfOpenState: 3
+      userService:
+        slidingWindowSize: 20           # 최근 20개 호출 기준
+        failureRateThreshold: 50        # 실패율 50% 이상이면 Open
+        waitDurationInOpenState: 30s    # 30초 동안 Open 유지
+        permittedNumberOfCallsInHalfOpenState: 3
+      cartService:
+        slidingWindowSize: 20           # 최근 20개 호출 기준
+        failureRateThreshold: 50        # 실패율 50% 이상이면 Open
+        waitDurationInOpenState: 30s    # 30초 동안 Open 유지
+        permittedNumberOfCallsInHalfOpenState: 3
+  retry:
+    instances:
+      paymentService:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격 (지수 backoff는 필요 시 추가 설정)
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - com.ll.core.model.exception.BaseException
+      productService:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - com.ll.core.model.exception.BaseException
+      userService:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - com.ll.core.model.exception.BaseException
+      cartService:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격
+        retryExceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - com.ll.core.model.exception.BaseException
+      orderEventProducer:
+        maxAttempts: 3                  # 최대 3회 시도
+        waitDuration: 500ms             # 0.5초 간격
+        retryExceptions:
+          - org.apache.kafka.common.errors.TimeoutException
+          - org.apache.kafka.common.errors.NetworkException
+          - org.apache.kafka.common.errors.RetriableException
+          - org.springframework.kafka.KafkaException
+        ignoreExceptions:
+          - com.ll.core.model.exception.BaseException
+
+# Order Event Outbox 설정
+order:
+  outbox:
+    max-retry-count: 5                    # 최대 재시도 횟수
+    republish-delay-minutes: 5             # 재발행 지연 시간 (분)
+    scheduler:
+      enabled: true                        # 스케줄러 활성화 여부
+      cron: "0 */5 * * * ?"                # 실행 주기 (5분마다, cron 표현식)
+  # 보상 로직 재시도 설정
+  compensation:
+    max-retry-count: 5                     # 최대 재시도 횟수
+    scheduler:
+      enabled: true                        # 스케줄러 활성화 여부
+      cron: "0 */10 * * * ?"               # 실행 주기 (10분마다, cron 표현식)
+
+
+management:
+  zipkin:
+    tracing:
+      endpoint: http://zipkin-svc-prod.default.svc.cluster.local:9411/api/v2/spans
+
+
+
+current:
+  domain: "https://gooream.chlab.org"
