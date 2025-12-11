@@ -106,9 +106,7 @@ jobs:
           
           echo "$CLEAN_BODY" > pr_body.txt
           
-          cat << 'EOF' > ai_summary.txt
-          ${{ steps.description.outputs.content }}
-          EOF
+          printf "%s" "${{ steps.description.outputs.content }}" > ai_summary.txt
           
           {
             cat pr_body.txt
@@ -196,16 +194,17 @@ jobs:
           
           echo "$CLEAN_BODY" > pr_body.txt
           
-          cat << 'EOF' > ai_summary.txt
-          ${{ steps.review.outputs.content }}
-          EOF
+
+#          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} | jq -Rs .) 이거 리뷰에 적용
+
+          printf "%s" "${{ steps.review.outputs.content }}" > ai_review.txt
           
           {
             cat pr_body.txt
             echo "<!-- AI-REVIEW:START -->"
             echo "🛠️ AI 코드 리뷰"
             echo "---"
-            cat ai_summary.txt
+            cat ai_review.txt
             echo "<!-- AI-REVIEW:END -->"
           } > updated_body.txt
           
