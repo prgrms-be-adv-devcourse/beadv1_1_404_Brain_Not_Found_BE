@@ -4,7 +4,6 @@ import com.fasterxml.uuid.Generators;
 import com.ll.payment.deposit.model.entity.Deposit;
 import com.ll.payment.deposit.model.entity.DepositHistory;
 import com.ll.payment.deposit.model.enums.DepositHistoryType;
-import com.ll.payment.deposit.model.exception.*;
 import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.payment.deposit.repository.DepositHistoryRepository;
 import com.ll.payment.deposit.service.DepositHistoryServiceImpl;
@@ -23,7 +22,7 @@ import static org.mockito.Mockito.*;
 @SuppressWarnings({"NonAsciiCharacters", "FieldCanBeLocal"})
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DepositHistoryService 단위 테스트")
-public class DepositHistoryServiceUnitTest {
+public class DepositHistoryServiceSuccessUnitTest {
 
     @Mock
     private DepositHistoryRepository depositHistoryRepository;
@@ -45,10 +44,6 @@ public class DepositHistoryServiceUnitTest {
         deposit.charge(AMOUNT_SETUP, REF_CODE);
     }
 
-    /* ================
-        Helper Methods
-       ================ */
-
     @Test
     void 중복이_없으면_정상종료한다() {
         // given
@@ -60,58 +55,15 @@ public class DepositHistoryServiceUnitTest {
     }
 
     @Test
-    void 중복이_있으면_예외를_발생시킨다() {
-        // given
-        when(depositHistoryRepository.existsByReferenceCode(REF_CODE)).thenReturn(true);
-
-        // when & then
-        assertThrows(DuplicateDepositTransactionException.class,
-                () -> depositHistoryService.validateDuplicate(REF_CODE));
-
-        verify(depositHistoryRepository, times(1)).existsByReferenceCode(REF_CODE);
-    }
-
-
-    @Test
     void REFUND_코드_중복없고_원본코드가_존재하면_정상종료한다() {
         // given
         String refundCode = DepositHistoryServiceImpl.refundCode(REF_CODE);
 
-        when(depositHistoryRepository.existsByReferenceCode(refundCode)).thenReturn(false); // refundCode 중복 X
-        when(depositHistoryRepository.existsByReferenceCode(REF_CODE)).thenReturn(true);         // 원본 ref 존재
+        when(depositHistoryRepository.existsByReferenceCode(refundCode)).thenReturn(false);
+        when(depositHistoryRepository.existsByReferenceCode(REF_CODE)).thenReturn(true);
 
         // when & then
         assertDoesNotThrow(() -> depositHistoryService.validateDuplicateForRefund(REF_CODE));
-
-        verify(depositHistoryRepository).existsByReferenceCode(refundCode);
-        verify(depositHistoryRepository).existsByReferenceCode(REF_CODE);
-    }
-
-    @Test
-    void REFUND_코드가_중복이면_DuplicateDepositTransactionException_을_던진다() {
-        // given
-        String refundCode = DepositHistoryServiceImpl.refundCode(REF_CODE);
-
-        when(depositHistoryRepository.existsByReferenceCode(refundCode)).thenReturn(true);
-
-        // when & then
-        assertThrows(DuplicateDepositTransactionException.class,
-                () -> depositHistoryService.validateDuplicateForRefund(REF_CODE));
-
-        verify(depositHistoryRepository, times(1)).existsByReferenceCode(refundCode);
-    }
-
-    @Test
-    void REFUND_코드_중복없고_원본코드가_없으면_RefundTargetNotFoundException_을_던진다() {
-        // given
-        String refundCode = DepositHistoryServiceImpl.refundCode(REF_CODE);
-
-        when(depositHistoryRepository.existsByReferenceCode(refundCode)).thenReturn(false); // refundCode 중복 X
-        when(depositHistoryRepository.existsByReferenceCode(REF_CODE)).thenReturn(false);        // 원본 ref 없음
-
-        // when & then
-        assertThrows(RefundTargetNotFoundException.class,
-                () -> depositHistoryService.validateDuplicateForRefund(REF_CODE));
 
         verify(depositHistoryRepository).existsByReferenceCode(refundCode);
         verify(depositHistoryRepository).existsByReferenceCode(REF_CODE);
