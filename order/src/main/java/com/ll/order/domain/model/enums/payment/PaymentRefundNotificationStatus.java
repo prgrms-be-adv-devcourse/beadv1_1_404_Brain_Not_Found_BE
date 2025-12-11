@@ -1,4 +1,4 @@
-package com.ll.core.model.enums;
+package com.ll.order.domain.model.enums.payment;
 
 import lombok.Getter;
 

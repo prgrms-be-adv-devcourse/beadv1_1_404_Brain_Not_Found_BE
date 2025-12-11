@@ -1,6 +1,5 @@
 package com.ll.payment.payment.service.refund;
 
-import com.ll.core.model.enums.PaymentRefundNotificationStatus;
 import com.ll.core.model.exception.BaseException;
 import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.payment.deposit.service.DepositService;
