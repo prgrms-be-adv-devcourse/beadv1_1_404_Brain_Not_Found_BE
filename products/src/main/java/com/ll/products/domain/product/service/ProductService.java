@@ -1,5 +1,6 @@
 package com.ll.products.domain.product.service;
 
+import com.ll.products.domain.product.event.ProductsEvent;
 import com.ll.products.domain.product.exception.ImageUploadLimitException;
 import com.ll.products.domain.product.exception.ProductImageNotFoundException;
 import com.ll.products.domain.product.model.entity.ProductImage;
@@ -15,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ll.products.domain.category.exception.CategoryNotFoundException;
 import com.ll.products.domain.category.model.entity.Category;
 import com.ll.products.domain.category.repository.CategoryRepository;
-import com.ll.products.domain.product.event.ProductEvent;
 import com.ll.products.domain.product.exception.ProductNotFoundException;
 import com.ll.products.domain.product.exception.ProductOwnershipException;
 import com.ll.products.domain.product.model.dto.ProductImageDto;
@@ -76,7 +76,7 @@ public class ProductService {
         setImages(request.images(), product);
         Product savedProduct = productRepository.save(product);
         log.debug("상품 생성 완료: {} (ID: {})", savedProduct.getName(), savedProduct.getId());
-        eventPublisher.publishEvent(ProductEvent.created(this, savedProduct));
+        eventPublisher.publishEvent(ProductsEvent.created(this, savedProduct));
         return ProductResponse.from(savedProduct, s3BaseUrl);
     }
 
@@ -109,7 +109,7 @@ public class ProductService {
         deleteProductImagesFromS3(fileKeys);
         product.softDelete();
         log.debug("상품 삭제 완료: {} (ID: {})", product.getName(), product.getId());
-        eventPublisher.publishEvent(ProductEvent.deleted(this, product));
+        eventPublisher.publishEvent(ProductsEvent.deleted(this, product));
     }
 
     // 5. 상품 수정
@@ -129,7 +129,7 @@ public class ProductService {
         Category category = getCategory(request.categoryId());
         product.updateCategory(category);
         log.debug("상품 수정 완료: {} (ID: {})", product.getName(), product.getId());
-        eventPublisher.publishEvent(ProductEvent.updated(this, product));
+        eventPublisher.publishEvent(ProductsEvent.updated(this, product));
         return ProductResponse.from(product, s3BaseUrl);
     }
 
@@ -140,7 +140,7 @@ public class ProductService {
         validateOwnership(product, userCode, role);
         product.updateStatus(request.status());
         log.debug("상품 상태변경 완료: {} -> {} (ID: {})", product.getName(), request.status(), product.getId());
-        eventPublisher.publishEvent(ProductEvent.updated(this, product));
+        eventPublisher.publishEvent(ProductsEvent.updatedStatus(this, product));
         return ProductResponse.from(product, s3BaseUrl);
     }
 
@@ -197,7 +197,12 @@ public class ProductService {
                 product.getName(), quantity, afterQuantity);
         log.debug("재고 이력 저장 완료 - id: {}, productCode: {}, beforeQuantity: {}, afterQuantity: {}",
                 history.getId(), code, beforeQuantity, afterQuantity);
-        eventPublisher.publishEvent(ProductEvent.updated(this, product));
+
+        // 판매상태가 변경된 경우, kafka 이벤트 발행
+        if (product.getStatus() == ProductStatus.SOLD_OUT) {
+            log.info("재고 소진으로 SOLD_OUT 상태 전환, 벡터 DB 동기화 이벤트 발행");
+            eventPublisher.publishEvent(ProductsEvent.updatedStatus(this, product));
+        }
     }
 
     // 카테고리 조회
