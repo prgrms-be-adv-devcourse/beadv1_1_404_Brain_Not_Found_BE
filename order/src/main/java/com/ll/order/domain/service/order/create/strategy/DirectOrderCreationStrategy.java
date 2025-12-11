@@ -8,7 +8,6 @@ import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
-import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
@@ -94,7 +93,7 @@ public class DirectOrderCreationStrategy extends AbstractOrderCreationService {
         );
         orderItemJpaRepository.save(orderItem);
 
-        OrderHistoryEntity orderHistory = OrderHistoryBuilder.createOrderHistory(savedOrder, List.of(orderItem));
+        OrderHistoryEntity orderHistory = OrderHistoryEntity.createOrderHistory(savedOrder, List.of(orderItem));
         orderHistoryJpaRepository.save(orderHistory);
 
         return new OrderCreationResult(savedOrder, List.of(orderItem));
@@ -123,7 +122,7 @@ public class DirectOrderCreationStrategy extends AbstractOrderCreationService {
             orderJpaRepository.save(order);
 
             // 주문 상태 변경 이력 저장 (결제 성공)
-            OrderHistoryEntity successHistory = OrderHistoryBuilder.createPaymentSuccessHistory(
+            OrderHistoryEntity successHistory = OrderHistoryEntity.createPaymentSuccessHistory(
                     order, orderItems, previousStatus, "예치금");
             orderHistoryJpaRepository.save(successHistory);
 
@@ -137,7 +136,7 @@ public class DirectOrderCreationStrategy extends AbstractOrderCreationService {
             orderJpaRepository.save(order);
 
             // 주문 상태 변경 이력 저장 (결제 실패)
-            OrderHistoryEntity failHistory = OrderHistoryBuilder.createPaymentFailHistory(
+            OrderHistoryEntity failHistory = OrderHistoryEntity.createPaymentFailHistory(
                     order, orderItems, previousStatus, "예치금", e.getMessage());
             orderHistoryJpaRepository.save(failHistory);
 

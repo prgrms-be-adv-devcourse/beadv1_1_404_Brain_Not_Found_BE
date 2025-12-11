@@ -7,7 +7,6 @@ import com.ll.payment.payment.exception.PaymentErrorCode;
 import com.ll.payment.payment.model.entity.Payment;
 import com.ll.payment.payment.model.entity.PaymentHistoryEntity;
 import com.ll.payment.payment.model.enums.PaidType;
-import com.ll.payment.payment.model.enums.PaymentHistoryActionType;
 import com.ll.payment.payment.model.enums.PaymentStatus;
 import com.ll.payment.payment.model.vo.request.PaymentRefundRequest;
 import com.ll.payment.payment.repository.PaymentHistoryJpaRepository;
@@ -49,23 +48,10 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
     @Transactional
     public Payment refundPayment(PaymentRefundRequest request) {
         Payment payment = findPaymentForRefund(request);
-        int refundAmount = paymentValidator.validateRefundEligibility(payment, request);
+        int refundAmount = paymentValidator.validateRefund(payment, request);
 
         // 환불 요청 이력 저장
-        PaymentHistoryEntity refundRequestHistory = PaymentHistoryEntity.create(
-                payment.getId(),
-                PaymentHistoryActionType.REFUND_REQUEST,
-                PaymentStatus.REFUNDED,
-                payment.getPaidType() == PaidType.TOSS_PAYMENT ? "TOSS" : "DEPOSIT",
-                payment.getPaymentKey(),
-                null, // transactionId
-                refundAmount,
-                null, // failCode
-                null, // failMessage
-                null, // metadata
-                null, // approvedAt
-                null  // refundedAt
-        );
+        PaymentHistoryEntity refundRequestHistory = PaymentHistoryEntity.createRefundRequestHistory(payment, refundAmount);
         paymentHistoryJpaRepository.save(refundRequestHistory);
 
         try {
@@ -83,20 +69,7 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
             paymentJpaRepository.save(payment);
 
             // 환불 완료 이력 저장
-            PaymentHistoryEntity refundDoneHistory = PaymentHistoryEntity.create(
-                    payment.getId(),
-                    PaymentHistoryActionType.REFUND_DONE,
-                    PaymentStatus.REFUNDED,
-                    payment.getPaidType() == PaidType.TOSS_PAYMENT ? "TOSS" : "DEPOSIT",
-                    payment.getPaymentKey(),
-                    null, // transactionId
-                    refundAmount,
-                    null, // failCode
-                    null, // failMessage
-                    refundResponse, // metadata (토스 환불 응답)
-                    null, // approvedAt
-                    LocalDateTime.now() // refundedAt
-            );
+            PaymentHistoryEntity refundDoneHistory = PaymentHistoryEntity.createRefundDoneHistory(payment, refundAmount, refundResponse);
             paymentHistoryJpaRepository.save(refundDoneHistory);
 
             // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
@@ -106,20 +79,7 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
             return payment;
         } catch (Exception e) {
             // 환불 실패 이력 저장
-            PaymentHistoryEntity refundFailHistory = PaymentHistoryEntity.create(
-                    payment.getId(),
-                    PaymentHistoryActionType.FAIL,
-                    PaymentStatus.REFUNDED,
-                    payment.getPaidType() == PaidType.TOSS_PAYMENT ? "TOSS" : "DEPOSIT",
-                    payment.getPaymentKey(),
-                    null, // transactionId
-                    refundAmount,
-                    null, // failCode
-                    e.getMessage(), // failMessage
-                    null, // metadata
-                    null, // approvedAt
-                    null  // refundedAt
-            );
+            PaymentHistoryEntity refundFailHistory = PaymentHistoryEntity.createRefundFailHistory(payment, refundAmount, e.getMessage());
             paymentHistoryJpaRepository.save(refundFailHistory);
 
             throw e;

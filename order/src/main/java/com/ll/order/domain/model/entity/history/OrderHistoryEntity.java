@@ -123,4 +123,62 @@ public class OrderHistoryEntity extends BaseEntity {
         return orderHistory;
     }
 
+    public static OrderHistoryEntity createOrderHistory(Order order, List<OrderItem> orderItems) {
+        return create(
+                order,
+                orderItems,
+                OrderHistoryActionType.CREATE,
+                null,
+                "주문 생성",
+                null,
+                null,
+                null,
+                "SYSTEM"
+        );
+    }
+
+    public static OrderHistoryEntity createPaymentSuccessHistory(
+            Order order, List<OrderItem> orderItems, OrderStatus previousStatus, String paymentType) {
+        return create(
+                order,
+                orderItems,
+                OrderHistoryActionType.STATUS_CHANGE,
+                previousStatus,
+                paymentType + " 결제 완료",
+                null,
+                null,
+                null,
+                "SYSTEM"
+        );
+    }
+
+    public static OrderHistoryEntity createPaymentFailHistory(
+            Order order, List<OrderItem> orderItems, OrderStatus previousStatus, String paymentType, String errorMessage) {
+        return create(
+                order,
+                orderItems,
+                OrderHistoryActionType.STATUS_CHANGE,
+                previousStatus,
+                paymentType + " 결제 실패",
+                errorMessage,
+                null,
+                null,
+                "SYSTEM"
+        );
+    }
+
+    public static OrderHistoryEntity createStatusChangeHistory(
+            Order order, List<OrderItem> orderItems, OrderStatus previousStatus, String reason, String createdBy) {
+        return create(
+                order,
+                orderItems,
+                OrderHistoryActionType.STATUS_CHANGE,
+                previousStatus,
+                reason,
+                null,
+                null,
+                null,
+                createdBy
+        );
+    }
 }

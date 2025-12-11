@@ -9,7 +9,6 @@ import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
-import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
@@ -130,7 +129,7 @@ public class OrderServiceImpl implements OrderService {
         // 주문 상태 변경 이력 저장
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
         String reason = target == OrderStatus.CANCELLED ? "주문 취소" : "주문 상태 변경";
-        OrderHistoryEntity statusHistory = OrderHistoryBuilder.createStatusChangeHistory(
+        OrderHistoryEntity statusHistory = OrderHistoryEntity.createStatusChangeHistory(
                 order, orderItems, current, reason, userCode);
         orderHistoryJpaRepository.save(statusHistory);
 
@@ -168,7 +167,7 @@ public class OrderServiceImpl implements OrderService {
 
             // 주문 상태 변경 이력 저장 (결제 성공)
             List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
-            OrderHistoryEntity successHistory = OrderHistoryBuilder.createPaymentSuccessHistory(
+            OrderHistoryEntity successHistory = OrderHistoryEntity.createPaymentSuccessHistory(
                     order, orderItems, previousStatus, "토스");
             orderHistoryJpaRepository.save(successHistory);
 
@@ -181,7 +180,7 @@ public class OrderServiceImpl implements OrderService {
 
             // 주문 상태 변경 이력 저장 (결제 실패)
             List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
-            OrderHistoryEntity failHistory = OrderHistoryBuilder.createPaymentFailHistory(
+            OrderHistoryEntity failHistory = OrderHistoryEntity.createPaymentFailHistory(
                     order, orderItems, previousStatus, "토스", e.getMessage());
             orderHistoryJpaRepository.save(failHistory);
 
