@@ -21,7 +21,7 @@ public class EmbeddingService {
         try {
             log.debug("임베딩 생성 중");
             EmbeddingResponse response = embeddingModel.embedForResponse(List.of(validatedText));
-            float[] embedding = validateEmbedding(response);
+            float[] embedding = getEmbeddingFromResponse(response);
             log.debug("임베딩 생성 완료");
             return embedding;
         } catch (Exception e) {
@@ -41,7 +41,7 @@ public class EmbeddingService {
                 .toList();
         try {
             EmbeddingResponse response = embeddingModel.embedForResponse(validatedTexts);
-            List<float[]> embeddings = validateEmbeddings(response, validatedTexts.size());
+            List<float[]> embeddings = getEmbeddingsFromResponse(response, validatedTexts.size());
             log.info("배치 임베딩 생성 완료: count={}", embeddings.size());
             return embeddings;
         } catch (Exception e) {
@@ -58,8 +58,8 @@ public class EmbeddingService {
         return text;
     }
 
-    // 임베딩 검증(단일)
-    private float[] validateEmbedding(EmbeddingResponse response) {
+    // 임베딩 검증 및 반환(단일)
+    private float[] getEmbeddingFromResponse(EmbeddingResponse response) {
         if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
             throw new RuntimeException("임베딩 응답이 비어있습니다");
         }
@@ -72,8 +72,8 @@ public class EmbeddingService {
     }
 
 
-    // 임베딩 검증(다중)
-    private List<float[]> validateEmbeddings(EmbeddingResponse response, int expectedCount) {
+    // 임베딩 검증 및 반환(다중)
+    private List<float[]> getEmbeddingsFromResponse(EmbeddingResponse response, int expectedCount) {
         if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
             throw new RuntimeException("임베딩 응답이 비어있습니다");
         }
