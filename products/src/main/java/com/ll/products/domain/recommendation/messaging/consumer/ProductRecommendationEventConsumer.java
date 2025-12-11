@@ -33,7 +33,7 @@ public class ProductRecommendationEventConsumer {
             log.info("벡터 수정 인덱싱 완료: productCode={}", event.productCode());
         } catch (Exception e) {
             log.error("벡터 인덱싱 실패: error={}", e.getMessage(), e);
-            // dlq에 저장
+            throw new RuntimeException("벡터 수정 인덱싱 중 오류 발생", e);
         }
     }
 
@@ -49,7 +49,7 @@ public class ProductRecommendationEventConsumer {
             log.info("벡터 삭제 인덱싱 완료: productCode={}", event.productCode());
         } catch (Exception e) {
             log.error("벡터 인덱싱 실패: error={}", e.getMessage(), e);
-            // dlq에 저장
+            throw new RuntimeException("벡터 삭제 인덱싱 중 오류 발생", e);
         }
     }
 
@@ -65,7 +65,7 @@ public class ProductRecommendationEventConsumer {
             log.info("벡터 상태 변경 인덱싱 완료: productCode={}", event.productCode());
         } catch (Exception e) {
             log.error("벡터 인덱싱 실패: error={}", e.getMessage(), e);
-            // dlq에 저장
+            throw new RuntimeException("벡터 상태 변경 인덱싱 중 오류 발생", e);
         }
     }
 
