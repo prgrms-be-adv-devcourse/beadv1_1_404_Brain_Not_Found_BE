@@ -194,9 +194,6 @@ jobs:
           
           echo "$CLEAN_BODY" > pr_body.txt
           
-
-#          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} | jq -Rs .) 이거 리뷰에 적용
-
           printf "%s" "${{ steps.review.outputs.content }}" > ai_review.txt
           
           {
