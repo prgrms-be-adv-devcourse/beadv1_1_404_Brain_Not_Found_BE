@@ -31,10 +31,20 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class KafkaCommonConfiguration {
 
-    @Value("${custom.config.kafka.acks:all}")
+    @Value("${custom.config.kafka.ack:all}")
     private String ack;
     @Value("${custom.config.kafka.enable-idempotence:true}")
     private Boolean enableIdempotence;
+    @Value("${custom.config.kafka.max-retries:10}")
+    private Integer maxRetries;
+    @Value("${custom.config.kafka.linger-ms:3000}")
+    private Integer lingerMs;
+    @Value("${custom.config.kafka.backoff-retry-ms:5000}")
+    private Integer backoffRetryMs;
+    @Value("${custom.config.kafka.reconnect-backoff-ms:5000}")
+    private Integer reconnectBackoffMs;
+    @Value("${custom.config.kafka.reconnect-backoff-max-ms:10000}")
+    private Integer reconnectBackoffMaxMs;
 
     private final KafkaProperties properties;
 
@@ -46,9 +56,12 @@ public class KafkaCommonConfiguration {
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class); // Key 에 대한 Serializer 설정
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class); // Value 에 대한 Serializer 설정
 
-        config.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, 5000);           // 재시도 간격
-        config.put(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG, 5000);       // 재연결 backoff
-        config.put(ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG, 10000);  // 최대 backoff
+        config.put(ProducerConfig.RETRIES_CONFIG, maxRetries);
+        config.put(ProducerConfig.LINGER_MS_CONFIG, lingerMs);
+
+        config.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, backoffRetryMs);           // 재시도 간격
+        config.put(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);       // 재연결 backoff
+        config.put(ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG, reconnectBackoffMaxMs);  // 최대 backoff
 
         config.put(ProducerConfig.ACKS_CONFIG, ack); // 메시지 전송 확인 설정 ( all -> 리더와 팔로워 모두 확인 )
         config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, enableIdempotence); // 중복 방지 설정
@@ -74,9 +87,9 @@ public class KafkaCommonConfiguration {
         Map<String, Object> config = new HashMap<>(properties.buildConsumerProperties());
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class); // Key 에 대한 Deserializer 설정
 
-        config.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, 5000);           // 재시도 간격
-        config.put(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, 5000);       // 재연결 backoff
-        config.put(ConsumerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG, 10000);  // 최대 backoff
+        config.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, backoffRetryMs);           // 재시도 간격
+        config.put(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);       // 재연결 backoff
+        config.put(ConsumerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG, reconnectBackoffMaxMs);  // 최대 backoff
 
         // Deserializer 이 실패했을 시 무한 반복하지 않도록 ErrorHandlingDeserializer 설정
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
