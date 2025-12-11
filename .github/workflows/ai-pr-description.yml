@@ -43,7 +43,7 @@ jobs:
         id: ai
         shell: bash
         run: |
-          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} | printf '%q')
+          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} | jq -Rs .)
           echo "$DIFF" > diff.txt
           
           PR_PROMPT="
