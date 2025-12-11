@@ -40,14 +40,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate PR Description using AI
-        id: ai
+        id: description
         shell: bash
         run: |
-          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} | base64 -w 0)
+          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} | jq -Rs .)
           echo "$DIFF" > diff.txt
           
           PR_PROMPT="
-          아래 base64 diff를 디코딩한 후, 변경 사항을 의미 단위별 주제로 분류하고 번호 매겨 작성하라. 각 번호(주요 주제) 아래 핵심 내용을 불릿으로 정리한 중첩 목록(nested list) 형태로 요약하라.
+          변경 사항을 의미 단위별 주제로 분류하고 번호 매겨 작성하라. 각 번호(주요 주제) 아래 핵심 내용을 불릿으로 정리한 중첩 목록(nested list) 형태로 요약하라.
           
           출력 규칙:
           1) 주요 변경점을 최소 1개 최대 6개 이하의 주제로 자동 분류하고 각 주제를 번호 매긴 상위 목록으로 나타낼 것.
@@ -63,7 +63,7 @@ jobs:
           11) 실제로 변경되지 않은 내용을 이용해 주제 혹은 하위 bullet 내용을 작성하는 것은 금지.
           12) 라인 앞 글자가 + 면 추가된 코드, - 면 삭제된 코드.
           
-          base64 diff:
+          diff:
           "
           
           printf -v ESCAPED_PROMPT '%s' "$PR_PROMPT"
@@ -96,7 +96,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      - name: Update PR body
+      - name: Update PR Description body
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           
@@ -107,7 +107,7 @@ jobs:
           echo "$CLEAN_BODY" > pr_body.txt
           
           cat << 'EOF' > ai_summary.txt
-          ${{ steps.ai.outputs.content }}
+          ${{ steps.description.outputs.content }}
           EOF
           
           {
@@ -128,4 +128,94 @@ jobs:
           gh pr edit $PR_NUMBER --body "$(cat updated_body.txt)"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CONTENT: ${{ steps.ai.outputs.content }}
+          CONTENT: ${{ steps.description.outputs.content }}
+
+      - name: Generate PR Review using AI
+        id: review
+        shell: bash
+        run: |
+          DIFF=$(gh pr diff ${{ github.event.pull_request.number }} | jq -Rs .)
+          echo "$DIFF" > diff.txt
+          
+          PR_PROMPT="
+          아래 diff 를 기반으로 코드 전체를 분석한 뒤, \"치명적 오류·실행 중단 가능성·데이터 손실·보안 취약점·트랜잭션 무결성 파괴·경쟁 상태(race condition)·정합성 붕괴 구조\"에 해당하는 문제만을 의미 단위별 주제로 분류하여 번호 매겨 작성하라.
+
+          출력 규칙:
+            1) 반드시 \"실제 문제를 유발하는 치명적 항목만\" 추출할 것. 단순 리팩토링, 스타일, 네이밍, 미세한 개선 등은 절대 포함 금지.
+            2) 주요 문제를 최대 6개 이하의 주제로 자동 분류하고, 각 주제를 번호 매긴 상위 목록으로 제시할 것.
+            3) 모든 주제는 심각도(서비스 중단, 데이터 무결성 훼손, 보안 위험, 중대한 논리 오류 등) 기준으로 내림차순 정렬할 것.
+            4) 각 주제 아래 핵심 내용을 bullet 으로 작성하되, 문제의 원인·결과·위험성을 간결하게 설명할 것.
+            5) 전체 출력은 기본적으로 100~400자 내로 작성하되, diff 규모가 매우 크고 치명적 문제가 많은 경우 최대 700자까지 확장 가능.
+            6) 추측성 내용 금지. diff 에 명확히 나타난 위험만 기술할 것.
+            7) diff 에 등장한 파일명·클래스명·폴더명·함수명 등은 그대로 사용하며, 마음대로 번역하지 말 것.
+            8) 라인 앞 글자가 + 는 추가된 코드, - 는 삭제된 코드임을 고려하여 실제 변경된 내용만 기반으로 작성할 것.
+            9) 특정 라인 번호에 대한 설명은 금지. 의미 단위의 문제만 요약할 것.
+            10) 이모티콘 사용 금지.
+            11) 심각한 문제가 없다면 \"치명적 문제 없음\" 이라고 단 한 줄로 답할 것.
+          
+          분석 대상 diff:
+          "
+          
+          printf -v ESCAPED_PROMPT '%s' "$PR_PROMPT"
+          
+          jq -n \
+          --arg prompt "$ESCAPED_PROMPT" \
+          --rawfile diff diff.txt \
+          '{
+            model: "gpt-5.1",
+            messages: [
+              { role: "system", content: "너는 GitHub 코드 리뷰 전문가야." },
+              { role: "user",   content: $prompt },
+              { role: "user",   content: $diff }
+            ]
+          }' > payload.json
+          
+          RESPONSE=$(curl https://api.openai.com/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d @payload.json)
+          
+          echo "DISPLAY RESPONSE"
+          echo "$RESPONSE"
+          CONTENT=$(echo $RESPONSE | jq -r ".choices[0].message.content")
+          
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          echo "$CONTENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Update PR Review body
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          
+          PR_BODY=$(gh pr view $PR_NUMBER --json body -q '.body')
+          
+          CLEAN_BODY=$(printf "%s" "$PR_BODY" | sed -E ':a;N;$!ba;s/<!-- AI-REVIEW:START -->.*<!-- AI-REVIEW:END -->//g')
+          
+          echo "$CLEAN_BODY" > pr_body.txt
+          
+          cat << 'EOF' > ai_review.txt
+          ${{ steps.review.outputs.content }}
+          EOF
+          
+          {
+            cat pr_body.txt
+            echo "<!-- AI-REVIEW:START -->"
+            echo "🛠️ AI 코드 리뷰"
+            echo "---"
+            cat ai_review.txt
+            echo "<!-- AI-REVIEW:END -->"
+          } > updated_body.txt
+          
+          # 4) 출력 확인
+          echo "==== UPDATED_BODY BEGIN ===="
+          cat updated_body.txt
+          echo "==== UPDATED_BODY END ===="
+          
+          # 5) PR 내용 업데이트
+          gh pr edit $PR_NUMBER --body "$(cat updated_body.txt)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONTENT: ${{ steps.review.outputs.content }}
