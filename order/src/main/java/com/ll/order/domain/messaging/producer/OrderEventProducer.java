@@ -4,6 +4,7 @@ import com.fasterxml.uuid.Generators;
 import com.ll.core.config.kafka.KafkaEventPublisher;
 import com.ll.core.model.vo.kafka.InventoryEvent;
 import com.ll.core.model.vo.kafka.OrderEvent;
+import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,12 @@ public class OrderEventProducer {
 
     public void sendRefund(RefundEvent event) {
         kafkaEventPublisher.publish("refund-event", event);
+    }
+
+    public void sendPaymentRefundRequest(PaymentRefundRequestEvent event) {
+        log.debug("환불 요청 이벤트 발행 시도 - orderCode: {}, orderId: {}", 
+                event.orderCode(), event.orderId());
+        kafkaEventPublisher.publish("payment-refund-request-event", event);
     }
 
     public void sendInventoryRollback(String productCode, int quantity) {

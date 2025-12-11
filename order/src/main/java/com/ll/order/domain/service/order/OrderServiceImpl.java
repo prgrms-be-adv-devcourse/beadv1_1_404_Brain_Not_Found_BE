@@ -1,6 +1,7 @@
 package com.ll.order.domain.service.order;
 
 import com.ll.core.model.exception.BaseException;
+import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
 import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
@@ -28,6 +29,7 @@ import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.event.InventoryRollbackEventOutboxService;
 import com.ll.order.domain.service.event.OrderEventService;
+import com.ll.order.domain.service.event.PaymentRefundRequestEventOutboxService;
 import com.ll.order.domain.service.event.RefundEventOutboxService;
 import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.create.strategy.CartOrderCreationStrategy;
@@ -65,6 +67,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderEventService orderEventService;
     private final OrderInventoryService orderInventoryService;
     private final RefundEventOutboxService refundEventOutboxService;
+    private final PaymentRefundRequestEventOutboxService paymentRefundRequestEventOutboxService;
     private final InventoryRollbackEventOutboxService inventoryRollbackEventOutboxService;
 
     // Strategy 패턴을 위한 주문 생성 전략들
@@ -214,35 +217,32 @@ public class OrderServiceImpl implements OrderService {
         return Optional.of(redirectUrl);
     }
 
-    // 주문 취소 처리 -> 환불 처리(동기) + 환불 이벤트 발행(비동기) + 재고 복구 요청 ( 비동기 )
-    // 부모 트랜잭션 ( updateOrderStatus ) 에서 호출되는 메서드
+    // 주문 취소 처리(비동기) -> 환불 요청 이벤트 발행 + 환불 이벤트 발행 + 재고 복구 요청
     private void handleOrderCancellation(Order order) {
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
         String buyerCode = order.getBuyerCode();
 
-        // 1. 환불 처리 (동기) - 결제가 완료된 주문만 환불 처리
         if (order.getOrderStatus() == OrderStatus.COMPLETED) {
             try {
-                paymentApiClient.requestRefund(
+                PaymentRefundRequestEvent refundRequestEvent = PaymentRefundRequestEvent.from(
                         order.getId(),
                         order.getCode(),
                         buyerCode,
                         order.getTotalPrice(),
                         "주문 취소"
                 );
-                log.debug("환불 처리 완료 - orderCode: {}, amount: {}", order.getCode(), order.getTotalPrice());
+                // outbox 데이터를 스케쥴러를 통해 비동기로 발행
+                paymentRefundRequestEventOutboxService.saveToOutbox(refundRequestEvent, order.getCode());
+                log.debug("환불 요청 이벤트 Outbox 저장 완료 - orderCode: {}, amount: {}", order.getCode(), order.getTotalPrice());
             } catch (Exception e) {
-                String errorMessage = String.format("환불 처리 실패 - orderCode: %s, error: %s",
+                String errorMessage = String.format("환불 요청 이벤트 Outbox 저장 실패 - orderCode: %s, error: %s",
                         order.getCode(), e.getMessage());
                 log.error(errorMessage, e);
-                // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
+                // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
                 compensationService.markCompensationFailed(order.getCode(), errorMessage);
-                throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
             }
         }
 
-        // 2. 환불 이벤트 발행 (Outbox 패턴. 정산에서 이벤트 소비) + 재고 복구 이벤트 발행 (Outbox 패턴)
-        // TODO : 환불 처리도 비동기로 처리할 수 있도록.
         for (OrderItem orderItem : orderItems) {
             if (buyerCode != null) {
                 RefundEvent refundEvent = RefundEvent.from(
@@ -251,10 +251,7 @@ public class OrderServiceImpl implements OrderService {
                         order.getCode(),
                         (long) orderItem.getPrice() * orderItem.getQuantity()
                 );
-                // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
-                // 왜 와이. 트랜잭션 롤백되면 카프카는 이벤트를 발행하고 db는 롤백되어 데이터 불일치 발생 가능. 
-                // db 트랜잭션 커밋이 될때만 아웃박스에 저장됨. 롤백되면 함께 롤백
-                // 별도 프로세스가 Outbox를 읽어서 Kafka에 발행
+                // 스케쥴
                 try {
                     refundEventOutboxService.saveToOutbox(refundEvent, order.getCode());
                     log.debug("환불 이벤트 Outbox 저장 완료 - orderCode: {}, orderItemCode: {}, amount: {}",

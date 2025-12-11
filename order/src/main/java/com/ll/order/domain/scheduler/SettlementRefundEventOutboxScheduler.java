@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "order.outbox.scheduler.enabled", havingValue = "true", matchIfMissing = false)
-public class RefundEventOutboxScheduler {
+public class SettlementRefundEventOutboxScheduler {
 
     private final RefundEventOutboxService refundEventOutboxService;
 
@@ -21,24 +21,24 @@ public class RefundEventOutboxScheduler {
             long publishableCount = refundEventOutboxService.countPublishableEvents();
             
             if (publishableCount == 0) {
-                log.debug("발행할 PENDING 상태의 환불 이벤트가 없습니다.");
+                log.debug("[환불 이벤트(정산)] 발행할 PENDING 상태의 환불 이벤트가 없습니다.");
             } else {
-                log.debug("스케줄러 실행 - 발행 대상 환불 이벤트: {}개", publishableCount);
+                log.debug("[환불 이벤트(정산)] 스케줄러 실행 - 발행 대상 환불 이벤트: {}개", publishableCount);
                 int successCount = refundEventOutboxService.publishPendingEvents();
-                log.debug("스케줄러 완료 - 발행 성공: {}개", successCount);
+                log.debug("[환불 이벤트(정산)] 스케줄러 완료 - 발행 성공: {}개", successCount);
             }
 
             long republishableCount = refundEventOutboxService.countRepublishableEvents();
             
             if (republishableCount == 0) {
-                log.debug("재발행할 FAILED 상태의 환불 이벤트가 없습니다.");
+                log.debug("[환불 이벤트(정산)] 재발행할 FAILED 상태의 환불 이벤트가 없습니다.");
             } else {
-                log.debug("스케줄러 실행 - 재발행 대상 환불 이벤트: {}개", republishableCount);
+                log.debug("[환불 이벤트(정산)] 스케줄러 실행 - 재발행 대상 환불 이벤트: {}개", republishableCount);
                 int successCount = refundEventOutboxService.republishFailedEvents();
-                log.debug("스케줄러 완료 - 재발행 성공: {}개", successCount);
+                log.debug("[환불 이벤트(정산)] 스케줄러 완료 - 재발행 성공: {}개", successCount);
             }
         } catch (Exception e) {
-            log.error("환불 이벤트 스케줄러 실행 중 오류 발생", e);
+            log.error("[환불 이벤트(정산)] 스케줄러 실행 중 오류 발생", e);
         }
     }
 }
