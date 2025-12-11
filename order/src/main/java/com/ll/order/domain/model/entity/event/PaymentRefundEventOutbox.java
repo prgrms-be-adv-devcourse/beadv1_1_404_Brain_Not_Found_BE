@@ -20,9 +20,6 @@ import java.time.LocalDateTime;
 @Table(name = "payment_refund_event_outbox")
 public class PaymentRefundEventOutbox extends BaseEntity {
 
-    @Column(nullable = false, name = "order_id")
-    private Long orderId;
-
     @Column(nullable = false, name = "order_code")
     private String orderCode;
 
@@ -72,7 +69,6 @@ public class PaymentRefundEventOutbox extends BaseEntity {
         try {
             String eventPayload = objectMapper.writeValueAsString(event);
             return PaymentRefundEventOutbox.builder()
-                    .orderId(event.orderId())
                     .orderCode(orderCode)
                     .buyerCode(event.buyerCode())
                     .refundAmount(event.refundAmount())

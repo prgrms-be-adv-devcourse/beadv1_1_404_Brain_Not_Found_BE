@@ -24,9 +24,6 @@ public class OrderHistoryEntity extends BaseEntity {
 
     // 기본 식별자
     @Column(nullable = false)
-    private Long orderId;
-
-    @Column(nullable = false)
     private String orderCode;
 
     // 주문 정보
@@ -92,7 +89,6 @@ public class OrderHistoryEntity extends BaseEntity {
             String createdBy
     ) {
         OrderHistoryEntity orderHistory = new OrderHistoryEntity();
-        orderHistory.orderId = order.getId();
         orderHistory.orderCode = order.getCode();
         orderHistory.buyerId = order.getBuyerId();
         orderHistory.buyerCode = order.getBuyerCode();

@@ -143,7 +143,7 @@ class CartOrderIntegrationSuccessTest extends BaseOrderIntegrationSuccessTest {
         // 4. 실제 DB에 주문 이력이 저장되었는지 확인
         // 주문 생성 시: CREATE 이력 저장
         // 결제 성공 시: STATUS_CHANGE 이력 저장 (COMPLETED 상태로 변경)
-        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(savedOrder.getId());
+        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderCode(savedOrder.getCode());
         log.info("*****************************orderHistories*****************************");
         assertThat(orderHistories).hasSizeGreaterThanOrEqualTo(2); // 최소 2개 이상 (생성 + 결제 성공)
         
@@ -322,7 +322,7 @@ class CartOrderIntegrationSuccessTest extends BaseOrderIntegrationSuccessTest {
 
         // 4. 실제 DB에 주문 이력이 저장되었는지 확인
         // 주문 생성 시: CREATE 이력만 저장 (결제는 하지 않으므로 STATUS_CHANGE 이력 없음)
-        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(savedOrder.getId());
+        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderCode(savedOrder.getCode());
         log.info("*****************************orderHistories (TOSS_PAYMENT)*****************************");
         assertThat(orderHistories).hasSizeGreaterThanOrEqualTo(1); // 최소 1개 이상 (생성만)
         
@@ -396,7 +396,7 @@ class CartOrderIntegrationSuccessTest extends BaseOrderIntegrationSuccessTest {
         assertThat(completedOrder.getBuyerCode()).isEqualTo("USER-001");
 
         // 7. 주문 이력 확인 (CREATE + STATUS_CHANGE)
-        List<OrderHistoryEntity> completedOrderHistories = orderHistoryJpaRepository.findByOrderId(completedOrder.getId());
+        List<OrderHistoryEntity> completedOrderHistories = orderHistoryJpaRepository.findByOrderCode(completedOrder.getCode());
         assertThat(completedOrderHistories).hasSizeGreaterThanOrEqualTo(2); // CREATE + STATUS_CHANGE
 
         // 결제 성공 이력 확인
