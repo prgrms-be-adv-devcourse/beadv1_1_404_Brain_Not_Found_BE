@@ -106,7 +106,9 @@ jobs:
           
           echo "$CLEAN_BODY" > pr_body.txt
           
-          printf "%s" "${{ steps.description.outputs.content }}" > ai_summary.txt
+          cat << 'EOF' > ai_summary.txt
+          ${{ steps.description.outputs.content }}
+          EOF
           
           {
             cat pr_body.txt
@@ -194,7 +196,9 @@ jobs:
           
           echo "$CLEAN_BODY" > pr_body.txt
           
-          printf "%s" "${{ steps.review.outputs.content }}" > ai_review.txt
+          cat << 'EOF' > ai_review.txt
+          ${{ steps.review.outputs.content }}
+          EOF
           
           {
             cat pr_body.txt
