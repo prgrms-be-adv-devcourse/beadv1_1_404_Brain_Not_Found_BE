@@ -2,7 +2,6 @@ package com.ll.payment.deposit;
 
 import com.fasterxml.uuid.Generators;
 import com.ll.payment.deposit.model.entity.Deposit;
-import com.ll.payment.deposit.model.entity.DepositHistory;
 import com.ll.payment.deposit.model.enums.DepositHistoryType;
 import com.ll.payment.deposit.model.enums.DepositStatus;
 import com.ll.payment.deposit.model.exception.DepositNotFoundException;
@@ -17,7 +16,6 @@ import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.payment.deposit.model.vo.response.DepositDeleteResponse;
 import com.ll.payment.deposit.model.vo.response.DepositResponse;
 import com.ll.payment.deposit.model.vo.response.DepositTransactionResponse;
-import com.ll.payment.deposit.repository.DepositHistoryRepository;
 import com.ll.payment.deposit.repository.DepositRepository;
 import com.ll.payment.deposit.service.DepositHistoryService;
 import com.ll.payment.deposit.service.DepositServiceImpl;
@@ -33,8 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -124,23 +121,23 @@ public class DepositServiceUnitTest {
     }
 
     private void assertTransactionResponse(Long balance, DepositHistoryType charge) {
-        assertThat(deposit.getBalance()).isEqualTo(balance);
-        assertThat(transactionResponse).isNotNull();
-        assertThat(transactionResponse.depositCode()).isEqualTo(deposit.getCode());
-        assertThat(transactionResponse.amount()).isEqualTo(AMOUNT);
-        assertThat(transactionResponse.balanceAfter()).isEqualTo(balance);
-        assertThat(transactionResponse.historyType()).isEqualTo(charge);
-        assertThat(transactionResponse.referenceCode()).isEqualTo(REF_CODE);
+        assertNotNull(transactionResponse);
+        assertEquals(deposit.getBalance(), balance);
+        assertEquals(deposit.getCode(), transactionResponse.depositCode());
+        assertEquals(AMOUNT, transactionResponse.amount());
+        assertEquals(balance, transactionResponse.balanceAfter());
+        assertEquals(charge, transactionResponse.historyType());
+        assertEquals(REF_CODE, transactionResponse.referenceCode());
     }
 
     private void assertDeleteResponse() {
         verify(depositRepository).findByUserCode(USER_CODE);
         verify(depositRepository).save(argThat(d -> d.getDepositStatus() == DepositStatus.CLOSED));
-        assertThat(deposit.getDepositStatus()).isEqualTo(DepositStatus.CLOSED);
-        assertThat(deleteResponse).isNotNull();
-        assertThat(deleteResponse.userCode()).isEqualTo(USER_CODE);
-        assertThat(deleteResponse.closedReason()).isEqualTo(DELETE_REASON);
-        assertThat(deleteResponse.depositStatus()).isEqualTo(DepositStatus.CLOSED);
+        assertNotNull(deleteResponse);
+        assertEquals(USER_CODE, deleteResponse.userCode());
+        assertEquals(DELETE_REASON, deleteResponse.closedReason());
+        assertEquals(DepositStatus.CLOSED, deposit.getDepositStatus());
+        assertEquals(DepositStatus.CLOSED, deleteResponse.depositStatus());
     }
 
     /* ==========================
@@ -160,8 +157,8 @@ public class DepositServiceUnitTest {
         // then
         verify(depositRepository).findByUserCode(USER_CODE);
         verify(depositRepository).save(argThat(d -> d.getDepositStatus() == DepositStatus.ACTIVE));
-        assertThat(response).isNotNull();
-        assertThat(response.userCode()).isEqualTo(USER_CODE);
+        assertNotNull(response);
+        assertEquals(USER_CODE, response.userCode());
     }
 
     @Test
@@ -175,9 +172,9 @@ public class DepositServiceUnitTest {
 
         // then
         verify(depositRepository).findByUserCode(USER_CODE);
-        assertThat(deposit.getDepositStatus()).isEqualTo(DepositStatus.ACTIVE);
-        assertThat(response).isNotNull();
-        assertThat(response.userCode()).isEqualTo(USER_CODE);
+        assertNotNull(response);
+        assertEquals(USER_CODE, response.userCode());
+        assertEquals(DepositStatus.ACTIVE, deposit.getDepositStatus());
     }
 
     @Test
@@ -254,7 +251,8 @@ public class DepositServiceUnitTest {
 
         verify(depositRepository).findByUserCode(USER_CODE);
         verify(depositRepository, never()).save(any());
-        assertThat(deposit.getDepositStatus()).isEqualTo(DepositStatus.ACTIVE);
+        assertEquals(AMOUNT, deposit.getBalance());
+        assertEquals(DepositStatus.ACTIVE, deposit.getDepositStatus());
     }
 
     /* ===================
@@ -293,7 +291,7 @@ public class DepositServiceUnitTest {
         );
 
         verifyFailedFlow(DepositHistoryType.CHARGE_FAILED);
-        assertThat(deposit.getBalance()).isEqualTo(0L);
+        assertEquals(0L, deposit.getBalance());
     }
 
     @Test
@@ -310,8 +308,8 @@ public class DepositServiceUnitTest {
         );
 
         verifyFailedFlow(DepositHistoryType.CHARGE_FAILED);
-        assertThat(deposit.getBalance()).isEqualTo(0L);
-        assertThat(deposit.getDepositStatus()).isEqualTo(DepositStatus.CLOSED);
+        assertEquals(0L, deposit.getBalance());
+        assertEquals(DepositStatus.CLOSED, deposit.getDepositStatus());
     }
 
     @Test
@@ -362,7 +360,7 @@ public class DepositServiceUnitTest {
         );
 
         verifyFailedFlow(DepositHistoryType.WITHDRAW_FAILED);
-        assertThat(deposit.getBalance()).isEqualTo(AMOUNT_EXISTING);
+        assertEquals(AMOUNT_EXISTING, deposit.getBalance());
     }
 
     @Test
@@ -379,8 +377,8 @@ public class DepositServiceUnitTest {
         );
 
         verifyFailedFlow(DepositHistoryType.WITHDRAW_FAILED);
-        assertThat(deposit.getBalance()).isEqualTo(0L);
-        assertThat(deposit.getDepositStatus()).isEqualTo(DepositStatus.CLOSED);
+        assertEquals(0L, deposit.getBalance());
+        assertEquals(DepositStatus.CLOSED, deposit.getDepositStatus());
     }
 
     @Test
@@ -399,7 +397,7 @@ public class DepositServiceUnitTest {
         );
 
         verifyFailedFlow(DepositHistoryType.WITHDRAW_FAILED);
-        assertThat(deposit.getBalance()).isEqualTo(AMOUNT);
+        assertEquals(AMOUNT, deposit.getBalance());
     }
 
     @Test
@@ -451,7 +449,7 @@ public class DepositServiceUnitTest {
         );
 
         verifyFailedFlow(DepositHistoryType.PAYMENT_FAILED);
-        assertThat(deposit.getBalance()).isEqualTo(AMOUNT_EXISTING);
+        assertEquals(AMOUNT_EXISTING, deposit.getBalance());
     }
 
     @Test
@@ -468,8 +466,8 @@ public class DepositServiceUnitTest {
         );
 
         verifyFailedFlow(DepositHistoryType.PAYMENT_FAILED);
-        assertThat(deposit.getBalance()).isEqualTo(0L);
-        assertThat(deposit.getDepositStatus()).isEqualTo(DepositStatus.CLOSED);
+        assertEquals(0L, deposit.getBalance());
+        assertEquals(DepositStatus.CLOSED, deposit.getDepositStatus());
     }
 
     @Test
@@ -487,7 +485,7 @@ public class DepositServiceUnitTest {
         );
 
         verifyFailedFlow(DepositHistoryType.PAYMENT_FAILED);
-        assertThat(deposit.getBalance()).isEqualTo(AMOUNT);
+        assertEquals(AMOUNT, deposit.getBalance());
     }
 
     @Test
@@ -538,7 +536,7 @@ public class DepositServiceUnitTest {
         assertThrows(ex, () -> depositService.refundDeposit(USER_CODE, transactionRequest));
 
         verifyRefundFailedFlow();
-        assertThat(deposit.getBalance()).isEqualTo(0L);
+        assertEquals(0L, deposit.getBalance());
     }
 
     @Test
@@ -555,8 +553,8 @@ public class DepositServiceUnitTest {
         );
 
         verifyRefundFailedFlow();
-        assertThat(deposit.getBalance()).isEqualTo(0L);
-        assertThat(deposit.getDepositStatus()).isEqualTo(DepositStatus.CLOSED);
+        assertEquals(0L, deposit.getBalance());
+        assertEquals(DepositStatus.CLOSED, deposit.getDepositStatus());
     }
 
     @Test
