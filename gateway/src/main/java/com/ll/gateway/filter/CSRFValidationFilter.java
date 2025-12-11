@@ -34,7 +34,7 @@ public class CSRFValidationFilter extends AbstractGatewayFilterFactory<CSRFValid
                     "PATCH".equalsIgnoreCase(method)) {
 
                 String csrfHeader = request.getHeaders().getFirst("X-CSRF-TOKEN");
-                HttpCookie csrfCookie = request.getCookies().getFirst("CSRF-TOKEN");
+                HttpCookie csrfCookie = request.getCookies().getFirst("csrfToken");
                 String csrfCookieValue = (csrfCookie != null) ? csrfCookie.getValue() : null;
 
                 if (csrfHeader == null || !csrfHeader.equals(csrfCookieValue)) {
