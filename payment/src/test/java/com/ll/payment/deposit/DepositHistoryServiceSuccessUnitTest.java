@@ -37,11 +37,13 @@ public class DepositHistoryServiceSuccessUnitTest {
     private final Long AMOUNT_SETUP = 1000L;
 
     private Deposit deposit;
+    private DepositTransactionRequest depositTransactionRequest;
 
     @BeforeEach
     void setUp() {
         deposit = Deposit.createInitialDeposit(USER_CODE);
         deposit.charge(AMOUNT_SETUP, REF_CODE);
+        depositTransactionRequest = new DepositTransactionRequest(AMOUNT_SETUP, REF_CODE);
     }
 
     @Test
@@ -50,7 +52,7 @@ public class DepositHistoryServiceSuccessUnitTest {
         when(depositHistoryRepository.existsByReferenceCode(REF_CODE)).thenReturn(false);
 
         // when & then
-        assertDoesNotThrow(() -> depositHistoryService.validateDuplicate(REF_CODE));
+        assertDoesNotThrow(() -> depositHistoryService.validateDuplicate(depositTransactionRequest));
         verify(depositHistoryRepository, times(1)).existsByReferenceCode(REF_CODE);
     }
 
@@ -63,7 +65,7 @@ public class DepositHistoryServiceSuccessUnitTest {
         when(depositHistoryRepository.existsByReferenceCode(REF_CODE)).thenReturn(true);
 
         // when & then
-        assertDoesNotThrow(() -> depositHistoryService.validateDuplicateForRefund(REF_CODE));
+        assertDoesNotThrow(() -> depositHistoryService.validateDuplicateForRefund(depositTransactionRequest));
 
         verify(depositHistoryRepository).existsByReferenceCode(refundCode);
         verify(depositHistoryRepository).existsByReferenceCode(REF_CODE);

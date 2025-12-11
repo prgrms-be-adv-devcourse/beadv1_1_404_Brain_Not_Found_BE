@@ -74,14 +74,14 @@ public class DepositServiceSuccessUnitTest {
 
     private void verifySuccessFlow() {
         verify(depositRepository).findByUserCode(USER_CODE);
-        verify(depositHistoryService).validateDuplicate(REF_CODE);
+        verify(depositHistoryService).validateDuplicate(transactionRequest);
         verify(depositHistoryService).saveSuccessHistory(any());
         verify(depositHistoryService, never()).saveFailedHistory(any(), any(), any(), any());
     }
 
     private void verifyRefundSuccessFlow() {
         verify(depositRepository).findByUserCode(USER_CODE);
-        verify(depositHistoryService).validateDuplicateForRefund(REF_CODE);
+        verify(depositHistoryService).validateDuplicateForRefund(transactionRequest);
         verify(depositHistoryService).saveSuccessHistory(any());
         verify(depositHistoryService, never()).saveFailedHistory(any(), any(), any(), any());
     }
@@ -163,7 +163,7 @@ public class DepositServiceSuccessUnitTest {
     void Deposit_충전_성공() {
         // given
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
         doNothing().when(depositHistoryService).saveSuccessHistory(any());
 
         // when
@@ -183,7 +183,7 @@ public class DepositServiceSuccessUnitTest {
         // given
         deposit.charge(AMOUNT, REF_CODE);
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
         doNothing().when(depositHistoryService).saveSuccessHistory(any());
         // when
         transactionResponse = depositService.withdrawDeposit(USER_CODE, transactionRequest);
@@ -202,7 +202,7 @@ public class DepositServiceSuccessUnitTest {
         // given
         deposit.charge(AMOUNT, REF_CODE);
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
         doNothing().when(depositHistoryService).saveSuccessHistory(any());
 
         // when
@@ -221,7 +221,7 @@ public class DepositServiceSuccessUnitTest {
     void Deposit_환불_성공() {
         // given
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicateForRefund(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicateForRefund(transactionRequest);
         doNothing().when(depositHistoryService).saveSuccessHistory(any());
         // when
         transactionResponse = depositService.refundDeposit(USER_CODE, transactionRequest);
