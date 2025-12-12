@@ -21,9 +21,16 @@ management:
       show-details: always                           # 헬스체크 상세 정보
     info:
       enabled: true
+  health:
+    redis:
+      enabled: false
   tracing:
     sampling:
       probability: 1.0
     propagation:
       consume: b3
       produce: b3_multi
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

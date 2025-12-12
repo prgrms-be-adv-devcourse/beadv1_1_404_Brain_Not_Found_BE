@@ -1,10 +1,4 @@
 spring:
-  datasource:
-    url: ${AUTH_DB_URL}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${MYSQL_USER}
-    password: ${MYSQL_PASSWORD}
-
   security:
     oauth2:
       client:
@@ -33,7 +27,11 @@ spring:
             token-uri: https://nid.naver.com/oauth2.0/token
             user-info-uri: https://openapi.naver.com/v1/nid/me
             user-name-attribute: response
-
+  datasource:
+    url: ${AUTH_DB_URL}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -45,28 +43,24 @@ spring:
 
   kafka:
     bootstrap-servers:
-      - ${KAFKA_1_CONTAINER_NAME}:9090
+      - http://kafka-svc-prod.default.svc.cluster.local:9090
     consumer:
       group-id: user-service
       properties:
         allow.auto.create.topics: false
 
-
-
-
-eureka:
-  client:
-    register-with-eureka: true
-    fetch-registry: true
-    service-url:
-      defaultZone: ${DISCOVERY_URL}
-
-external:
-  user-service:
-    url: http://user:8083
+  #  redis 설정
+  data:
+    redis:
+      host: redis-svc-prod.default.svc.cluster.local
+      port: 6379
+      timeout: 60000ms
 
 logging:
   level:
-    org.springframework.security: INFO
-    org.springframework.security.oauth2: INFO
-    com.ll.auth.handler: INFO
+    root: info
+
+management:
+  zipkin:
+    tracing:
+      endpoint: http://zipkin-svc-prod.default.svc.cluster.local:9411/api/v2/spans

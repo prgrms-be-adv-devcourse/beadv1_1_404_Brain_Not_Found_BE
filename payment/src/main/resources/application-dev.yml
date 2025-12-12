@@ -12,6 +12,14 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
     open-in-view: false
+  kafka:
+    bootstrap-servers:
+      - http://kafka-svc-dev.dev.svc.cluster.local:9090
+    consumer:
+      group-id: payment-service
+      properties:
+        allow.auto.create.topics: false
+
 
 payment:
   targetUrl: https://api.tosspayments.com/v1/payments/confirm
@@ -24,6 +32,9 @@ payment:
   failUrl: http://localhost/api/orders/payment/fail
   # 테스트 환경에서 Toss Payments API 호출 실패 시 더미 paymentKey 사용 여부
   useMockPaymentKey: true
+
+
+
 
 # External Service URLs
 external:
@@ -70,3 +81,8 @@ resilience4j:
 logging:
   level:
     root: info
+
+management:
+  zipkin:
+    tracing:
+      endpoint: http://zipkin-svc-dev.dev.svc.cluster.local:9411/api/v2/spans

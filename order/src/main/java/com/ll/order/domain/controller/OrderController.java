@@ -4,11 +4,11 @@ import com.ll.core.model.response.BaseResponse;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderStatusUpdateRequest;
-import com.ll.order.domain.model.vo.request.OrderValidateRequest;
 import com.ll.order.domain.model.vo.response.order.*;
 import com.ll.order.domain.service.order.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -16,24 +16,21 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
-public class OrderController implements OrderControllerSwagger {
-    /*
-    3. 예치금 부족 → 충전 → 결제까지 흐름이 너무 길다 << @Transactional tossPayment  ← 여기서 트랜잭션 유지된 채 외부 API 호출됨 (위험)
-        tossPayment()는 트랜잭션 없이 수행해야 함.
-    4. REQUIRES_NEW가 과하게 사용됨 → 트랜잭션 단위 추적이 어려움 << 결제 승인, Toss 결제 API 호출 트랜잭션 제거
-    5. “예치금 부족 → Toss 결제 → 예치금 충전” 흐름이 ACID 보장이 없다 << 중간 단계 실패 시 데이터 일관성이 깨질 수 있음.
-    6. 재고 감소 트랜잭션이 없다면 도입해야 함 (비관적 락 or atomic update)
-    * */
+public class OrderController implements OrderControllerSwagger { // TODO : 예치금 부족 시 토스로 예치금 충전
 
     private final OrderService orderService;
 
+    @Value("${current.domain}")
+    private String currentDomain;
+
     @PostMapping("/cartItems")
-    // TODO 토스 보완 결제 시 paymentKey 필수 여부와 검증 로직 추가 필요
     public Object createCartItemOrder(
             @Valid @RequestBody OrderCartItemRequest request,
             @RequestHeader("X-User-Code") String userCode
@@ -100,26 +97,20 @@ public class OrderController implements OrderControllerSwagger {
         return BaseResponse.ok(Map.of("orderCode", orderCode));
     }
 
-    // 주문 가능 여부 확인
-    @PostMapping("/validate")
-    public ResponseEntity<BaseResponse<OrderValidateResponse>> validateOrder(
-            @Valid @RequestBody OrderValidateRequest request
-    ) {
-        OrderValidateResponse response = orderService.validateOrder(request);
-        return BaseResponse.ok(response);
-    }
-
     @GetMapping("/payment/success")
     public RedirectView paymentSuccess(
             @RequestParam String paymentKey,
-            @RequestParam String orderId,
+            @RequestParam("orderId") String orderCode,
             @RequestParam String amount
     ) {
         try {
-            orderService.completePaymentWithKey(orderId, paymentKey);
-            return new RedirectView("/orders/payment/success-page?orderId=" + orderId + "&amount=" + amount);
+            // orderId 파라미터는 실제로 orderCode이므로 그대로 사용
+            orderService.completePaymentWithKey(orderCode, paymentKey);
+            return new RedirectView(currentDomain + "/orders/payment/success-page?orderId=" + orderCode + "&amount=" + amount);
+
         } catch (Exception e) {
-            return new RedirectView("/orders/payment/fail-page?error=" + e.getMessage());
+            String encodedErrorMessage = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+            return new RedirectView(currentDomain + "/orders/payment/fail-page?error=" + encodedErrorMessage);
         }
     }
 
@@ -127,12 +118,12 @@ public class OrderController implements OrderControllerSwagger {
     public RedirectView paymentFail(
             @RequestParam(required = false) String errorCode,
             @RequestParam(required = false) String errorMessage,
-            @RequestParam(required = false) String orderId
+            @RequestParam(required = false) String orderId // 토스 결제 위젯에서 전달되는 orderId는 실제로 orderCode입니다
     ) {
-        return new RedirectView("/orders/payment/fail-page?errorCode=" + 
-               (errorCode != null ? errorCode : "") + 
-               "&errorMessage=" + (errorMessage != null ? errorMessage : "") +
-               "&orderId=" + (orderId != null ? orderId : ""));
+        return new RedirectView(currentDomain + "/orders/payment/fail-page?errorCode=" +
+                (errorCode != null ? errorCode : "") +
+                "&errorMessage=" + (errorMessage != null ? errorMessage : "") +
+                "&orderId=" + (orderId != null ? orderId : ""));
     }
 
 }

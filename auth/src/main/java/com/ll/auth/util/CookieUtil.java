@@ -12,11 +12,12 @@ public class CookieUtil {
                 .secure(true)
                 .path("/")
                 .maxAge(maxAge)
-                .sameSite("Strict")
+//                .sameSite("Strict")
+                .sameSite("none")
                 .build();
 
     }
-    public static ResponseCookie expiredCookie(String name){
+    public static ResponseCookie createExpiredCookie(String name){
         return generateCookie(name,null,0);
     }
 
@@ -29,10 +30,10 @@ public class CookieUtil {
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
     }
 
-    public static void expiredCookie(HttpServletResponse response){
-        ResponseCookie accessTokenCookie = CookieUtil.expiredCookie("accessToken");
-        ResponseCookie refreshTokenCookie = CookieUtil.expiredCookie("refreshToken");
-        ResponseCookie deviceCodeCookie =  CookieUtil.expiredCookie("deviceCode");
+    public static void expiredAuthCookie(HttpServletResponse response){
+        ResponseCookie accessTokenCookie = CookieUtil.createExpiredCookie("accessToken");
+        ResponseCookie refreshTokenCookie = CookieUtil.createExpiredCookie("refreshToken");
+        ResponseCookie deviceCodeCookie =  CookieUtil.createExpiredCookie("deviceCode");
         response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,deviceCodeCookie.toString());

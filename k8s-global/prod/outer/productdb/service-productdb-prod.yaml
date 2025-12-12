@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-db-svc-prod
+spec:
+  type: ClusterIP
+  selector:
+    app: product-db-prod
+  ports:
+    - protocol: TCP
+      port: 3311
+      targetPort: 3306

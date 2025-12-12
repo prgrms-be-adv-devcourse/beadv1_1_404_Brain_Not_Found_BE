@@ -24,3 +24,14 @@ management:
     propagation:
       consume: b3
       produce: b3_multi
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+custom:
+  batch:
+    chunk:
+      size: 100
+    skip:
+      limit: 10

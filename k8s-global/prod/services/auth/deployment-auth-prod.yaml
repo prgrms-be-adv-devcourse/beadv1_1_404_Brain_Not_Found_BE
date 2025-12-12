@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+#이 파일 정의
+metadata:
+  name: auth-dpy-prod
+#동작 정의
+spec:
+  replicas: 1
+#  제어할 라벨
+  selector:
+    matchLabels:
+      app: auth-prod
+#      pod 정의
+  template:
+    metadata:
+      labels:
+        app: auth-prod
+#        컨테이너 정의
+    spec:
+      containers:
+        - name: auth-pod-prod
+          image: yuio7279/auth
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: auth-config-prod
+            - secretRef:
+                name: auth-secret-prod
+            - secretRef:
+                name: auth-login-secret-prod
+      restartPolicy: Always

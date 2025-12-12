@@ -47,6 +47,10 @@ public class Deposit extends BaseEntity {
     public DepositHistory charge(Long amount, String referenceCode) {
         return increaseBalance(amount, referenceCode, DepositHistoryType.CHARGE);
     }
+
+    public DepositHistory settlement(Long amount, String referenceCode) {
+        return increaseBalance(amount, referenceCode, DepositHistoryType.SETTLEMENT);
+    }
     
     public DepositHistory refund(Long amount, String referenceCode) {
         return increaseBalance(amount, referenceCode, DepositHistoryType.REFUND);
@@ -76,20 +80,14 @@ public class Deposit extends BaseEntity {
     }
 
     public Deposit setClosed() {
-        if (this.depositStatus == DepositStatus.CLOSED) {
-            throw new InvalidDepositStatusTransitionException();
-        }
-        if (this.balance > 0) {
-            throw new DepositBalanceNotEmptyException();
-        }
+        validateActive();
+        validateBalanceNotEmpty();
         this.depositStatus = DepositStatus.CLOSED;
         return this;
     }
 
     public Deposit setActive() {
-        if (this.depositStatus == DepositStatus.ACTIVE) {
-            throw new DepositAlreadyExistsException();
-        }
+        validateInactive();
         this.depositStatus = DepositStatus.ACTIVE;
         return this;
     }
@@ -100,8 +98,20 @@ public class Deposit extends BaseEntity {
         }
     }
 
+    private void validateInactive() {
+        if (this.depositStatus == DepositStatus.ACTIVE) {
+            throw new DepositAlreadyExistsException();
+        }
+    }
+
+    private void validateBalanceNotEmpty() {
+        if (this.balance > 0) {
+            throw new DepositBalanceNotEmptyException();
+        }
+    }
+
     private void validateSufficientBalance(Long amount) {
-        if (amount == null || this.balance <= amount) {
+        if (amount == null || this.balance < amount) {
             throw new InsufficientDepositBalanceException();
         }
     }

@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-dpy-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-prod
+  template:
+    metadata:
+      labels:
+        app: prometheus-prod
+    spec:
+      containers:
+        - name: prometheus-pod-prod
+          image: prom/prometheus:v2.45.0 # 안정적인 버전 사용 권장
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config-volume
+              mountPath: /etc/prometheus
+            - name: prometheus-data
+              mountPath: /prometheus
+      volumes:
+        # ConfigMap을 마운트하여 설정 파일을 사용합니다.
+        - name: prometheus-config-volume
+          configMap:
+            name: prometheus-config-prod
+        # Prometheus 데이터 저장을 위한 임시 볼륨입니다. (운영 환경에서는 PVC 사용)
+        - name: prometheus-data
+          emptyDir: {}

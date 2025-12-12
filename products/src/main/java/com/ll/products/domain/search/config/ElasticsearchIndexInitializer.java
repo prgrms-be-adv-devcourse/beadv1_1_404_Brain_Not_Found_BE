@@ -20,7 +20,7 @@ import java.util.List;
 // 앱 실행 시, 인덱스 삭제 및 재생성(개발 환경에서만 활성화)
 @Slf4j
 @Component
-@Profile("local")
+@Profile("!prod")
 @Order(100)
 @RequiredArgsConstructor
 public class ElasticsearchIndexInitializer implements ApplicationRunner {

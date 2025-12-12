@@ -8,6 +8,10 @@ import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
+import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
+import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
+import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
+import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
 import com.ll.order.domain.model.vo.InventoryDeduction;
 import com.ll.order.domain.model.vo.response.cart.CartItemsResponse;
@@ -18,6 +22,8 @@ import com.ll.order.domain.model.vo.response.user.UserResponse;
 import com.ll.order.domain.repository.OrderHistoryJpaRepository;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
+import com.ll.order.domain.repository.TransactionTracingRepository;
+import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.event.OrderEventService;
 import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.OrderValidator;
@@ -36,6 +42,7 @@ public abstract class AbstractOrderCreationService {
     protected final OrderJpaRepository orderJpaRepository;
     protected final OrderItemJpaRepository orderItemJpaRepository;
     protected final OrderHistoryJpaRepository orderHistoryJpaRepository;
+    protected final TransactionTracingRepository transactionTracingRepository;
 
     protected final UserServiceClient userServiceClient;
     protected final ProductServiceClient productServiceClient;
@@ -46,33 +53,39 @@ public abstract class AbstractOrderCreationService {
     
     protected final OrderEventService orderEventService;
     protected final OrderInventoryService orderInventoryService;
+    protected final CompensationService compensationService;
 
     public final OrderCreateResponse createOrder(Object request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
 
         // 1. 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
-        validateInventory(request);
+        validateInventory(request, userCode); // 얘한테 userCode 생김
 
         // 2. 주문 및 주문 상품 데이터 생성
         OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
         Order savedOrder = creationResult.order();
         List<OrderItem> orderItems = creationResult.orderItems();
 
+        createTransactionTracing(savedOrder);
+
         // 3. 재고 차감 (주문 생성 후, 결제 전) <- 락 적용
         updateProductInventory(savedOrder, orderItems);
 
         // 4. 결제 처리 (별도 트랜잭션)
         PaidType paidType = extractPaidType(request);
-        if (paidType == PaidType.DEPOSIT) {
-            processDepositPayment(savedOrder, orderItems, request);
-        } else if (paidType == PaidType.TOSS_PAYMENT) {
-            // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
-            // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
-            log.debug("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)",
-                    savedOrder.getId(), savedOrder.getCode());
-        } else {
-            log.warn("지원하지 않는 결제 수단입니다. paidType: {}", paidType);
-            throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
+        switch (paidType) {
+            case DEPOSIT:
+                processDepositPayment(savedOrder, orderItems, request);
+                break;
+            case TOSS_PAYMENT:
+                // 토스 결제: 주문만 생성하고 결제는 UI에서 처리
+                // 주문 상태는 CREATED로 유지 (결제 완료 후 completePaymentWithKey에서 COMPLETED로 변경)
+                log.debug("토스 결제 주문 생성 완료 - orderId: {}, orderCode: {}, 상태: CREATED (결제 대기)",
+                        savedOrder.getId(), savedOrder.getCode());
+                break;
+            default:
+                log.warn("지원하지 않는 결제 수단입니다. paidType: {}", paidType);
+                throw new BaseException(OrderErrorCode.UNSUPPORTED_PAYMENT_TYPE);
         }
 
         return convertToOrderCreateResponse(savedOrder);
@@ -80,15 +93,13 @@ public abstract class AbstractOrderCreationService {
 
     // ========== 추상 메서드들 (하위 클래스에서 구현해야 함) ==========
 
-    protected abstract void validateInventory(Object request);
+    protected abstract void validateInventory(Object request, String userCode);
 
     protected abstract OrderCreationResult createOrderWithItems(Object request, UserResponse userInfo);
 
     protected abstract void processDepositPayment(Order order, List<OrderItem> orderItems, Object request);
 
     protected abstract PaidType extractPaidType(Object request);
-
-    protected abstract String extractPaymentKey(Object request);
 
     // ========== 공통 메서드들 (하위 클래스에서 사용 가능) ==========
     protected UserResponse getUserInfo(String userCode) {
@@ -107,24 +118,31 @@ public abstract class AbstractOrderCreationService {
                 });
     }
 
-    protected CartItemsResponse getCartInfo(String cartCode) {
-        CartItemsResponse cartInfo = Optional.ofNullable(cartServiceClient.getCartByCode(cartCode))
+    protected CartItemsResponse getCartInfo(String userCode) {
+        CartItemsResponse cartInfo = Optional.ofNullable(cartServiceClient.getCartByCode(userCode))
                 .orElseThrow(() -> {
-                    log.warn("장바구니를 찾을 수 없습니다. cartCode: {}", cartCode);
+                    log.warn("장바구니를 찾을 수 없습니다. userCode: {}", userCode);
                     return new BaseException(OrderErrorCode.CART_NOT_FOUND);
                 });
 
         if (cartInfo.isEmpty()) {
-            log.warn("장바구니가 비어있습니다. cartCode: {}", cartCode);
+            log.warn("장바구니가 비어있습니다. userCode: {}", userCode);
             throw new BaseException(OrderErrorCode.CART_EMPTY);
         }
 
         return cartInfo;
     }
 
+    protected void createTransactionTracing(Order order) {
+        // REQUIRES_NEW로 별도 트랜잭션에서 저장하여 메인 트랜잭션이 롤백되어도 유지되도록 함
+        compensationService.createTransactionTracing(order.getCode());
+    }
+
     protected void updateProductInventory(Order order, List<OrderItem> orderItems) {
         List<String> failedProducts = new ArrayList<>();
         List<InventoryDeduction> successfulDeductions = new ArrayList<>();
+        boolean hasFailed = false;
+        OrderStatus previousStatus = order.getOrderStatus();
 
         for (OrderItem orderItem : orderItems) {
             // 재고 감소 (동기 API 호출) <- 비관적 락 적용 시점
@@ -141,6 +159,27 @@ public abstract class AbstractOrderCreationService {
                 log.error("재고 차감 실패 - productCode: {}, quantity: {}, error: {}",
                         orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
                 failedProducts.add(orderItem.getProductCode());
+                
+                // 첫 번째 실패 발생 시 즉시 주문 상태 변경 및 이력 저장 <- 여러 상상
+                if (!hasFailed) {
+                    hasFailed = true;
+                    order.changeStatus(OrderStatus.FAILED);
+                    orderJpaRepository.save(order);
+
+                    // 주문 상태 변경 이력 저장 (재고 차감 실패)
+                    String errorMessage = String.format("재고 차감 실패 - productCode: %s, error: %s",
+                            orderItem.getProductCode(), e.getMessage());
+                    OrderHistoryEntity failHistory = OrderHistoryBuilder.builder()
+                            .order(order)
+                            .orderItems(orderItems)
+                            .actionType(OrderHistoryActionType.STATUS_CHANGE)
+                            .previousStatus(previousStatus)
+                            .reason("재고 차감 실패")
+                            .errorMessage(errorMessage)
+                            .createdBy("SYSTEM")
+                            .build();
+                    orderHistoryJpaRepository.save(failHistory);
+                }
             }
         }
 

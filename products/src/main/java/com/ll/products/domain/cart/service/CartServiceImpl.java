@@ -99,7 +99,15 @@ public class CartServiceImpl implements CartService {
 
         List<CartItem> items = cartItemRepository.findByCart(cart);
 
-        return CartItemsResponse.from(cart, items);
+        // CartItem의 productId로 Product 조회하여 productCode 매핑
+        List<Long> productIds = items.stream()
+                .map(CartItem::getProductId)
+                .distinct()
+                .toList();
+        
+        List<Product> products = productRepository.findAllById(productIds);
+        
+        return CartItemsResponse.from(cart, items, products);
     }
 
     @Override

@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-dpy-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-prod
+  template:
+    metadata:
+      labels:
+        app: gateway-prod
+    spec:
+      containers:
+        - name: gateway-pod-prod
+          image: yuio7279/gateway
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: gateway-config-prod
+            - secretRef:
+                name: gateway-secret-prod
+      restartPolicy: Always
