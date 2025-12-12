@@ -16,13 +16,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Import({SwaggerConfig.class})
 public class ProductsApplication {
     public static void main(String[] args) {
-        Dotenv dotenv = Dotenv.configure()
-                .directory("./") // .env 파일 경로 설정
-                .load();
-
-        dotenv.entries().forEach(entry ->
-                System.setProperty(entry.getKey(), entry.getValue())
-        );
+//        Dotenv dotenv = Dotenv.configure()
+//                .directory("./") // .env 파일 경로 설정
+//                .load();
+//
+//        dotenv.entries().forEach(entry ->
+//                System.setProperty(entry.getKey(), entry.getValue())
+//        );
         SpringApplication.run(ProductsApplication.class, args);
     }
 

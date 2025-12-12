@@ -9,13 +9,11 @@ import io.qdrant.client.grpc.Points.*;
 import io.qdrant.client.grpc.JsonWithInt.Value;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 
 import static io.qdrant.client.ConditionFactory.*;
 import static io.qdrant.client.PointIdFactory.id;
@@ -31,7 +29,6 @@ public class VectorStoreService {
     private final String qdrantCollectionName;
 
     private static final int VECTOR_DIMENSION_SIZE = 3072;
-//    private static final int VECTOR_DIMENSION_SIZE = 1536;
 
     // 1. 상품 벡터 저장(단일)
     public void upsertProduct(ProductVectorPoint productVectorPoint) {
@@ -124,7 +121,32 @@ public class VectorStoreService {
         createCollection();
     }
 
+    // 7. 상품 코드로 Payload 조회
+    public Map<String, Value> getPayloadByProductCode(String productCode) {
+        RetrievedPoint point = getPointByProductCode(productCode);
+        if (point == null) {
+            return Map.of();
+        }
+        return point.getPayloadMap();
+    }
 
+    // 상품 코드로 point 조회
+    public RetrievedPoint getPointByProductCode(String productCode) {
+        try {
+            List<RetrievedPoint> points = qdrantClient.retrieveAsync(
+                    qdrantCollectionName,
+                    List.of(id(UUID.fromString(productCode))),
+                    true,
+                    true,
+                    null
+            ).get();
+            return points.isEmpty() ? null : points.get(0);
+        } catch (ProductNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("벡터 조회 중 오류 발생", e);
+        }
+    }
 
     // point 내 vector 조회
     private static float[] getVector(List<RetrievedPoint> points) {
@@ -210,6 +232,7 @@ public class VectorStoreService {
         return list;
     }
 
+    // 유사 상품 조회(점수 포함)
     private List<ScoredPoint> getScoredPoints(float[] embedding, int limit) throws Exception {
         Filter filter = Filter.newBuilder()
                 .addMust(matchKeyword("status", "ON_SALE"))
