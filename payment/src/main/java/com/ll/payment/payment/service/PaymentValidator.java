@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class PaymentValidator {
 
-    public int validateRefundEligibility(Payment payment, PaymentRefundRequest request) {
+    public int validateRefund(Payment payment, PaymentRefundRequest request) {
         if (payment.getPaymentStatus() != PaymentStatus.COMPLETED) {
             log.warn("환불은 완료된 결제만 가능합니다. paymentId: {}, status: {}",
                     payment.getId(), payment.getPaymentStatus());

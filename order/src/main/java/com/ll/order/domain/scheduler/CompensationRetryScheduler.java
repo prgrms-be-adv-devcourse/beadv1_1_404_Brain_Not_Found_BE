@@ -22,17 +22,17 @@ public class CompensationRetryScheduler {
             long retryableCount = compensationRetryService.countRetryableCompensations();
             
             if (retryableCount == 0) {
-                log.debug("재시도할 보상 로직이 없습니다.");
+                log.debug("[보상 재시도] 재시도할 보상 로직이 없습니다.");
                 return;
             }
 
-            log.debug("스케줄러 실행 - 재시도 대상 보상 로직: {}개", retryableCount);
+            log.debug("[보상 재시도] 스케줄러 실행 - 재시도 대상 보상 로직: {}개", retryableCount);
             
             int successCount = compensationRetryService.retryFailedCompensations();
             
-            log.debug("스케줄러 완료 - 재시도 성공: {}개", successCount);
+            log.debug("[보상 재시도] 스케줄러 완료 - 재시도 성공: {}개", successCount);
         } catch (Exception e) {
-            log.error("스케줄러 실행 중 오류 발생", e);
+            log.error("[보상 재시도] 스케줄러 실행 중 오류 발생", e);
         }
     }
 }

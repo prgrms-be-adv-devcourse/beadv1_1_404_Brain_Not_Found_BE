@@ -2,7 +2,7 @@ package com.ll.order.domain.model.entity.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.persistence.BaseEntity;
-import com.ll.core.model.vo.kafka.RefundEvent;
+import com.ll.order.domain.model.vo.PaymentRefundRequestEvent;
 import com.ll.order.domain.model.enums.order.OutboxStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -17,26 +17,23 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "refund_event_outbox")
-public class RefundEventOutbox extends BaseEntity {
+@Table(name = "payment_refund_event_outbox")
+public class PaymentRefundEventOutbox extends BaseEntity {
 
     @Column(nullable = false, name = "order_code")
-    private String orderCode; // 환불 기준
-
-    @Column(nullable = false, name = "order_item_code")
-    private String orderItemCode; // 주문취소로 환불 할 때 재고 변동
+    private String orderCode;
 
     @Column(nullable = false, name = "buyer_code")
-    private String buyerCode; // 누구한테 환불하는지
+    private String buyerCode;
 
-    @Column(nullable = false, name = "reference_code")
-    private String referenceCode;
+    @Column(nullable = false, name = "refund_amount")
+    private Integer refundAmount;
 
-    @Column(nullable = false, name = "amount")
-    private Long amount;
+    @Column(name = "reason")
+    private String reason;
 
     @Column(nullable = false, name = "event_payload", columnDefinition = "TEXT")
-    private String eventPayload; // RefundEvent를 JSON으로 직렬화한 값
+    private String eventPayload; // PaymentRefundRequestEvent를 JSON으로 직렬화한 값
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -68,21 +65,20 @@ public class RefundEventOutbox extends BaseEntity {
         this.lastErrorMessage = errorMessage;
     }
 
-    public static RefundEventOutbox from(RefundEvent refundEvent, String orderCode, ObjectMapper objectMapper) {
+    public static PaymentRefundEventOutbox from(PaymentRefundRequestEvent event, String orderCode, ObjectMapper objectMapper) {
         try {
-            String eventPayload = objectMapper.writeValueAsString(refundEvent);
-            return RefundEventOutbox.builder()
+            String eventPayload = objectMapper.writeValueAsString(event);
+            return PaymentRefundEventOutbox.builder()
                     .orderCode(orderCode)
-                    .orderItemCode(refundEvent.orderItemCode())
-                    .buyerCode(refundEvent.buyerCode())
-                    .referenceCode(refundEvent.referenceCode())
-                    .amount(refundEvent.amount())
+                    .buyerCode(event.buyerCode())
+                    .refundAmount(event.refundAmount())
+                    .reason(event.reason())
                     .eventPayload(eventPayload)
                     .status(OutboxStatus.PENDING)
                     .retryCount(0)
                     .build();
         } catch (Exception e) {
-            throw new RuntimeException("RefundEvent를 JSON으로 직렬화하는 중 오류 발생", e);
+            throw new RuntimeException("PaymentRefundRequestEvent를 JSON으로 직렬화하는 중 오류 발생", e);
         }
     }
 }

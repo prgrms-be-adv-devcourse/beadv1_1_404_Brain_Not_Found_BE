@@ -21,24 +21,24 @@ public class InventoryRollbackEventOutboxScheduler {
             long publishableCount = inventoryRollbackEventOutboxService.countPublishableEvents();
             
             if (publishableCount == 0) {
-                log.debug("발행할 PENDING 상태의 재고 롤백 이벤트가 없습니다.");
+                log.debug("[재고 롤백 이벤트] 발행할 PENDING 상태의 재고 롤백 이벤트가 없습니다.");
             } else {
-                log.debug("스케줄러 실행 - 발행 대상 재고 롤백 이벤트: {}개", publishableCount);
+                log.debug("[재고 롤백 이벤트] 스케줄러 실행 - 발행 대상 재고 롤백 이벤트: {}개", publishableCount);
                 int successCount = inventoryRollbackEventOutboxService.publishPendingEvents();
-                log.debug("스케줄러 완료 - 발행 성공: {}개", successCount);
+                log.debug("[재고 롤백 이벤트] 스케줄러 완료 - 발행 성공: {}개", successCount);
             }
 
             long republishableCount = inventoryRollbackEventOutboxService.countRepublishableEvents();
             
             if (republishableCount == 0) {
-                log.debug("재발행할 FAILED 상태의 재고 롤백 이벤트가 없습니다.");
+                log.debug("[재고 롤백 이벤트] 재발행할 FAILED 상태의 재고 롤백 이벤트가 없습니다.");
             } else {
-                log.debug("스케줄러 실행 - 재발행 대상 재고 롤백 이벤트: {}개", republishableCount);
+                log.debug("[재고 롤백 이벤트] 스케줄러 실행 - 재발행 대상 재고 롤백 이벤트: {}개", republishableCount);
                 int successCount = inventoryRollbackEventOutboxService.republishFailedEvents();
-                log.debug("스케줄러 완료 - 재발행 성공: {}개", successCount);
+                log.debug("[재고 롤백 이벤트] 스케줄러 완료 - 재발행 성공: {}개", successCount);
             }
         } catch (Exception e) {
-            log.error("재고 롤백 이벤트 스케줄러 실행 중 오류 발생", e);
+            log.error("[재고 롤백 이벤트] 스케줄러 실행 중 오류 발생", e);
         }
     }
 }

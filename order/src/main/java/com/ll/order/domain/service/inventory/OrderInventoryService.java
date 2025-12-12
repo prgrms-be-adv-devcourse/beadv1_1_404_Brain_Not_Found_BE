@@ -55,7 +55,7 @@ public class OrderInventoryService {
 
         // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
         if (hasFailure && orderCode != null) {
-            compensationService.markCompensationFailed(orderCode, lastErrorMessage);
+            compensationService.compensationFailed(orderCode, lastErrorMessage);
         }
     }
 }
