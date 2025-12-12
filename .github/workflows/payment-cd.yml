@@ -1,0 +1,17 @@
+# 메인브랜치에 push 시, payment 서비스를 배포, 롤링 업데이트 하는 작업
+name: payment-CD
+on:
+  push:
+    branches:
+      - test/main
+    paths:
+      - 'payment/**' # payment 폴더 변경 시
+      - 'core/**' # core 폴더 변경 시
+
+jobs:
+  deploying:
+    uses: ./.github/workflows/cd-workflow.yml
+    secrets: inherit
+    with:
+      service-name: payment
+

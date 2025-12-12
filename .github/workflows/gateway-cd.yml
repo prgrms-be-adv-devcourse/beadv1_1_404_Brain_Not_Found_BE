@@ -1,0 +1,16 @@
+# 메인브랜치에 push 시, gateway 서비스를 배포, 롤링 업데이트 하는 작업
+name: GATEWAY-CD
+on:
+  push:
+    branches:
+      - test/main
+    paths:
+      - 'gateway/**' # gateway 폴더 변경 시
+
+jobs:
+  deploying:
+    uses: ./.github/workflows/cd-workflow.yml
+    secrets: inherit
+    with:
+      service-name: gateway
+
