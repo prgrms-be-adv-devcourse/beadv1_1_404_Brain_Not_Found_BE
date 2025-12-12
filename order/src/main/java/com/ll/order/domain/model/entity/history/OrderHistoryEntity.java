@@ -24,9 +24,6 @@ public class OrderHistoryEntity extends BaseEntity {
 
     // 기본 식별자
     @Column(nullable = false)
-    private Long orderId;
-
-    @Column(nullable = false)
     private String orderCode;
 
     // 주문 정보
@@ -92,14 +89,15 @@ public class OrderHistoryEntity extends BaseEntity {
             String createdBy
     ) {
         OrderHistoryEntity orderHistory = new OrderHistoryEntity();
-        orderHistory.orderId = order.getId();
         orderHistory.orderCode = order.getCode();
         orderHistory.buyerId = order.getBuyerId();
         orderHistory.buyerCode = order.getBuyerCode();
         orderHistory.totalPrice = order.getTotalPrice();
         orderHistory.orderType = order.getOrderType();
         orderHistory.previousStatus = previousStatus;
-        orderHistory.currentStatus = order.getOrderStatus();
+        orderHistory.currentStatus = (actionType == OrderHistoryActionType.CREATE) 
+                ? OrderStatus.CREATED 
+                : order.getOrderStatus();
         orderHistory.statusChangedAt = LocalDateTime.now();
         orderHistory.actionType = actionType;
         
@@ -121,4 +119,62 @@ public class OrderHistoryEntity extends BaseEntity {
         return orderHistory;
     }
 
+    public static OrderHistoryEntity createOrderHistory(Order order, List<OrderItem> orderItems) {
+        return create(
+                order,
+                orderItems,
+                OrderHistoryActionType.CREATE,
+                null,
+                "주문 생성",
+                null,
+                null,
+                null,
+                "SYSTEM"
+        );
+    }
+
+    public static OrderHistoryEntity createPaymentSuccessHistory(
+            Order order, List<OrderItem> orderItems, OrderStatus previousStatus, String paymentType) {
+        return create(
+                order,
+                orderItems,
+                OrderHistoryActionType.STATUS_CHANGE,
+                previousStatus,
+                paymentType + " 결제 완료",
+                null,
+                null,
+                null,
+                "SYSTEM"
+        );
+    }
+
+    public static OrderHistoryEntity createPaymentFailHistory(
+            Order order, List<OrderItem> orderItems, OrderStatus previousStatus, String paymentType, String errorMessage) {
+        return create(
+                order,
+                orderItems,
+                OrderHistoryActionType.STATUS_CHANGE,
+                previousStatus,
+                paymentType + " 결제 실패",
+                errorMessage,
+                null,
+                null,
+                "SYSTEM"
+        );
+    }
+
+    public static OrderHistoryEntity createStatusChangeHistory(
+            Order order, List<OrderItem> orderItems, OrderStatus previousStatus, String reason, String createdBy) {
+        return create(
+                order,
+                orderItems,
+                OrderHistoryActionType.STATUS_CHANGE,
+                previousStatus,
+                reason,
+                null,
+                null,
+                null,
+                createdBy
+        );
+    }
 }

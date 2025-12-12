@@ -52,7 +52,7 @@ public class OrderValidator {
         return itemInfos;
     }
 
-    public void validateOrderStatusTransition(OrderStatus current, OrderStatus target) {
+    public void validateOrderStatusChange(OrderStatus current, OrderStatus target) {
         if (!current.canTransitionTo(target)) {
             log.warn("해당 상태로 전환할 수 없습니다. current: {}, target: {}", current, target);
             throw new BaseException(OrderErrorCode.INVALID_ORDER_STATUS_TRANSITION);

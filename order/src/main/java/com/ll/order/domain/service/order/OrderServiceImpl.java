@@ -2,16 +2,17 @@ package com.ll.order.domain.service.order;
 
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.vo.kafka.RefundEvent;
+import com.ll.order.domain.model.vo.PaymentRefundRequestEvent;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
-import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.payment.PaidType;
+import com.ll.order.domain.model.enums.payment.PaymentRefundNotificationStatus;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
 import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.request.OrderPaymentRequest;
@@ -28,6 +29,7 @@ import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.event.InventoryRollbackEventOutboxService;
 import com.ll.order.domain.service.event.OrderEventService;
+import com.ll.order.domain.service.event.PaymentRefundRequestEventOutboxService;
 import com.ll.order.domain.service.event.RefundEventOutboxService;
 import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.create.strategy.CartOrderCreationStrategy;
@@ -35,6 +37,7 @@ import com.ll.order.domain.service.order.create.strategy.DirectOrderCreationStra
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,6 +54,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class OrderServiceImpl implements OrderService {
 
+    @Value("${current.domain}")
+    private String currentDomain;
+
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
     private final OrderHistoryJpaRepository orderHistoryJpaRepository;
@@ -65,6 +71,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderEventService orderEventService;
     private final OrderInventoryService orderInventoryService;
     private final RefundEventOutboxService refundEventOutboxService;
+    private final PaymentRefundRequestEventOutboxService paymentRefundRequestEventOutboxService;
     private final InventoryRollbackEventOutboxService inventoryRollbackEventOutboxService;
 
     // Strategy 패턴을 위한 주문 생성 전략들
@@ -117,17 +124,17 @@ public class OrderServiceImpl implements OrderService {
         OrderStatus current = order.getOrderStatus();
         OrderStatus target = request.status();
 
-        orderValidator.validateOrderStatusTransition(current, target);
+        orderValidator.validateOrderStatusChange(current, target);
 
         if (target == OrderStatus.CANCELLED) {
-            handleOrderCancellation(order);
+            handleOrderCancel(order);
         }
         order.changeStatus(target);
 
         // 주문 상태 변경 이력 저장
         List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
         String reason = target == OrderStatus.CANCELLED ? "주문 취소" : "주문 상태 변경";
-        OrderHistoryEntity statusHistory = OrderHistoryBuilder.createStatusChangeHistory(
+        OrderHistoryEntity statusHistory = OrderHistoryEntity.createStatusChangeHistory(
                 order, orderItems, current, reason, userCode);
         orderHistoryJpaRepository.save(statusHistory);
 
@@ -136,6 +143,97 @@ public class OrderServiceImpl implements OrderService {
                 order.getOrderStatus(),
                 order.getUpdatedAt()
         );
+    }
+
+    @Override
+    @Transactional
+    public void handlePaymentRefundNotification(String orderCode, String status) {
+        log.debug("환불 알림 수신 - orderCode: {}, status: {}", orderCode, status);
+
+        try {
+            PaymentRefundNotificationStatus notificationStatus = PaymentRefundNotificationStatus.from(status);
+
+            switch (notificationStatus) {
+                case REFUND_FAILED -> {
+                    // 환불 실패 시 보상 트랜잭션 트리거
+                    String errorMessage = String.format("Payment 서비스에서 환불 처리 실패 - orderCode: %s", orderCode);
+                    compensationService.compensationFailed(orderCode, errorMessage);
+                    log.warn("{}, 보상 트랜잭션 트리거", errorMessage);
+                }
+                case REFUNDED -> {
+                    log.debug("환불 성공 알림 수신 - orderCode: {}", orderCode);
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("알 수 없는 환불 알림 상태 - orderCode: {}, status: {}", orderCode, status);
+        }
+    }
+
+    private void handleOrderCancel(Order order) {
+        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
+        String buyerCode = order.getBuyerCode();
+
+        if (order.getOrderStatus() == OrderStatus.COMPLETED) {
+            try {
+                PaymentRefundRequestEvent refundRequestEvent = PaymentRefundRequestEvent.from(
+                        order.getId(),
+                        order.getCode(),
+                        buyerCode,
+                        order.getTotalPrice(),
+                        "주문 취소"
+                );
+                // 결제 서비스로 환불 이벤트 발행
+                paymentRefundRequestEventOutboxService.saveToOutbox(refundRequestEvent, order.getCode());
+                log.debug("환불 요청 이벤트 Outbox 저장 완료 - orderCode: {}, amount: {}", order.getCode(), order.getTotalPrice());
+            } catch (Exception e) {
+                String errorMessage = String.format("환불 요청 이벤트 Outbox 저장 실패 - orderCode: %s, error: %s",
+                        order.getCode(), e.getMessage());
+                log.error(errorMessage, e);
+                // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
+                compensationService.compensationFailed(order.getCode(), errorMessage);
+            }
+        }
+
+        for (OrderItem orderItem : orderItems) {
+            if (buyerCode != null) {
+                RefundEvent refundEvent = RefundEvent.from(
+                        buyerCode,
+                        orderItem.getCode(),
+                        order.getCode(),
+                        (long) orderItem.getPrice() * orderItem.getQuantity()
+                );
+                // 스케쥴
+                try {
+                    // 정산 서비스로 환불 이벤트 발행
+                    refundEventOutboxService.saveToOutbox(refundEvent, order.getCode());
+                    log.debug("환불 이벤트 Outbox 저장 완료 - orderCode: {}, orderItemCode: {}, amount: {}",
+                            order.getCode(), orderItem.getCode(), refundEvent.amount());
+                } catch (Exception e) {
+                    String errorMessage = String.format("환불 이벤트 Outbox 저장 실패 - orderCode: %s, orderItemCode: %s, error: %s",
+                            order.getCode(), orderItem.getCode(), e.getMessage());
+                    log.error(errorMessage, e);
+                    // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
+                    compensationService.compensationFailed(order.getCode(), errorMessage);
+                }
+            }
+
+            // 재고 복구 이벤트 발행 
+            try {
+                inventoryRollbackEventOutboxService.saveToOutbox(
+                        order.getCode(),
+                        orderItem.getProductCode(),
+                        orderItem.getQuantity()
+                );
+                log.debug("재고 복구 이벤트 Outbox 저장 완료 - orderCode: {}, productCode: {}, quantity: {}",
+                        order.getCode(), orderItem.getProductCode(), orderItem.getQuantity());
+            } catch (Exception e) {
+                String errorMessage = String.format("재고 복구 이벤트 Outbox 저장 실패 - orderCode: %s, productCode: %s, quantity: %d, error: %s",
+                        order.getCode(), orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage());
+                log.error(errorMessage, e);
+                // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
+                compensationService.compensationFailed(order.getCode(), errorMessage);
+            }
+        }
     }
 
     @Override
@@ -165,7 +263,7 @@ public class OrderServiceImpl implements OrderService {
 
             // 주문 상태 변경 이력 저장 (결제 성공)
             List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
-            OrderHistoryEntity successHistory = OrderHistoryBuilder.createPaymentSuccessHistory(
+            OrderHistoryEntity successHistory = OrderHistoryEntity.createPaymentSuccessHistory(
                     order, orderItems, previousStatus, "토스");
             orderHistoryJpaRepository.save(successHistory);
 
@@ -178,7 +276,7 @@ public class OrderServiceImpl implements OrderService {
 
             // 주문 상태 변경 이력 저장 (결제 실패)
             List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
-            OrderHistoryEntity failHistory = OrderHistoryBuilder.createPaymentFailHistory(
+            OrderHistoryEntity failHistory = OrderHistoryEntity.createPaymentFailHistory(
                     order, orderItems, previousStatus, "토스", e.getMessage());
             orderHistoryJpaRepository.save(failHistory);
 
@@ -207,84 +305,11 @@ public class OrderServiceImpl implements OrderService {
         }
 
         String orderName = "주문번호: " + response.orderCode();
-        String redirectUrl = String.format("/orders/payment?orderId=%d&orderName=%s&amount=%d",
+        String redirectUrl = String.format(currentDomain + "/orders/payment?orderId=%d&orderName=%s&amount=%d",
                 response.id(),
                 URLEncoder.encode(orderName, StandardCharsets.UTF_8),
                 response.totalPrice());
         return Optional.of(redirectUrl);
-    }
-
-    // 주문 취소 처리 -> 환불 처리(동기) + 환불 이벤트 발행(비동기) + 재고 복구 요청 ( 비동기 )
-    // 부모 트랜잭션 ( updateOrderStatus ) 에서 호출되는 메서드
-    private void handleOrderCancellation(Order order) {
-        List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
-        String buyerCode = order.getBuyerCode();
-
-        // 1. 환불 처리 (동기) - 결제가 완료된 주문만 환불 처리
-        if (order.getOrderStatus() == OrderStatus.COMPLETED) {
-            try {
-                paymentApiClient.requestRefund(
-                        order.getId(),
-                        order.getCode(),
-                        buyerCode,
-                        order.getTotalPrice(),
-                        "주문 취소"
-                );
-                log.debug("환불 처리 완료 - orderCode: {}, amount: {}", order.getCode(), order.getTotalPrice());
-            } catch (Exception e) {
-                String errorMessage = String.format("환불 처리 실패 - orderCode: %s, error: %s",
-                        order.getCode(), e.getMessage());
-                log.error(errorMessage, e);
-                // 보상 로직 실패 시 TransactionTracing에 실패 상태 저장
-                compensationService.markCompensationFailed(order.getCode(), errorMessage);
-                throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
-            }
-        }
-
-        // 2. 환불 이벤트 발행 (Outbox 패턴. 정산에서 이벤트 소비) + 재고 복구 이벤트 발행 (Outbox 패턴)
-        // TODO : 환불 처리도 비동기로 처리할 수 있도록.
-        for (OrderItem orderItem : orderItems) {
-            if (buyerCode != null) {
-                RefundEvent refundEvent = RefundEvent.from(
-                        buyerCode,
-                        orderItem.getCode(),
-                        order.getCode(),
-                        (long) orderItem.getPrice() * orderItem.getQuantity()
-                );
-                // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
-                // 왜 와이. 트랜잭션 롤백되면 카프카는 이벤트를 발행하고 db는 롤백되어 데이터 불일치 발생 가능. 
-                // db 트랜잭션 커밋이 될때만 아웃박스에 저장됨. 롤백되면 함께 롤백
-                // 별도 프로세스가 Outbox를 읽어서 Kafka에 발행
-                try {
-                    refundEventOutboxService.saveToOutbox(refundEvent, order.getCode());
-                    log.debug("환불 이벤트 Outbox 저장 완료 - orderCode: {}, orderItemCode: {}, amount: {}",
-                            order.getCode(), orderItem.getCode(), refundEvent.amount());
-                } catch (Exception e) {
-                    String errorMessage = String.format("환불 이벤트 Outbox 저장 실패 - orderCode: %s, orderItemCode: %s, error: %s",
-                            order.getCode(), orderItem.getCode(), e.getMessage());
-                    log.error(errorMessage, e);
-                    // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
-                    compensationService.markCompensationFailed(order.getCode(), errorMessage);
-                }
-            }
-
-            // 재고 복구 이벤트 발행 (Outbox 패턴)
-            try {
-                inventoryRollbackEventOutboxService.saveToOutbox(
-                        order.getCode(),
-                        orderItem.getProductCode(),
-                        orderItem.getQuantity()
-                );
-                log.debug("재고 복구 이벤트 Outbox 저장 완료 - orderCode: {}, productCode: {}, quantity: {}",
-                        order.getCode(), orderItem.getProductCode(), orderItem.getQuantity());
-            } catch (Exception e) {
-                String errorMessage = String.format("재고 복구 이벤트 Outbox 저장 실패 - orderCode: %s, productCode: %s, quantity: %d, error: %s",
-                        order.getCode(), orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage());
-                log.error(errorMessage, e);
-                // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
-                compensationService.markCompensationFailed(order.getCode(), errorMessage);
-            }
-        }
     }
 
     private ProductResponse getProductInfo(String productCode) {

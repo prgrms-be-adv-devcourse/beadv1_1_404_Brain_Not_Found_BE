@@ -3,7 +3,7 @@ package com.ll.order.domain.service.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.vo.kafka.RefundEvent;
-import com.ll.order.domain.model.entity.event.RefundEventOutbox;
+import com.ll.order.domain.model.entity.event.SettlementRefundEventOutbox;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.enums.order.OutboxStatus;
 import com.ll.order.domain.repository.RefundEventOutboxRepository;
@@ -43,7 +43,7 @@ public class RefundEventOutboxService {
     // 상태별 이벤트 발행 공통 메서드
     @Transactional
     public int publishEventsByStatus(OutboxStatus status, String action) {
-        List<RefundEventOutbox> events = refundEventOutboxRepository
+        List<SettlementRefundEventOutbox> events = refundEventOutboxRepository
                 .findByStatusAndRetryCountLessThan(status, maxRetryCount);
 
         if (events.isEmpty()) {
@@ -56,7 +56,7 @@ public class RefundEventOutboxService {
         int successCount = 0;
         int failureCount = 0;
 
-        for (RefundEventOutbox outbox : events) {
+        for (SettlementRefundEventOutbox outbox : events) {
             try {
                 publishEvent(outbox);  // Self injection을 통해 프록시를 거쳐 호출
                 successCount++;
@@ -73,7 +73,7 @@ public class RefundEventOutboxService {
 
     // 이벤트를 Kafka에 발행
     @Transactional
-    public void publishEvent(RefundEventOutbox outbox) {
+    public void publishEvent(SettlementRefundEventOutbox outbox) {
         try {
             RefundEvent refundEvent;
             try {
@@ -122,7 +122,7 @@ public class RefundEventOutboxService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void saveToOutbox(RefundEvent refundEvent, String orderCode) {
         try {
-            RefundEventOutbox outbox = RefundEventOutbox.from(refundEvent, orderCode, objectMapper);
+            SettlementRefundEventOutbox outbox = SettlementRefundEventOutbox.from(refundEvent, orderCode, objectMapper);
             refundEventOutboxRepository.save(outbox);
 
             log.debug("환불 이벤트 Outbox 저장 완료 (PENDING) - orderCode: {}, orderItemCode: {}, referenceCode: {}, outboxId: {}",

@@ -126,7 +126,7 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         assertThat(orderItemCount).isEqualTo(1);
 
         // OrderHistory가 저장되었는지 확인 (재고 차감 실패 이력)
-        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(savedOrder.getId());
+        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderCode(savedOrder.getCode());
         assertThat(orderHistories).isNotEmpty();
         
         // 재고 차감 실패 이력이 저장되었는지 확인
@@ -226,7 +226,7 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         assertThat(orderItemCount).isEqualTo(2);
 
         // OrderHistory가 저장되었는지 확인 (재고 차감 실패 이력)
-        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(savedOrder.getId());
+        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderCode(savedOrder.getCode());
         assertThat(orderHistories).isNotEmpty();
         
         // 재고 차감 실패 이력이 저장되었는지 확인
@@ -326,7 +326,7 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         assertThat(orderItemCount).isEqualTo(1);
 
         // OrderHistory가 저장되었는지 확인 (결제 실패 이력)
-        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(failedOrder.getId());
+        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderCode(failedOrder.getCode());
         assertThat(orderHistories).isNotEmpty();
         
         // 결제 실패 이력이 저장되었는지 확인
@@ -413,7 +413,7 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         assertThat(orderItemCount).isEqualTo(2);
 
         // OrderHistory가 저장되었는지 확인 (결제 실패 이력)
-        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(failedOrder.getId());
+        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderCode(failedOrder.getCode());
         assertThat(orderHistories).isNotEmpty();
         
         // 결제 실패 이력이 저장되었는지 확인
@@ -600,7 +600,7 @@ class CommonOrderIntegrationFailureTest extends BaseOrderIntegrationFailureTest 
         assertThat(failedOrder.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
 
         // OrderHistory가 저장되었는지 확인 (결제 실패 이력)
-        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderId(failedOrder.getId());
+        List<OrderHistoryEntity> orderHistories = orderHistoryJpaRepository.findByOrderCode(failedOrder.getCode());
         assertThat(orderHistories).isNotEmpty();
         
         // 결제 실패 이력이 저장되었는지 확인

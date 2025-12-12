@@ -7,12 +7,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 
 @Configuration
 @EnableConfigurationProperties(SwaggerProperties.class)
 @RequiredArgsConstructor
+@Profile("!test") // 테스트 프로파일에서는 SwaggerConfig 비활성화
 public class SwaggerConfig {
 
     private final SwaggerProperties properties;

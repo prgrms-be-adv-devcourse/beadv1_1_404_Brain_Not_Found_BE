@@ -56,3 +56,14 @@ management:
   zipkin:
     tracing:
       endpoint: http://zipkin-svc-prod.default.svc.cluster.local:9411/api/v2/spans
+
+# Qdrant 설정
+qdrant:
+  host: qdrant-svc-pred.default.svc.cluster.local
+  port: 6334
+  collection-name: products
+
+swagger:
+  servers:
+    - "http://gateway-svc-prod.default.svc.cluster.local:8000"
+    - "http://product-svc-prod.default.svc.cluster.local:8085"

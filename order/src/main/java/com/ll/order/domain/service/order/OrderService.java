@@ -33,4 +33,7 @@ public interface OrderService {
     // 결제 타입에 따라 리다이렉트 URL을 생성합니다. 리다이렉트가 필요하지 않은 경우 Optional.empty()를 반환합니다.
     Optional<String> buildPaymentRedirectUrl(OrderCreateResponse response, PaidType paidType);
 
+    // Payment 서비스에서 환불 알림을 받아 처리합니다.
+    void handlePaymentRefundNotification(String orderCode, String status);
+
 }
