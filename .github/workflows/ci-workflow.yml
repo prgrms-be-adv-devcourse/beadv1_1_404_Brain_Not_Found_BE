@@ -26,6 +26,12 @@ jobs:
       tag_name: ${{ steps.compose_tag.outputs.tag }}
       semver_tag: ${{ steps.tag_version.outputs.new_tag }}
 
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
     steps:
       - name: 깃 브랜치 연결
         uses: actions/checkout@v5
