@@ -35,7 +35,7 @@ public class AuthService {
     }
 
     public Tokens refreshToken(TokenValidRequest request) {
-        ValidationTokenRequest(request);
+        ValidateTokenRequest(request);
 
         try {
             if (!redisService.validRefreshToken(request.refreshToken(), request.deviceCode())) {
@@ -86,7 +86,7 @@ public class AuthService {
     }
 
     public void logoutUser(TokenValidRequest request){
-        ValidationTokenRequest(request);
+        ValidateTokenRequest(request);
         try{
             redisService.deleteRefreshToken(request.refreshToken(),request.deviceCode());
         }
@@ -105,7 +105,7 @@ public class AuthService {
         }
     }
 
-    private void ValidationTokenRequest(TokenValidRequest request){
+    private void ValidateTokenRequest(TokenValidRequest request){
         if (request.refreshToken() == null || request.refreshToken().isEmpty()) {
             throw new TokenNotProvidedException();
         }
