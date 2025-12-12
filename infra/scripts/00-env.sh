@@ -30,12 +30,8 @@ declare -A DEFAULT_TOPICS=(
   ["refund-event.dlq"]=1
   ["inventory-event"]=1
   ["inventory-event.dlq"]=1
-  ["product-updated-event"]=1
-  ["product-deleted-event"]=1
-  ["product-updated-status-event"]=1
-  ["product-updated-event.dlq"]=1
-  ["product-deleted-event.dlq"]=1
-  ["product-updated-status-event.dlq"]=1
+  ["product-event"]=1
+  ["product-event.dlq"]=1
 )
 
 # 시간 포맷

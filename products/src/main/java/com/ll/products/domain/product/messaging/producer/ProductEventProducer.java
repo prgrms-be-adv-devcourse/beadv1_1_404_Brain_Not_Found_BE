@@ -1,4 +1,4 @@
-package com.ll.products.domain.product.event;
+package com.ll.products.domain.product.messaging.producer;
 
 import com.ll.core.config.kafka.KafkaEventPublisher;
 import com.ll.core.model.vo.kafka.ProductEvent;
@@ -16,10 +16,7 @@ import java.time.format.DateTimeFormatter;
 @RequiredArgsConstructor
 public class ProductEventProducer {
 
-    private static final String PRODUCT_UPDATE_TOPIC = "product-updated-event";
-    private static final String PRODUCT_DELETE_TOPIC = "product-deleted-event";
-    private static final String PRODUCT_UPDATE_STATUS_TOPIC = "product-updated-status-event";
-
+    private static final String PRODUCT_TOPIC = "product-event";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private final KafkaEventPublisher kafkaEventPublisher;
@@ -27,21 +24,21 @@ public class ProductEventProducer {
     // 1. 상품 수정 이벤트 발행
     public void publishProductUpdated(Product product) {
         ProductEvent event = buildProductEvent(product, ProductEventType.PRODUCT_UPDATED);
-        kafkaEventPublisher.publish(PRODUCT_UPDATE_TOPIC, event);
+        kafkaEventPublisher.publish(PRODUCT_TOPIC, event);
         log.info("상품 수정 이벤트 발행: productCode={}", product.getCode());
     }
 
     // 2. 상품 삭제 이벤트 발행
     public void publishProductDeleted(Product product) {
         ProductEvent event = buildProductEvent(product, ProductEventType.PRODUCT_DELETED);
-        kafkaEventPublisher.publish(PRODUCT_DELETE_TOPIC, event);
+        kafkaEventPublisher.publish(PRODUCT_TOPIC, event);
         log.info("상품 삭제 이벤트 발행: productCode={}", product.getCode());
     }
 
     // 3. 상품 상태 변경 이벤트 발행
     public void publishProductUpdatedStatus(Product product) {
         ProductEvent event = buildProductEvent(product, ProductEventType.PRODUCT_UPDATED_STATUS);
-        kafkaEventPublisher.publish(PRODUCT_UPDATE_STATUS_TOPIC, event);
+        kafkaEventPublisher.publish(PRODUCT_TOPIC, event);
         log.info("상품 상태 수정 이벤트 발행: productCode={}, status={}", product.getCode(), product.getStatus().name());
     }
 
