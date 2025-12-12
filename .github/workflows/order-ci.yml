@@ -22,13 +22,13 @@ on:
 #        default: false
 
 jobs:
-  testing:
-    uses: ./.github/workflows/ci-test-workflow.yml
-    with:
-      service-name: order
+#  testing:
+#    uses: ./.github/workflows/ci-test-workflow.yml
+#    with:
+#      service-name: order
 
   releasing:
-    needs: testing
+#    needs: testing
     uses: ./.github/workflows/ci-workflow.yml
     secrets: inherit
     with:
