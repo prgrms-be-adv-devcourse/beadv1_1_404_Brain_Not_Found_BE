@@ -24,10 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag_name: ${{ steps.compose_tag.outputs.tag }}
-      semver_tag: ${{ steps.tag_version.outputs.new_tag }}
+      semver_tag: ${{ steps.compose_tag.outputs.semver }}
 
     permissions:
-      contents: read
+      contents: write
       packages: write
       attestations: write
       id-token: write
@@ -35,6 +35,8 @@ jobs:
     steps:
       - name: 깃 브랜치 연결
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: 버저닝 위한 깃 권한 부여
         id: tag_version
@@ -50,6 +52,7 @@ jobs:
         id: compose_tag
         run: |
           echo "tag=${{ steps.tag_version.outputs.new_tag }}-sha-${{ steps.sha.outputs.short_sha }}" >> $GITHUB_OUTPUT
+          echo "semver=${{ steps.tag_version.outputs.new_tag }}" >> $GITHUB_OUTPUT
 
       - name: 버전 릴리즈
         uses: ncipollo/release-action@v1
