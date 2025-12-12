@@ -6,6 +6,11 @@ on:
       service-name:
         required: true
         type: string
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
 
 env:
   REGISTRY: docker.io
