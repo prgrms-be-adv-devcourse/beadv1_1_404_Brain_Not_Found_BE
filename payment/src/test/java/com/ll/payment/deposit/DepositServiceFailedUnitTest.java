@@ -73,7 +73,7 @@ public class DepositServiceFailedUnitTest {
 
     private void verifyFailedFlow(DepositHistoryType failedType) {
         verify(depositRepository).findByUserCode(USER_CODE);
-        verify(depositHistoryService).validateDuplicate(REF_CODE);
+        verify(depositHistoryService).validateDuplicate(transactionRequest);
         verify(depositHistoryService, never()).saveSuccessHistory(any());
         verify(depositHistoryService).saveFailedHistory(
                 eq(deposit),
@@ -85,7 +85,7 @@ public class DepositServiceFailedUnitTest {
 
     private void verifyRefundFailedFlow() {
         verify(depositRepository).findByUserCode(USER_CODE);
-        verify(depositHistoryService).validateDuplicateForRefund(REF_CODE);
+        verify(depositHistoryService).validateDuplicateForRefund(transactionRequest);
         verify(depositHistoryService, never()).saveSuccessHistory(any());
         verify(depositHistoryService).saveFailedHistory(
                 eq(deposit),
@@ -173,7 +173,7 @@ public class DepositServiceFailedUnitTest {
         mockDepositFound();
 
         doThrow(DuplicateDepositTransactionException.class)
-                .when(depositHistoryService).validateDuplicate(REF_CODE);
+                .when(depositHistoryService).validateDuplicate(transactionRequest);
 
         // then
         assertThrows(
@@ -190,7 +190,7 @@ public class DepositServiceFailedUnitTest {
         // given
         deposit.setClosed();
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
 
         // then
         assertThrows(
@@ -226,7 +226,7 @@ public class DepositServiceFailedUnitTest {
         // given
         deposit.charge(AMOUNT_EXISTING, REF_CODE);
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
         // then
         assertThrows(
                 InsufficientDepositBalanceException.class,
@@ -242,7 +242,7 @@ public class DepositServiceFailedUnitTest {
         // given
         deposit.setClosed();
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
 
         // then
         assertThrows(
@@ -262,7 +262,7 @@ public class DepositServiceFailedUnitTest {
         mockDepositFound();
 
         doThrow(DuplicateDepositTransactionException.class)
-                .when(depositHistoryService).validateDuplicate(REF_CODE);
+                .when(depositHistoryService).validateDuplicate(transactionRequest);
 
         // then
         assertThrows(
@@ -297,7 +297,7 @@ public class DepositServiceFailedUnitTest {
         // given
         deposit.charge(AMOUNT_EXISTING, REF_CODE);
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
         // then
         assertThrows(
                 InsufficientDepositBalanceException.class,
@@ -313,7 +313,7 @@ public class DepositServiceFailedUnitTest {
         // given
         deposit.setClosed();
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
 
         // then
         assertThrows(
@@ -332,7 +332,7 @@ public class DepositServiceFailedUnitTest {
         deposit.charge(AMOUNT, REF_CODE);
         mockDepositFound();
         doThrow(DuplicateDepositTransactionException.class)
-                .when(depositHistoryService).validateDuplicate(REF_CODE);
+                .when(depositHistoryService).validateDuplicate(transactionRequest);
 
         // then
         assertThrows(
@@ -370,7 +370,7 @@ public class DepositServiceFailedUnitTest {
     void 환불_실패시_공통_실패_처리_로직_검증(Class<? extends RuntimeException> ex) {
         // given
         mockDepositFound();
-        doThrow(ex).when(depositHistoryService).validateDuplicateForRefund(REF_CODE);
+        doThrow(ex).when(depositHistoryService).validateDuplicateForRefund(transactionRequest);
 
         // when & then
         assertThrows(ex, () -> depositService.refundDeposit(USER_CODE, transactionRequest));
@@ -384,7 +384,7 @@ public class DepositServiceFailedUnitTest {
         // given
         deposit.setClosed();
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicateForRefund(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicateForRefund(transactionRequest);
 
         // then
         assertThrows(

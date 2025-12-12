@@ -32,7 +32,7 @@ public class DepositServiceImpl implements DepositService {
 
     @FunctionalInterface
     public interface DepositValidationOperation {
-        void validate(String referenceCode);
+        void validate(DepositTransactionRequest request);
     }
 
     @Override
@@ -100,7 +100,10 @@ public class DepositServiceImpl implements DepositService {
                 userCode,
                 request,
                 depositHistoryService::validateDuplicateForRefund,
-                (deposit, req) -> deposit.refund(req.amount(), req.referenceCode()),
+                (deposit, req) -> deposit.refund(
+                        req.amount(),
+                        DepositHistoryServiceImpl.refundCode(req.referenceCode())
+                ),
                 DepositHistoryType.REFUND_FAILED
         );
     }
@@ -136,7 +139,7 @@ public class DepositServiceImpl implements DepositService {
         Deposit deposit = findDepositByUserCode(userCode);
         DepositHistory history;
         try {
-            validationOperation.validate(request.referenceCode());
+            validationOperation.validate(request);
             history = operation.apply(deposit, request);
             depositHistoryService.saveSuccessHistory(history);
             return DepositTransactionResponse.from(deposit.getCode(), history);
