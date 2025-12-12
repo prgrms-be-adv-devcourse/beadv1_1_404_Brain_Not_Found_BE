@@ -14,7 +14,7 @@ COPY core /app/core/
 COPY auth /app/auth/
 # 저장 경로 app/auth/build/libs/auth-<version>.jar
 RUN ./gradlew clean :auth:bootJar -x test --no-daemon --stacktrace
-
+#1
 
 FROM azul/zulu-openjdk:21-latest
 WORKDIR /app
