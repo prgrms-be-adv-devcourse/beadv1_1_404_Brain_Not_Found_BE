@@ -1,4 +1,4 @@
-package com.ll.order.domain.model.vo;
+package com.ll.core.model.vo.kafka;
 
 import jakarta.validation.constraints.NotBlank;
 
