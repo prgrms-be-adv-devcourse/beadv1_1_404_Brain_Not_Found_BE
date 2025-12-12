@@ -2,11 +2,7 @@ package com.ll.payment.deposit.controller.swagger;
 
 import com.ll.core.model.response.BaseResponse;
 import com.ll.payment.deposit.model.vo.request.DepositDeleteRequest;
-import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -23,15 +19,6 @@ import java.lang.annotation.*;
         summary = "예치금 계좌 삭제",
         description = "X-User-Code 헤더와 요청 바디(삭제 이유)를 통해 특정 예치금 거래 내역을 삭제합니다."
 )
-@Parameters({
-        @Parameter(
-                name = "X-User-Code",
-                in = ParameterIn.HEADER,
-                required = true,
-                description = "사용자 고유 코드",
-                schema = @Schema(type = "string", example = "019a90ab-fcf3-7413-af08-7121cc99378b")
-        )
-})
 @RequestBody(
         description = "예치금 계좌 삭제 요청 바디",
         required = true,

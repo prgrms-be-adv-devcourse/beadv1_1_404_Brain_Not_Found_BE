@@ -3,9 +3,6 @@ package com.ll.payment.deposit.controller.swagger;
 import com.ll.core.model.response.BaseResponse;
 import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,15 +19,6 @@ import java.lang.annotation.*;
         summary = "예치금 충전",
         description = "X-User-Code 헤더와 요청 바디(예치금 거래 정보)를 이용해 예치금 거래를 수행합니다."
 )
-@Parameters({
-        @Parameter(
-                name = "X-User-Code",
-                in = ParameterIn.HEADER,
-                required = true,
-                description = "사용자 고유 코드",
-                schema = @Schema(type = "string", example = "019a90ab-fcf3-7413-af08-7121cc99378b")
-        )
-})
 @RequestBody(
         description = "예치금 거래 요청 바디",
         required = true,

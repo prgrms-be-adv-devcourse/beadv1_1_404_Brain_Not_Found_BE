@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
@@ -22,13 +21,6 @@ import java.lang.annotation.*;
         description = "Header의 X-User-Code, 기간 필터(DateRange), 페이지네이션(pageable)을 이용해 거래 내역을 조회합니다."
 )
 @Parameters({
-        @Parameter(
-                name = "X-User-Code",
-                in = ParameterIn.HEADER,
-                description = "사용자 고유 코드 (필수)",
-                required = true,
-                schema = @Schema(type = "string", example = "019a90ab-fcf3-7413-af08-7121cc99378b")
-        ),
         @Parameter(
                 name = "fromDate",
                 in = ParameterIn.QUERY,

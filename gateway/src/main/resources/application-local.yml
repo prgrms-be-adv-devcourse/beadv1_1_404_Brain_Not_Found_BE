@@ -11,7 +11,7 @@ spring:
           routes:
             # Deposit
             - id: deposit-route-protected
-              uri: http://localhost:8086
+              uri: http://localhost:8087
               predicates:
                 - Path=/api/deposits, /api/deposits/**    #deposit은 모두 인증
                 - Method=POST, GET, PATCH, DELETE

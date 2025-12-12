@@ -8,9 +8,10 @@ repositories {
 }
 
 ext {
-    querydslVersion = '5.1.0'
-    mysqlVersion = "8.0.33"
+    set('querydslVersion', '5.1.0')
+    set('mysqlVersion', "8.0.33")
     set('springCloudVersion', "2025.0.0")
+    set('springdocVersion', "2.8.14")
 }
 
 
