@@ -19,7 +19,11 @@ on:
 #        required: false
 #        type: boolean
 #        default: false
-
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
 jobs:
 #  testing:
 #    uses: ./.github/workflows/ci-test-workflow.yml
