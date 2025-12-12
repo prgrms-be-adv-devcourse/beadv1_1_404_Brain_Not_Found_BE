@@ -6,7 +6,8 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum GatewayErrorCode {
 
-    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다.");
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증 정보가 유효하지 않습니다."),
+    FORBIDDEN(HttpStatus.FORBIDDEN,"허용되지 않은 접근입니다.");
 
     private final HttpStatus status;
     private final String message;

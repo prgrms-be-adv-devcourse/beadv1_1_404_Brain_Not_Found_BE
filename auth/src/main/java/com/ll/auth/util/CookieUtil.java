@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 
+import java.util.UUID;
+
 public class CookieUtil {
 
     public static ResponseCookie generateCookie(String name, String data, int maxAge){
@@ -26,16 +28,23 @@ public class CookieUtil {
         int refreshTokenMaxAge = 60 * 60 * 24 * 7; // 7일
         ResponseCookie accessTokenCookie = CookieUtil.generateCookie("accessToken",accessToken,accessTokenMaxAge);
         ResponseCookie refreshTokenCookie = CookieUtil.generateCookie("refreshToken",refreshToken,refreshTokenMaxAge);
+        ResponseCookie csrfTokenCookie = CookieUtil.generateCookie("csrfToken", UUID.randomUUID().toString(),accessTokenMaxAge);
+
         response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE,csrfTokenCookie.toString());
+
     }
 
     public static void expiredAuthCookie(HttpServletResponse response){
         ResponseCookie accessTokenCookie = CookieUtil.createExpiredCookie("accessToken");
         ResponseCookie refreshTokenCookie = CookieUtil.createExpiredCookie("refreshToken");
         ResponseCookie deviceCodeCookie =  CookieUtil.createExpiredCookie("deviceCode");
+        ResponseCookie csrfTokenCookie = CookieUtil.createExpiredCookie("csrfToken");
+
         response.addHeader(HttpHeaders.SET_COOKIE,accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,refreshTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE,deviceCodeCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE,csrfTokenCookie.toString());
     }
 }

@@ -17,6 +17,7 @@ spring:
                 - Method=POST, GET, PATCH, DELETE
               filters:
                 - name: TokenAuthenticationFilter
+                  # - name: CSRFValidationFilter
 
             # Category (PRODUCTS)         #카테고리 CUD 인증
             - id: category-route-protected
@@ -26,6 +27,7 @@ spring:
                 - Method=PUT, POST, DELETE
               filters:
                 - name: TokenAuthenticationFilter
+                  # - name: CSRFValidationFilter
 
             - id: category-route-public     #카테고리들 조회
               uri: http://localhost:8085
@@ -60,7 +62,7 @@ spring:
                 - Method=PATCH, PUT, POST, DELETE
               filters:
                 - name: TokenAuthenticationFilter
-
+              # - name: CSRFValidationFilter
             - id: product-es-route-public   #상품 es 검색
               uri: http://localhost:8085
               predicates:
@@ -76,6 +78,7 @@ spring:
                 - Method=POST
               filters:
                 - name: TokenAuthenticationFilter
+                  # - name: CSRFValidationFilter
 
             # Order
             - id: order-route-pg
@@ -89,6 +92,7 @@ spring:
               predicates:
                 - Path=/api/orders/**, /api/orders
                 - Method=POST, GET, PATCH, DELETE
+                - # - name: CSRFValidationFilter
               filters:
                 - name: TokenAuthenticationFilter
               order: 2
@@ -99,6 +103,7 @@ spring:
                 - Method=POST
               filters:
                 - name: TokenAuthenticationFilter
+                  # - name: CSRFValidationFilter
             # User
             - id: user-route-protected
               uri: http://localhost:8084
@@ -107,6 +112,7 @@ spring:
                 - Method=POST, GET, PATCH, DELETE
               filters:
                 - name: TokenAuthenticationFilter
+                  # - name: CSRFValidationFilter
               order: 2
 
             - id: user-route-public
