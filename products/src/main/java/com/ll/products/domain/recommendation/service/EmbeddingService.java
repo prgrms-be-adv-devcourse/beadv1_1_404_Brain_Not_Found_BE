@@ -64,7 +64,7 @@ public class EmbeddingService {
             throw new RuntimeException("임베딩 응답이 비어있습니다");
         }
 
-        float[] embedding = response.getResults().get(0).getOutput();
+        float[] embedding = response.getResults().getFirst().getOutput();
         if (embedding == null || embedding.length == 0) {
             throw new RuntimeException("임베딩 벡터가 비어있습니다");
         }
