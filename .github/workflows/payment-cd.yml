@@ -7,7 +7,8 @@ on:
     paths:
       - 'payment/**' # payment 폴더 변경 시
       - 'core/**' # core 폴더 변경 시
-
+permissions:
+  contents: read
 jobs:
   deploying:
     uses: ./.github/workflows/cd-workflow.yml

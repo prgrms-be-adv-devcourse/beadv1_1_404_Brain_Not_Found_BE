@@ -6,7 +6,8 @@ on:
       - test/main
     paths:
       - 'gateway/**' # gateway 폴더 변경 시
-
+permissions:
+  contents: read
 jobs:
   deploying:
     uses: ./.github/workflows/cd-workflow.yml
