@@ -1,0 +1,102 @@
+# main으로 pr시 product, core 코드 변경이 감지 될 경우, product 서비스 이미지를 빌드 후 도커 허브에 이미지를 푸시
+name: CI-WORKFLOW
+
+on:
+  workflow_call:
+    inputs:
+      service-name:     #product, gateway...
+        required: true
+        type: string
+      service-dir:      #./product
+        required: true
+        type: string
+      file-name:        #Dockerfile
+        required: true
+        type: string
+
+permissions:
+  contents: write
+#  packages: write
+#  attestations: write
+#  id-token: write
+
+env:
+  DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+jobs:
+  tagging:
+    name: 태깅 및 릴리즈
+    runs-on: ubuntu-latest
+    outputs:
+      semver_tag: ${{ steps.tag_version.outputs.new_tag }}
+
+    steps:
+      - name: 깃 브랜치 연결
+        uses: actions/checkout@v5
+
+      - name: 버저닝 위한 깃 권한 부여
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag_prefix: ${{ inputs.service-name }}-v
+
+      - name: Short SHA 추출
+        id: sha
+        run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+#      - name: 태그 생성 (SemVer + Short SHA)
+#        id: compose_tag
+#        outputs:
+#          semver_tag: ${{ steps.tag_version.outputs.new_tag }}
+#        run: |
+#          echo "tag=${{ steps.tag_version.outputs.new_tag }}-sha-${{ steps.sha.outputs.short_sha }}" >> $GITHUB_OUTPUT
+
+#      - name: 버전 릴리즈
+#        uses: ncipollo/release-action@v1
+#        with:
+#          tag: ${{ steps.compose_tag.outputs.tag }}
+#          name: ${{ steps.compose_tag.outputs.tag }}
+#          body: ${{ steps.tag_version.outputs.changelog }}
+
+
+#      - name: SemVer 태그 파일로 저장
+#        run: echo "${{ steps.tag_version.outputs.new_tag }}" > tag.txt
+#      - run: echo "${{ steps.tag_version.outputs.changelog }}" > changelog.txt
+#      - run: echo "${{ steps.compose_tag.outputs.tag }}" > tag_sha.txt
+
+#      - uses: actions/upload-artifact@v4
+#        with:
+#          name: tag_artifact
+#          path: |
+#            tag.txt
+#            changelog.txt
+#            tag_sha.txt
+
+
+  build-and-push:
+    name: 이미지 빌드 및 도커 허브로 푸시
+    runs-on: ubuntu-latest
+    needs: tagging
+
+    steps:
+      - name: 깃 브랜치 연결
+        uses: actions/checkout@v5
+
+      - name: 도커 허브 로그인
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USER }}
+          password: ${{ env.DOCKER_TOKEN }}
+
+      - name: 도커 이미지 빌드 후 푸시
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ inputs.service-dir }}/${{ inputs.file-name }} #./products/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ needs.tagging.outputs.semver_tag }}
+            ${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ needs.tagging.outputs.semver_tag }}-sha-${{ github.sha }}
+            ${{ env.DOCKER_USER }}/${{ inputs.service-name }}:latest

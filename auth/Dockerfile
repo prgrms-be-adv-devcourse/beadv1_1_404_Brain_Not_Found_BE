@@ -9,12 +9,11 @@ COPY gradle /app/gradle/
 RUN chmod +x gradlew
 
 # 의존성만 먼저 빌드
-#RUN ./gradlew dependencies --no-daemon
+RUN ./gradlew dependencies --no-daemon
 COPY core /app/core/
 COPY auth /app/auth/
-# 빌드 (배포 시 -x 옵션 제거 필수!)
 # 저장 경로 app/auth/build/libs/auth-<version>.jar
-#RUN ./gradlew :auth:bootJar -x test --no-daemon --stacktrace
+RUN ./gradlew clean :auth:bootJar -x test --no-daemon --stacktrace
 
 
 FROM azul/zulu-openjdk:21-latest
