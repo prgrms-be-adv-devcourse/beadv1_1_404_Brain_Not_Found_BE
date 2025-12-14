@@ -62,6 +62,7 @@ jobs:
           fi
           
           if [[ "${{ inputs.service-name }}" == "product" ]]; then
+            kubectl delete secret product-secret-prod --ignore-not-found
             echo "${{ secrets.SECRET_PRODUCT_PROD }}" | kubectl apply -f -
           fi
           echo "${{ secrets.SECRET_COMMON_PROD }}" | kubectl apply -f -
