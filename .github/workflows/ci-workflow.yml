@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       semver_tag: ${{ steps.tag_version.outputs.new_tag }}
+      tag_name: ${{ steps.compose_tag.outputs.tag}}
 
     steps:
       - name: 깃 브랜치 연결
@@ -46,12 +47,10 @@ jobs:
         id: sha
         run: echo "short_sha=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
-#      - name: 태그 생성 (SemVer + Short SHA)
-#        id: compose_tag
-#        outputs:
-#          semver_tag: ${{ steps.tag_version.outputs.new_tag }}
-#        run: |
-#          echo "tag=${{ steps.tag_version.outputs.new_tag }}-sha-${{ steps.sha.outputs.short_sha }}" >> $GITHUB_OUTPUT
+      - name: 태그 생성 (SemVer + Short SHA)
+        id: compose_tag
+        run: |
+          echo "tag=${{ steps.tag_version.outputs.new_tag }}-sha-${{ steps.sha.outputs.short_sha }}" >> $GITHUB_OUTPUT
 
 #      - name: 버전 릴리즈
 #        uses: ncipollo/release-action@v1
@@ -98,5 +97,5 @@ jobs:
           push: true
           tags: |
             ${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ needs.tagging.outputs.semver_tag }}
-            ${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ needs.tagging.outputs.semver_tag }}-sha-${{ github.sha }}
+            ${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ needs.tagging.outputs.tag_name }}
             ${{ env.DOCKER_USER }}/${{ inputs.service-name }}:latest
