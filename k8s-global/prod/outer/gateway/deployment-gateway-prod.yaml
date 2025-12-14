@@ -22,5 +22,5 @@ spec:
             - configMapRef:
                 name: gateway-config-prod
             - secretRef:
-                name: gateway-secret-prod
+                name: secret-common-prod
       restartPolicy: Always
