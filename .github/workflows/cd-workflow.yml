@@ -34,8 +34,8 @@ jobs:
             });
             
             const service = "${{ inputs.service-name }}";
-            const tag = tags.data.find(t =>
-              t.name.startsWith(`${service}-v`)
+            const release = releases.data.find(r =>
+              r.tag_name.startsWith(`${service}-v`)
             );
             
             if (!tag) {
