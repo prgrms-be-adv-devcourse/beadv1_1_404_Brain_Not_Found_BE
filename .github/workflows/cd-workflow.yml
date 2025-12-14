@@ -30,8 +30,7 @@ jobs:
           script: |
             const tags = await github.rest.repos.listTags({
               owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 50
+              repo: context.repo.repo
             });
             
             const service = "${{ inputs.service-name }}";
