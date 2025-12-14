@@ -1,7 +1,6 @@
 package com.ll.products;
 
 import com.ll.core.config.swagger.SwaggerConfig;
-import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
