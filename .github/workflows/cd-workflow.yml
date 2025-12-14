@@ -33,23 +33,28 @@ jobs:
               repo: context.repo.repo,
               per_page: 50
             });
-
+            
             const service = "${{ inputs.service-name }}";
             const tag = tags.data.find(t =>
               t.name.startsWith(`${service}-v`)
             );
-
+            
             if (!tag) {
               throw new Error(`No tag found for ${service}`);
             }
-
-            core.setOutput("tag", tag.name);
+            
+            const shortSha = tag.commit.sha.substring(0, 7);
+            
+            core.setOutput("semver", tag.name);
+            core.setOutput("sha", shortSha);
+            core.setOutput("image_tag", `${tag.name}-sha-${shortSha}`);
       
 
       - name: 이미지 교체
         run: |
           kubectl set image deployment.apps/${{ inputs.service-name }}-dpy-prod \
-          ${{ inputs.service-name }}-pod-prod=${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ steps.latest_tag.outputs.tag }}
+          ${{ inputs.service-name }}-pod-prod=${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ steps.latest_tag.outputs.image_tag }}
+
       - name: Secret 생성
         run: |
           if [[ "${{ inputs.service-name }}" == "auth" ]]; then
