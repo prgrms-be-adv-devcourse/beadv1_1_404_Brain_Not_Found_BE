@@ -28,4 +28,6 @@ spec:
                 name: product-config-dev
             - secretRef:
                 name: product-secret-dev
+            - secretRef:
+                name: secret-common-dev
       restartPolicy: Always

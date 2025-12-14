@@ -4,3 +4,4 @@ metadata:
   name: auth-db-config-dev
 data:
   SPRING_PROFILES_ACTIVE: dev
+  MYSQL_DATABASE: auth_db

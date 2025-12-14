@@ -4,3 +4,4 @@ metadata:
   name: product-db-config-prod
 data:
   SPRING_PROFILES_ACTIVE: prod
+  MYSQL_DATABASE: product_db

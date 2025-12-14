@@ -27,5 +27,5 @@ spec:
             - configMapRef:
                 name: order-config-dev
             - secretRef:
-                name: order-secret-dev
+                name: secret-common-dev
       restartPolicy: Always
