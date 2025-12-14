@@ -59,7 +59,7 @@ management:
 
 # Qdrant 설정
 qdrant:
-  host: qdrant-svc-pred.default.svc.cluster.local
+  host: qdrant-svc-prod.default.svc.cluster.local
   port: 6334
   collection-name: products
 
