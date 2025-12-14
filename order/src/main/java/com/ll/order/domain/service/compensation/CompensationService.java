@@ -33,7 +33,7 @@ public class CompensationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markCompensationStarted(String orderCode) {
+    public void compensationStarted(String orderCode) {
         try {
             TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
                     .orElse(null);
@@ -51,7 +51,7 @@ public class CompensationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markCompensationCompleted(String orderCode) {
+    public void compensationCompleted(String orderCode) {
         try {
             TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
                     .orElse(null);
@@ -69,7 +69,7 @@ public class CompensationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markCompensationFailed(String orderCode, String errorMessage) {
+    public void compensationFailed(String orderCode, String errorMessage) {
         try {
             TransactionTracing tracing = transactionTracingRepository.findByOrderCode(orderCode)
                     .orElse(null);

@@ -19,9 +19,13 @@ spec:
             - configMapRef:
                 name: product-db-config-dev
             - secretRef:
-                name: product-db-secret-dev
+                name: secret-common-dev
           ports:
             - containerPort: 3306
+          args:
+            - "--character-set-server=utf8mb4"
+            - "--collation-server=utf8mb4_unicode_ci"
+            - "--default-authentication-plugin=mysql_native_password"
           volumeMounts:
             - name: product-db-data
               mountPath: /var/lib/mysql

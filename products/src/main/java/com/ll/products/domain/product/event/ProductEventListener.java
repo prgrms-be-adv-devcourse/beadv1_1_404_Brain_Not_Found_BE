@@ -1,5 +1,6 @@
 package com.ll.products.domain.product.event;
 
+import com.ll.products.domain.product.messaging.producer.ProductEventProducer;
 import com.ll.products.domain.product.model.entity.Product;
 import com.ll.products.domain.search.document.ProductDocument;
 import com.ll.products.domain.search.repository.ProductSearchRepository;

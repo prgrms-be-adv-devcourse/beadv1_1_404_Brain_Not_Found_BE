@@ -11,6 +11,7 @@ import com.ll.payment.deposit.model.vo.response.DepositResponse;
 import com.ll.payment.deposit.model.vo.response.DepositTransactionResponse;
 import com.ll.payment.deposit.repository.DepositRepository;
 import com.ll.payment.deposit.service.DepositHistoryService;
+import com.ll.payment.deposit.service.DepositHistoryServiceImpl;
 import com.ll.payment.deposit.service.DepositServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -74,14 +75,14 @@ public class DepositServiceSuccessUnitTest {
 
     private void verifySuccessFlow() {
         verify(depositRepository).findByUserCode(USER_CODE);
-        verify(depositHistoryService).validateDuplicate(REF_CODE);
+        verify(depositHistoryService).validateDuplicate(transactionRequest);
         verify(depositHistoryService).saveSuccessHistory(any());
         verify(depositHistoryService, never()).saveFailedHistory(any(), any(), any(), any());
     }
 
     private void verifyRefundSuccessFlow() {
         verify(depositRepository).findByUserCode(USER_CODE);
-        verify(depositHistoryService).validateDuplicateForRefund(REF_CODE);
+        verify(depositHistoryService).validateDuplicateForRefund(transactionRequest);
         verify(depositHistoryService).saveSuccessHistory(any());
         verify(depositHistoryService, never()).saveFailedHistory(any(), any(), any(), any());
     }
@@ -94,6 +95,16 @@ public class DepositServiceSuccessUnitTest {
         assertEquals(balance, transactionResponse.balanceAfter());
         assertEquals(charge, transactionResponse.historyType());
         assertEquals(REF_CODE, transactionResponse.referenceCode());
+    }
+
+    private void assertTransactionResponseRefund(Long balance) {
+        assertNotNull(transactionResponse);
+        assertEquals(deposit.getBalance(), balance);
+        assertEquals(deposit.getCode(), transactionResponse.depositCode());
+        assertEquals(AMOUNT, transactionResponse.amount());
+        assertEquals(balance, transactionResponse.balanceAfter());
+        assertEquals(DepositHistoryType.REFUND, transactionResponse.historyType());
+        assertEquals(DepositHistoryServiceImpl.refundCode(REF_CODE), transactionResponse.referenceCode());
     }
 
     private void assertDeleteResponse() {
@@ -163,7 +174,7 @@ public class DepositServiceSuccessUnitTest {
     void Deposit_충전_성공() {
         // given
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
         doNothing().when(depositHistoryService).saveSuccessHistory(any());
 
         // when
@@ -183,7 +194,7 @@ public class DepositServiceSuccessUnitTest {
         // given
         deposit.charge(AMOUNT, REF_CODE);
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
         doNothing().when(depositHistoryService).saveSuccessHistory(any());
         // when
         transactionResponse = depositService.withdrawDeposit(USER_CODE, transactionRequest);
@@ -202,7 +213,7 @@ public class DepositServiceSuccessUnitTest {
         // given
         deposit.charge(AMOUNT, REF_CODE);
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicate(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicate(transactionRequest);
         doNothing().when(depositHistoryService).saveSuccessHistory(any());
 
         // when
@@ -221,13 +232,13 @@ public class DepositServiceSuccessUnitTest {
     void Deposit_환불_성공() {
         // given
         mockDepositFound();
-        doNothing().when(depositHistoryService).validateDuplicateForRefund(REF_CODE);
+        doNothing().when(depositHistoryService).validateDuplicateForRefund(transactionRequest);
         doNothing().when(depositHistoryService).saveSuccessHistory(any());
         // when
         transactionResponse = depositService.refundDeposit(USER_CODE, transactionRequest);
 
         // then
         verifyRefundSuccessFlow();
-        assertTransactionResponse(AMOUNT, DepositHistoryType.REFUND);
+        assertTransactionResponseRefund(AMOUNT);
     }
 }

@@ -27,7 +27,7 @@ spec:
             - configMapRef:
                 name: auth-config-dev
             - secretRef:
-                name: auth-secret-dev
+                name: secret-common-dev
             - secretRef:
                 name: auth-login-secret-dev
       restartPolicy: Always

@@ -28,7 +28,7 @@ public class ValidateDepositProcessor implements ItemProcessor<Settlement, Settl
     private DepositTransactionRequest validationReferenceCode(Settlement settlement) {
         DepositTransactionRequest request = DepositTransactionRequest
                 .of(settlement.getSettlementBalance(), settlement.getProductName(), settlement.getOrderItemCode());
-        depositHistoryService.validateDuplicate(request.referenceCode());
+        depositHistoryService.validateDuplicate(request);
         return request;
     }
 

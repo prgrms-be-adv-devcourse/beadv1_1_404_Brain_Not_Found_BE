@@ -16,59 +16,27 @@ public class ProductRecommendationEventConsumer {
 
     private final VectorIndexService vectorIndexService;
 
-    private static final String PRODUCT_UPDATE_TOPIC = "product-updated-event";
-    private static final String PRODUCT_DELETE_TOPIC = "product-deleted-event";
-    private static final String PRODUCT_UPDATE_STATUS_TOPIC = "product-updated-status-event";
+    private static final String PRODUCT_TOPIC = "product-event";
     private static final String PRODUCT_GROUP_ID = "product-indexing-group";
 
     @KafkaListener(
-            topics = PRODUCT_UPDATE_TOPIC,
+            topics = PRODUCT_TOPIC,
             groupId = PRODUCT_GROUP_ID
     )
-    public void consumeProductUpdatedEvent(KafkaEventEnvelope<ProductEvent> envelope) {
+    public void consumeProductEvent(KafkaEventEnvelope<ProductEvent> envelope) {
+        ProductEvent event = envelope.payload();
         try {
-            ProductEvent event = envelope.payload();
-            log.info("상품 수정 이벤트 수신: eventType={}, productCode={}", event.eventType(), event.productCode());
+            log.info("상품 이벤트 수신: eventType={}, productCode={}", event.eventType(), event.productCode());
             processEvent(event);
-            log.info("벡터 수정 인덱싱 완료: productCode={}", event.productCode());
+            log.info("벡터 인덱싱 완료: productCode={}", event.productCode());
         } catch (Exception e) {
             log.error("벡터 인덱싱 실패: error={}", e.getMessage(), e);
-            throw new RuntimeException("벡터 수정 인덱싱 중 오류 발생", e);
+            throw new RuntimeException("벡터 인덱싱 중 오류 발생", e);
         }
     }
 
-    @KafkaListener(
-            topics = PRODUCT_DELETE_TOPIC,
-            groupId = PRODUCT_GROUP_ID
-    )
-    public void consumeProductDeletedEvent(KafkaEventEnvelope<ProductEvent> envelope) {
-        try {
-            ProductEvent event = envelope.payload();
-            log.info("상품 삭제 이벤트 수신: eventType={}, productCode={}", event.eventType(), event.productCode());
-            processEvent(event);
-            log.info("벡터 삭제 인덱싱 완료: productCode={}", event.productCode());
-        } catch (Exception e) {
-            log.error("벡터 인덱싱 실패: error={}", e.getMessage(), e);
-            throw new RuntimeException("벡터 삭제 인덱싱 중 오류 발생", e);
-        }
-    }
 
-    @KafkaListener(
-            topics = PRODUCT_UPDATE_STATUS_TOPIC,
-            groupId = PRODUCT_GROUP_ID
-    )
-    public void consumeProductUpdatedStatusEvent(KafkaEventEnvelope<ProductEvent> envelope) {
-        try {
-            ProductEvent event = envelope.payload();
-            log.info("상품 상태 변경 이벤트 수신: eventType={}, productCode={}", event.eventType(), event.productCode());
-            processEvent(event);
-            log.info("벡터 상태 변경 인덱싱 완료: productCode={}", event.productCode());
-        } catch (Exception e) {
-            log.error("벡터 인덱싱 실패: error={}", e.getMessage(), e);
-            throw new RuntimeException("벡터 상태 변경 인덱싱 중 오류 발생", e);
-        }
-    }
-
+    // 이벤트 받아 인덱싱
     private void processEvent(ProductEvent event) {
         ProductEventType eventType = event.eventType();
         switch (eventType) {
