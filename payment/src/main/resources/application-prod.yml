@@ -86,3 +86,8 @@ management:
   zipkin:
     tracing:
       endpoint: http://zipkin-svc-prod.default.svc.cluster.local:9411/api/v2/spans
+
+swagger:
+  servers:
+    - "http://gateway-svc-prod.default.svc.cluster.local:8000"
+    - "http://payment-svc-prod.default.svc.cluster.local:8087"
