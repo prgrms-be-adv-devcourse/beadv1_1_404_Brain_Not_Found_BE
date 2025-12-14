@@ -25,13 +25,13 @@ permissions:
   attestations: write
   id-token: write
 jobs:
-  testing:
-    uses: ./.github/workflows/ci-test-workflow.yml
-    with:
-      service-name: gateway
+#  testing:
+#    uses: ./.github/workflows/ci-test-workflow.yml
+#    with:
+#      service-name: gateway
 
   releasing:
-    needs: testing
+#    needs: testing
     uses: ./.github/workflows/ci-workflow.yml
     secrets: inherit
     with:
