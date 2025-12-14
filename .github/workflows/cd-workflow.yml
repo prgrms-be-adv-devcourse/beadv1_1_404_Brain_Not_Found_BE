@@ -49,7 +49,7 @@ jobs:
       - name: 이미지 교체
         run: |
           kubectl set image deployment.apps/${{ inputs.service-name }}-dpy-prod \
-          ${{ inputs.service-name }}=${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ steps.latest_tag.outputs.tag }}
+          ${{ inputs.service-name }}-pod-prod=${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ steps.latest_tag.outputs.tag }}
       - name: Secret 생성
         run: |
           if [[ "${{ inputs.service-name }}" == "auth" ]]; then
