@@ -7,10 +7,7 @@ on:
         required: true
         type: string
 permissions:
-  contents: write
-  packages: write
-  attestations: write
-  id-token: write
+  contents: read
 
 env:
   REGISTRY: docker.io
@@ -26,16 +23,27 @@ jobs:
       - name: 깃 브랜치 연결
         uses: actions/checkout@v5
 
-      - name: 최신 Release 조회
+      - name: 서비스별 최신 Release 조회
         id: latest_release
         uses: actions/github-script@v7
         with:
           script: |
-            const release = await github.rest.repos.getLatestRelease({
+            const releases = await github.rest.repos.listReleases({
               owner: context.repo.owner,
-              repo: context.repo.repo
+              repo: context.repo.repo,
+              per_page: 50
             });
-            core.setOutput("tag", release.data.tag_name);
+            
+            const service = "${{ inputs.service-name }}";
+            const release = releases.data.find(r =>
+              r.tag_name.startsWith(`${service}-v`)
+            );
+            
+            if (!release) {
+              throw new Error(`No release found for ${service}`);
+            }
+            
+            core.setOutput("tag", release.tag_name);
 
       - name: 이미지 교체
         run: |
