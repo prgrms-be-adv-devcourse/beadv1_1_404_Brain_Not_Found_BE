@@ -168,6 +168,44 @@ spring:
 
 
 
+            # History
+            - id: history-route
+              uri: http://product-svc-prod.default.svc.cluster.local:8085
+              predicates:
+                - Path=/api/history, /api/history/**
+                - Method=GET
+              filters:
+                - name: TokenAuthenticationFilter
+            # Swagger
+            - id: user-api-docs
+              uri: http://auth-svc-prod.default.svc.cluster.local:8084
+              predicates:
+                - Path=/v3/api-docs/auth
+              filters:
+                - RewritePath=/v3/api-docs/auth, /v3/api-docs
+
+            - id: product-api-docs
+              uri: http://product-svc-prod.default.svc.cluster.local:8085
+              predicates:
+                - Path=/v3/api-docs/products
+              filters:
+                - RewritePath=/v3/api-docs/products, /v3/api-docs
+
+            - id: payment-api-docs
+              uri: http://payment-svc-prod.default.svc.cluster.local:8087
+              predicates:
+                - Path=/v3/api-docs/payment
+              filters:
+                - RewritePath=/v3/api-docs/payment, /v3/api-docs
+
+            - id: order-api-docs
+              uri: http://order-svc-prod.default.svc.cluster.local:8082
+              predicates:
+                - Path=/v3/api-docs/order
+              filters:
+                - RewritePath=/v3/api-docs/order, /v3/api-docs
+
+
 
 custom:
   jwt:
@@ -182,3 +220,16 @@ management:
   zipkin:
     tracing:
       endpoint: http://zipkin-svc-prod.default.svc.cluster.local:9411/api/v2/spans
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: user-service
+        url: /v3/api-docs/auth
+      - name: product-service
+        url: /v3/api-docs/products
+      - name: order-service
+        url: /v3/api-docs/order
+      - name: payment-service
+        url: /v3/api-docs/payment

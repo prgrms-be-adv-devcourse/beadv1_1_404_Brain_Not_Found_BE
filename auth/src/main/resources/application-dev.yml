@@ -70,3 +70,8 @@ management:
   zipkin:
     tracing:
       endpoint: http://zipkin-svc-dev.dev.svc.cluster.local:9411/api/v2/spans
+
+swagger:
+  servers:
+    - "http://gateway-svc-dev.dev.svc.cluster.local:8000"
+    - "http://auth-svc-dev.dev.svc.cluster.local:8004"
