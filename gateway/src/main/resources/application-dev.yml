@@ -68,7 +68,6 @@ spring:
                   args:
                     name: productServiceCB
                     fallbackUri: forward:/fallback/product
-                - name: TokenAuthenticationFilter
 
             - id: product-route-public          #상품 조회
               uri: http://product-svc-dev.dev.svc.cluster.local:8085
