@@ -36,3 +36,6 @@ jwt:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+slack:
+  webhook-url: ${SLACK_WEBHOOK_URL}

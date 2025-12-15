@@ -1,5 +1,6 @@
 package com.ll.core.config.kafka;
 
+import com.ll.core.infra.slack.SlackWebhookService;
 import com.ll.core.logging.kafka.KafkaProducerLoggingListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,7 @@ public class KafkaCommonConfiguration {
     private Integer reconnectBackoffMaxMs;
 
     private final KafkaProperties properties;
+    private final SlackWebhookService slackWebhookService;
 
     // Producer Configuration
     @Bean
@@ -107,8 +109,8 @@ public class KafkaCommonConfiguration {
         return new DeadLetterPublishingRecoverer(
                 kafkaTemplate,
                 (record, ex) -> {
-                    // Todo : DLQ 토픽 발생시 Slack Kafka DLQ Alert 구현 고려
                     log.info("DLQ Error 원인 : {}", ex.getCause().getMessage());
+                    slackWebhookService.sendMessage(record, ex);
                     return new TopicPartition(record.topic() + ".dlq", record.partition());
                 }
         );
@@ -128,7 +130,6 @@ public class KafkaCommonConfiguration {
         handler.addNotRetryableExceptions(KafkaNotRetryableExceptionConfiguration.NOT_RETRYABLE_EXCEPTIONS);
 
         handler.setRetryListeners((record, ex, deliveryAttempt) ->
-                // Todo : DeliveryAttempt 값이 일정 수준 이상일 때 Slack Kafka Retry Alert 구현 고려
                 log.warn("Failed record in retry listener. topic: {}, partition: {}, offset: {}, exception: {}, message: {}, deliveryAttempt: {}",
                 record.topic(), record.partition(), record.offset(), ex.getClass().getName(), ex.getMessage(), deliveryAttempt));
 
