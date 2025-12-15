@@ -2,7 +2,6 @@ package com.ll.core.infra.slack;
 
 import com.slack.api.Slack;
 import com.slack.api.webhook.Payload;
-import com.slack.api.webhook.WebhookResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,44 +24,55 @@ public class SlackWebhookService {
         String message = getMessage(record, ex);
 
         try {
-            slack.send(slackWebhookUrl, Payload.builder().text(message).build());
+            System.out.println(message);
+//            slack.send(slackWebhookUrl, Payload.builder().text(message).build());
         } catch (Exception e) {
             log.error("Failed to send Slack webhook message : {}", message, e);
         }
     }
 
     private String getMessage(ConsumerRecord<?, ?> record, Exception ex) {
-        Throwable throwable = unwrapKafkaException(ex);
+        String exception = getUnwrapException(ex);
         return  """
+                ──────────────────────────
                 Kafka DLQ 발생 알림
-                ────────────────────────
+                ──────────────────────────
                 Topic      : %s
                 Partition  : %d
                 Offset     : %d
                 
-                Record
+                Record:
                 %s
                 
-                Exception
-                %s
-                
-                Message
+                Exception:
                 %s
                 """.formatted(
                                 record.topic(),
                                 record.partition(),
                                 record.offset(),
                                 record.value(),
-                                throwable.getClass().getSimpleName(),
-                                throwable.getMessage()
+                                exception
                         );
     }
 
-    public static Throwable unwrapKafkaException(Throwable ex) {
-        Throwable cause = ex;
-        while (cause.getCause() != null) {
-            cause = cause.getCause();
+    private String getUnwrapException(Throwable ex) {
+        StringBuilder sb = new StringBuilder();
+
+        Throwable current = ex;
+        int depth = 0;
+
+        while (current != null && depth < 5) {
+            sb.append("[")
+                    .append(current.getClass().getSimpleName())
+                    .append("]\n-> ")
+                    .append(current.getMessage())
+                    .append("\n\n");
+
+            current = current.getCause();
+            depth++;
         }
-        return cause;
+
+        return sb.toString();
     }
+
 }
