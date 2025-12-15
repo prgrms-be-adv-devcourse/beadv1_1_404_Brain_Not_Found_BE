@@ -25,7 +25,7 @@ public class SlackWebhookService {
         String message = getMessage(record, ex);
 
         try {
-            WebhookResponse response = slack.send(slackWebhookUrl, Payload.builder().text(message).build());
+            slack.send(slackWebhookUrl, Payload.builder().text(message).build());
         } catch (Exception e) {
             log.error("Failed to send Slack webhook message : {}", message, e);
         }
@@ -60,8 +60,7 @@ public class SlackWebhookService {
 
     public static Throwable unwrapKafkaException(Throwable ex) {
         Throwable cause = ex;
-        while (cause instanceof org.springframework.kafka.listener.ListenerExecutionFailedException
-                || cause.getCause() != null) {
+        while (cause.getCause() != null) {
             cause = cause.getCause();
         }
         return cause;
