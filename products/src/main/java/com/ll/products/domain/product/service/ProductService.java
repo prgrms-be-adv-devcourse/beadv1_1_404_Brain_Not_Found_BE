@@ -40,7 +40,6 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class ProductService {
-    // TODO : 모든 재고 차감 성공 확인 / 차감 실패 시 결제 취소 / 재고 차감 성공 "후" 주문 완료 <- 이 부분 처리 필요
 
     private final UserClient userClient;
 
@@ -162,7 +161,6 @@ public class ProductService {
                 return;
             }
         }
-
         Product product = productRepository.findByCodeWithLock(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
 

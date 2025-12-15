@@ -1,6 +1,7 @@
-package com.ll.order.integration.failure;
+package com.ll.order.integration;
 
 import com.ll.core.model.exception.BaseException;
+import com.ll.order.domain.mock.controller.ProductMockController;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.enums.order.OrderStatus;
 import com.ll.order.domain.model.enums.order.OrderType;
@@ -13,10 +14,12 @@ import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.response.order.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
+import com.ll.order.integration.failure.BaseOrderIntegrationFailureTest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -32,6 +35,9 @@ import static org.mockito.Mockito.*;
 @DisplayName("주문 동시성 및 락 테스트")
 @Slf4j
 class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
+
+    @Autowired
+    private ProductMockController productMockController;
 
     private UserResponse user1;
     private UserResponse user2;
@@ -71,8 +77,10 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
         int orderQuantity = 2; // 각 사용자가 2개씩 주문
 
         log.info("========== 동시성 테스트 시작 ==========");
-        log.info("상품 코드: {}, 초기 재고: {}, 각 사용자 주문 수량: {}",
-                productCode, testProduct.quantity(), orderQuantity);
+        int originalInventory = testProduct.quantity();
+        log.info("상품 코드: {}", productCode);
+        log.info("원래 재고량: {}개", originalInventory);
+        log.info("각 사용자 주문 수량: {}개", orderQuantity);
         log.info("테스트 방식: 실제 재고 상태를 추적하여 동시성 제어 시뮬레이션");
 
         // Mock 설정
@@ -98,37 +106,48 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
         final String[] thread1Name = new String[1];
         final String[] thread2Name = new String[1];
 
-        // Mock 설정: 재고 차감 (실제 재고 상태 기반 동시성 제어)
-        // 비관적 락을 시뮬레이션하여 실제 재고 상태를 기반으로 동작
+        when(productServiceClient.getProductByCode(productCode)).thenReturn(testProduct);
+
+        // 재고 차감 Mock 설정 (실제 재고 상태 기반으로 동시성 테스트)
         doAnswer(invocation -> {
-            int callCount = inventoryDecreaseCallCount.incrementAndGet();
+            inventoryDecreaseCallCount.incrementAndGet();
             String calledProductCode = invocation.getArgument(0);
             Integer calledQuantity = invocation.getArgument(1);
+            log.info("[재고 차감 호출 추적 #{}] productCode: {}, quantity: {}",
+                    inventoryDecreaseCallCount.get(), calledProductCode, calledQuantity);
 
-            log.info("[재고 차감 호출 #{}] productCode: {}, 요청 수량: {}, 현재 재고: {}", 
-                    callCount, calledProductCode, calledQuantity, currentInventory.get());
+            // 동시성 제어: 원자적으로 재고 차감 시도
+            int current = currentInventory.get();
+            int newInventory = current - calledQuantity;
 
-            // 비관적 락 시뮬레이션: 재고 상태를 원자적으로 확인하고 차감
-            int currentStock = currentInventory.get();
-            int requestedQuantity = calledQuantity;
+            log.info("[재고 차감 시도] 현재 재고: {}, 차감 수량: {}, 예상 재고: {}",
+                    current, calledQuantity, newInventory);
 
-            log.info("[락 적용] 비관적 락(PESSIMISTIC_WRITE)으로 상품 조회 및 재고 확인 - 현재 재고: {}", currentStock);
-
-            if (currentStock >= requestedQuantity) {
-                // 재고 충분: 차감 성공
-                int newStock = currentInventory.addAndGet(-requestedQuantity);
-                log.info("[재고 차감 성공] 재고 차감 완료 - 차감량: {}, 남은 재고: {} (락 적용됨)", 
-                        requestedQuantity, newStock);
-                return null;
-            } else {
-                // 재고 부족: 차감 실패
-                log.warn("[재고 차감 실패] 재고 부족 - 요청 수량: {}, 현재 재고: {} (락 적용됨)", 
-                        requestedQuantity, currentStock);
-                log.warn("[락 적용] 비관적 락으로 조회했으나 재고가 부족하여 실패");
-                throw new RuntimeException("재고 부족: 요청 수량(" + requestedQuantity + 
-                        ")이 현재 재고(" + currentStock + ")보다 많습니다.");
+            // 재고 부족 체크 및 원자적 업데이트
+            if (newInventory < 0) {
+                log.warn("[재고 차감 실패] 재고 부족 - 현재 재고: {}, 요청 수량: {}", current, calledQuantity);
+                throw new RuntimeException("재고 부족: 현재 재고 " + current + "개, 요청 수량 " + calledQuantity + "개");
             }
-        }).when(productServiceClient).decreaseInventory(productCode, orderQuantity);
+
+            // 원자적으로 재고 차감
+            boolean updated = currentInventory.compareAndSet(current, newInventory);
+            if (!updated) {
+                // 다른 스레드가 이미 재고를 변경했음 - 재시도 또는 실패
+                int retryCurrent = currentInventory.get();
+                int retryNewInventory = retryCurrent - calledQuantity;
+                if (retryNewInventory < 0) {
+                    log.warn("[재고 차감 실패] 재고 부족 (재시도) - 현재 재고: {}, 요청 수량: {}",
+                            retryCurrent, calledQuantity);
+                    throw new RuntimeException("재고 부족: 현재 재고 " + retryCurrent + "개, 요청 수량 " + calledQuantity + "개");
+                }
+                currentInventory.set(retryNewInventory);
+                log.info("[재고 차감 성공 (재시도)] 현재 재고: {} → {}", retryCurrent, retryNewInventory);
+            } else {
+                log.info("[재고 차감 성공] 현재 재고: {} → {}", current, newInventory);
+            }
+
+            return null;
+        }).when(productServiceClient).decreaseInventory(anyString(), anyInt());
 
         // 결제 Mock 설정 (재고 차감 성공한 주문만 결제 진행)
         doAnswer(invocation -> {
@@ -241,7 +260,7 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
 
         // 동시 시작
         log.info("========== 두 사용자 동시 주문 시작 ==========");
-        startLatch.countDown();
+        startLatch.countDown(); // 두 스레드가 동시에 시작하도록 신호
 
         // 결과 대기 (최대 10초)
         try {
@@ -256,8 +275,11 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
             // 예외는 로그로 이미 기록됨
         }
 
-        // 완료 대기
-        completionLatch.await(10, TimeUnit.SECONDS);
+        boolean completed = completionLatch.await(10, TimeUnit.SECONDS);
+        if (!completed) {
+            log.error("타임아웃 발생: 모든 주문이 10초 내에 완료되지 않았습니다.");
+            throw new AssertionError("타임아웃: 모든 주문이 10초 내에 완료되지 않았습니다.");
+        }
 
         // then: 검증
         log.info("========== 테스트 결과 검증 ==========");
@@ -268,15 +290,18 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
                 thread1Id.get() != (int) mainThreadId && thread2Id.get() != (int) mainThreadId);
         log.info("성공한 주문 수: {}", successfulOrderCount.get());
         log.info("실패한 주문 수: {}", failedOrderCount.get());
-        log.info("재고 차감 호출 횟수: {}", inventoryDecreaseCallCount.get());
+        log.info("재고 차감 호출 횟수: {}번", inventoryDecreaseCallCount.get());
 
         // 멀티 스레드 실행 검증
-        assertThat(thread1Id.get()).isNotEqualTo(thread2Id.get())
-                .as("사용자1과 사용자2는 서로 다른 스레드에서 실행되어야 합니다");
-        assertThat(thread1Id.get()).isNotEqualTo((int) mainThreadId)
-                .as("사용자1은 메인 스레드가 아닌 별도 스레드에서 실행되어야 합니다");
-        assertThat(thread2Id.get()).isNotEqualTo((int) mainThreadId)
-                .as("사용자2는 메인 스레드가 아닌 별도 스레드에서 실행되어야 합니다");
+        assertThat(thread1Id.get())
+                .as("사용자1과 사용자2는 서로 다른 스레드에서 실행되어야 합니다")
+                .isNotEqualTo(thread2Id.get());
+        assertThat(thread1Id.get())
+                .as("사용자1은 메인 스레드가 아닌 별도 스레드에서 실행되어야 합니다")
+                .isNotEqualTo((int) mainThreadId);
+        assertThat(thread2Id.get())
+                .as("사용자2는 메인 스레드가 아닌 별도 스레드에서 실행되어야 합니다")
+                .isNotEqualTo((int) mainThreadId);
 
         // 한 명만 성공하고 한 명은 실패해야 함
         assertThat(successfulOrderCount.get()).isEqualTo(1);
@@ -284,13 +309,18 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
 
         // 재고 차감은 2번 호출되어야 함 (두 사용자 모두 재고 차감 시도)
         assertThat(inventoryDecreaseCallCount.get()).isEqualTo(2);
-        
+
         // 최종 재고 확인 (초기 3개 - 성공한 주문 2개 = 1개)
         int finalInventory = currentInventory.get();
-        log.info("최종 재고: {}개 (초기: {}개, 성공한 주문 수량: {}개)", 
-                finalInventory, testProduct.quantity(), orderQuantity);
-        assertThat(finalInventory).isEqualTo(testProduct.quantity() - orderQuantity)
-                .as("최종 재고는 초기 재고에서 성공한 주문 수량만큼 차감되어야 함");
+        log.info("========== 상품 재고량 확인 ==========");
+        log.info("원래 재고량: {}개", originalInventory);
+        log.info("동시성 테스트 후 상품 재고량: {}개", finalInventory);
+        log.info("재고 차감량: {}개 (성공한 주문 수량)", orderQuantity);
+        log.info("재고 변화: {}개 → {}개 ({}개 차감)",
+                originalInventory, finalInventory, originalInventory - finalInventory);
+        assertThat(finalInventory)
+                .as("최종 재고는 초기 재고에서 성공한 주문 수량만큼 차감되어야 함")
+                .isEqualTo(testProduct.quantity() - orderQuantity);
 
         // 성공한 주문과 실패한 주문 확인
         List<Order> orders = orderJpaRepository.findAll();
@@ -318,14 +348,18 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
         // 실패한 주문은 FAILED 상태이고, 재고 차감 실패 에러
         assertThat(failedOrder.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
 
-        // 재고 차감 호출 확인
+        // 재고 차감 호출 확인 (2번 호출되어야 함: 두 사용자 모두 재고 차감 시도)
+        log.info("========== 재고 차감 호출 횟수 확인 ==========");
         verify(productServiceClient, times(2)).decreaseInventory(productCode, orderQuantity);
+        log.info("재고 차감 호출 횟수: {}번 (검증 완료)", inventoryDecreaseCallCount.get());
 
         // 결제는 성공한 주문에만 1번 호출
         verify(paymentServiceClient, times(1)).requestDepositPayment(any());
 
-        log.info("========== 동시성 테스트 완료 ==========");
-        log.info("결론: 비관적 락(PESSIMISTIC_WRITE)이 적용되어 동시 주문 시 재고 일관성이 유지됨");
+        log.info("========== 최종 재고량 요약 ==========");
+        log.info("원래 재고량: {}개", originalInventory);
+        log.info("동시성 테스트 후 최종 재고량: {}개", finalInventory);
+        log.info("재고 차감량: {}개", originalInventory - finalInventory);
     }
 
 }
