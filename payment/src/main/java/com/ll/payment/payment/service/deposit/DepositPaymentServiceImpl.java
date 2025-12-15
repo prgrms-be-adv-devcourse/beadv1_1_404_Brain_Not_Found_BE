@@ -119,7 +119,7 @@ public class DepositPaymentServiceImpl implements DepositPaymentService {
         }
 
         // 2. 예치금 차감 (락 유지 중)
-        depositService.withdrawDeposit(
+        depositService.paymentDeposit(
                 payment.buyerCode(),
                 new DepositTransactionRequest((long) amount, createReferenceCode(payment.orderId()))
         );
