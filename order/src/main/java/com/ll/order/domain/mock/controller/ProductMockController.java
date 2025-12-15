@@ -18,13 +18,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/products")
-@RequiredArgsConstructor
 public class ProductMockController {
-
-    private final ProductServiceClient productServiceClient;
-
-    @Value("${external.product-service.url:http://localhost:8085}")
-    private String productServiceUrl;
 
     @GetMapping("/{productCode}")
     public ResponseEntity<BaseResponse<ProductResponse>> getProduct(
@@ -72,26 +66,17 @@ public class ProductMockController {
             @RequestBody Map<String, Integer> request
     ) {
         Integer quantity = request.get("quantity");
-        log.info("========== Mock Product Service - 재고 차감 요청 ==========");
-        log.info("productCode: {}, quantity: {}", productCode, quantity);
-        log.info("실제 Product 서비스 호출 시작 (락 쿼리 실행 확인)");
-        log.info("Product 서비스 URL: {}", productServiceUrl);
+        log.info("Mock Product Service - 재고 차감 요청: productCode={}, quantity={}", productCode, quantity);
 
-        try {
-            // 실제 ProductServiceClient를 통해 실제 Product 서비스 호출 -> 락 쿼리 적용
-            productServiceClient.decreaseInventory(productCode, quantity);
-            
-            log.info("========== Mock Product Service - 재고 차감 성공 ==========");
-            log.info("productCode: {}, quantity: {}", productCode, quantity);
-            log.info("실제 Product 서비스에서 락 쿼리 실행 완료");
-            log.info("ProductRepository.findByCodeWithLock() -> PESSIMISTIC_WRITE 락 적용됨");
+        // PROD-001에 대한 재고 차감 처리 (실제로는 아무것도 하지 않음)
+        if ("PROD-001".equals(productCode)) {
+            log.info("Mock Product Service - 재고 차감 성공: productCode={}, quantity={}", productCode, quantity);
             return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.error("========== Mock Product Service - 재고 차감 실패 ==========");
-            log.error("productCode: {}, quantity: {}", productCode, quantity);
-            log.error("실제 Product 서비스 호출 실패: {}", e.getMessage(), e);
-            throw e;
         }
-    }
+
+        // 존재하지 않는 상품
+        log.warn("Mock Product Service - 상품을 찾을 수 없음: productCode={}", productCode);
+        return ResponseEntity.notFound().build();
+    }       
 }
 
