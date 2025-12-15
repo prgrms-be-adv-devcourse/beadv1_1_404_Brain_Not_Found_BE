@@ -163,8 +163,15 @@ public class ProductService {
             }
         }
 
+        log.info("========== 락 쿼리 실행 시작 ==========");
+        log.info("상품 코드: {}, 비관적 락(PESSIMISTIC_WRITE) 적용하여 조회");
+        log.info("ProductRepository.findByCodeWithLock() 호출 -> SELECT ... FOR UPDATE 쿼리 실행");
+        
         Product product = productRepository.findByCodeWithLock(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
+        
+        log.info("========== 락 쿼리 실행 완료 ==========");
+        log.info("상품 코드: {}, 락 획득 완료, 현재 재고: {}", code, product.getQuantity());
 
         // 재고 변동 전 수량 저장
         Integer beforeQuantity = product.getQuantity();
