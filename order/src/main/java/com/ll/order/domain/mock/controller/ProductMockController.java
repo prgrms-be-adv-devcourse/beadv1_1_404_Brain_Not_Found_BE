@@ -77,6 +77,6 @@ public class ProductMockController {
         // 존재하지 않는 상품
         log.warn("Mock Product Service - 상품을 찾을 수 없음: productCode={}", productCode);
         return ResponseEntity.notFound().build();
-    }       
+    }
 }
 

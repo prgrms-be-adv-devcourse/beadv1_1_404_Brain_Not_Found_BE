@@ -47,7 +47,7 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
     void setUp() {
         user1 = createTestUser();
 
-    user2 = new UserResponse(
+        user2 = new UserResponse(
                 2L,
                 "USER-002",
                 "test_social_id_2",
@@ -107,28 +107,28 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
         final String[] thread2Name = new String[1];
 
         when(productServiceClient.getProductByCode(productCode)).thenReturn(testProduct);
-        
+
         // 재고 차감 Mock 설정 (실제 재고 상태 기반으로 동시성 테스트)
         doAnswer(invocation -> {
             inventoryDecreaseCallCount.incrementAndGet();
             String calledProductCode = invocation.getArgument(0);
             Integer calledQuantity = invocation.getArgument(1);
-            log.info("[재고 차감 호출 추적 #{}] productCode: {}, quantity: {}", 
+            log.info("[재고 차감 호출 추적 #{}] productCode: {}, quantity: {}",
                     inventoryDecreaseCallCount.get(), calledProductCode, calledQuantity);
-            
+
             // 동시성 제어: 원자적으로 재고 차감 시도
             int current = currentInventory.get();
             int newInventory = current - calledQuantity;
-            
-            log.info("[재고 차감 시도] 현재 재고: {}, 차감 수량: {}, 예상 재고: {}", 
+
+            log.info("[재고 차감 시도] 현재 재고: {}, 차감 수량: {}, 예상 재고: {}",
                     current, calledQuantity, newInventory);
-            
+
             // 재고 부족 체크 및 원자적 업데이트
             if (newInventory < 0) {
                 log.warn("[재고 차감 실패] 재고 부족 - 현재 재고: {}, 요청 수량: {}", current, calledQuantity);
                 throw new RuntimeException("재고 부족: 현재 재고 " + current + "개, 요청 수량 " + calledQuantity + "개");
             }
-            
+
             // 원자적으로 재고 차감
             boolean updated = currentInventory.compareAndSet(current, newInventory);
             if (!updated) {
@@ -136,7 +136,7 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
                 int retryCurrent = currentInventory.get();
                 int retryNewInventory = retryCurrent - calledQuantity;
                 if (retryNewInventory < 0) {
-                    log.warn("[재고 차감 실패] 재고 부족 (재시도) - 현재 재고: {}, 요청 수량: {}", 
+                    log.warn("[재고 차감 실패] 재고 부족 (재시도) - 현재 재고: {}, 요청 수량: {}",
                             retryCurrent, calledQuantity);
                     throw new RuntimeException("재고 부족: 현재 재고 " + retryCurrent + "개, 요청 수량 " + calledQuantity + "개");
                 }
@@ -145,10 +145,10 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
             } else {
                 log.info("[재고 차감 성공] 현재 재고: {} → {}", current, newInventory);
             }
-            
+
             return null;
         }).when(productServiceClient).decreaseInventory(anyString(), anyInt());
-        
+
         // 결제 Mock 설정 (재고 차감 성공한 주문만 결제 진행)
         doAnswer(invocation -> {
             log.info("[결제 처리] 예치금 결제 성공");
@@ -309,14 +309,14 @@ class OrderConcurrencyTest extends BaseOrderIntegrationFailureTest {
 
         // 재고 차감은 2번 호출되어야 함 (두 사용자 모두 재고 차감 시도)
         assertThat(inventoryDecreaseCallCount.get()).isEqualTo(2);
-        
+
         // 최종 재고 확인 (초기 3개 - 성공한 주문 2개 = 1개)
         int finalInventory = currentInventory.get();
         log.info("========== 상품 재고량 확인 ==========");
         log.info("원래 재고량: {}개", originalInventory);
         log.info("동시성 테스트 후 상품 재고량: {}개", finalInventory);
         log.info("재고 차감량: {}개 (성공한 주문 수량)", orderQuantity);
-        log.info("재고 변화: {}개 → {}개 ({}개 차감)", 
+        log.info("재고 변화: {}개 → {}개 ({}개 차감)",
                 originalInventory, finalInventory, originalInventory - finalInventory);
         assertThat(finalInventory)
                 .as("최종 재고는 초기 재고에서 성공한 주문 수량만큼 차감되어야 함")
