@@ -1,4 +1,4 @@
-package com.ll.order.integration.failure;
+package com.ll.order.integration;
 
 import com.ll.core.model.exception.BaseException;
 import com.ll.order.domain.mock.controller.ProductMockController;
@@ -14,16 +14,15 @@ import com.ll.order.domain.model.vo.request.OrderDirectRequest;
 import com.ll.order.domain.model.vo.response.order.OrderCreateResponse;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
 import com.ll.order.domain.model.vo.response.user.UserResponse;
+import com.ll.order.integration.failure.BaseOrderIntegrationFailureTest;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
