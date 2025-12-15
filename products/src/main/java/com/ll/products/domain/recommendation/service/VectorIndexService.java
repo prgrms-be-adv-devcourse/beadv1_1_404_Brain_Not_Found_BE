@@ -3,6 +3,7 @@ package com.ll.products.domain.recommendation.service;
 import com.ll.core.model.vo.kafka.ProductEvent;
 import com.ll.products.domain.recommendation.document.ProductVectorDocument;
 import com.ll.products.domain.recommendation.document.ProductVectorPoint;
+import com.ll.products.domain.recommendation.exception.VectorIndexException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,7 @@ public class VectorIndexService {
 
         } catch (Exception e) {
             log.error("벡터 인덱싱 실패: productCode={}, error={}", event.productCode(), e.getMessage(), e);
-            throw new RuntimeException("벡터 인덱싱 실패", e);
+            throw new VectorIndexException("벡터 인덱싱에 실패했습니다.");
         }
     }
 
@@ -39,7 +40,7 @@ public class VectorIndexService {
             log.info("벡터 인덱스 삭제 완료: productCode={}", productCode);
         } catch (Exception e) {
             log.error("벡터 인덱스 삭제 실패: productCode={}, error={}", productCode, e.getMessage(), e);
-            throw new RuntimeException("벡터 인덱스 삭제 실패", e);
+            throw new VectorIndexException("벡터 인덱스 삭제에 실패했습니다.");
         }
     }
 
