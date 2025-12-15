@@ -10,10 +10,9 @@ RUN chmod +x gradlew
 
 # 의존성만 먼저 빌드
 RUN ./gradlew dependencies --no-daemon
-COPY core /app/core/
 COPY gateway /app/gateway/
 # 저장 경로 app/gateway/build/libs/gateway-<version>.jar
-RUN ./gradlew clean :gateway:bootJar -x test --no-daemon --stacktrace
+RUN ./gradlew :gateway:clean :gateway:bootJar -x test --no-daemon --stacktrace
 
 
 FROM azul/zulu-openjdk:21-latest
