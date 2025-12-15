@@ -39,8 +39,3 @@ logging:
 current:
   domain: "http://localhost:8082"
 
-# ProductServiceClient가 Mock 서버를 호출하도록 설정
-external:
-  product-service:
-    url: http://localhost:8082  # Mock 서버 URL (테스트 환경에서 웹 서버가 시작되어야 함)
-
