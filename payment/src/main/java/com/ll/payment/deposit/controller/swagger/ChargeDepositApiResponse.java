@@ -87,6 +87,17 @@ import java.lang.annotation.*;
                                                 """
                                 ),
                                 @ExampleObject(
+                                        name = "400 - X-User-Code 공란",
+                                        description = "필수 헤더 누락 또는 요청 형식이 잘못된 경우의 응답 예시입니다.",
+                                        value = """
+                                                    {
+                                                        "status": 400,
+                                                        "message": "userCode 는 공백이거나 null일 수 없습니다.",
+                                                        "errorCode": "BAD_REQUEST"
+                                                    }
+                                                """
+                                ),
+                                @ExampleObject(
                                         name = "400 - amount 누락",
                                         description = "필수 헤더 누락 또는 요청 형식이 잘못된 경우의 응답 예시입니다.",
                                         value = """
