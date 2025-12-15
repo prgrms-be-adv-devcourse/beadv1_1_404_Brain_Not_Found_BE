@@ -1,0 +1,12 @@
+# orderdb-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: orderdb-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # orderdb에 필요한 예상 용량으로 조정하세요 (예: 30Gi)
+      storage: 3Gi
