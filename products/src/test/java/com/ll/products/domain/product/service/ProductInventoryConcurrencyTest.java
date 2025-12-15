@@ -87,7 +87,7 @@ class ProductInventoryConcurrencyTest {
                 .price(10000)
                 .status(ProductStatus.ON_SALE)
                 .isDeleted(false)
-                .images(new java.util.ArrayList<>())
+                .images(new ArrayList<>())
                 .build();
         testProduct = productRepository.save(testProduct);
     }
