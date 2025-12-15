@@ -3,6 +3,8 @@ package com.ll.products.domain.recommendation.service;
 import com.ll.products.domain.product.exception.ProductNotFoundException;
 import com.ll.products.domain.recommendation.document.ProductVectorPoint;
 import com.ll.products.domain.recommendation.dto.RecommendationResponse;
+import com.ll.products.domain.recommendation.exception.VectorNotFoundException;
+import com.ll.products.domain.recommendation.exception.VectorStoreException;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.Collections.*;
 import io.qdrant.client.grpc.Points.*;
@@ -38,7 +40,7 @@ public class VectorStoreService {
             log.info("상품 벡터 저장 완료: productCode={}", productVectorPoint.getDocument().getProductCode());
         } catch (Exception e) {
             log.error("상품 벡터 저장 실패: productCode={}", productVectorPoint.getDocument().getProductCode(), e);
-            throw new RuntimeException("벡터 저장 중 오류 발생", e);
+            throw new VectorStoreException("벡터 저장 중 오류가 발생했습니다.");
         }
     }
 
@@ -56,7 +58,7 @@ public class VectorStoreService {
             log.info("배치 상품 벡터 저장 완료: count={}", productVectorPoints.size());
         } catch (Exception e) {
             log.error("배치 상품 벡터 저장 실패: count={}", productVectorPoints.size(), e);
-            throw new RuntimeException("배치 벡터 저장 중 오류 발생", e);
+            throw new VectorStoreException("배치 벡터 저장 중 오류가 발생했습니다.");
         }
     }
 
@@ -71,7 +73,7 @@ public class VectorStoreService {
             return results;
         } catch (Exception e) {
             log.error("유사 상품 검색 실패", e);
-            throw new RuntimeException("벡터 검색 중 오류 발생", e);
+            throw new VectorStoreException("벡터 검색 중 오류가 발생했습니다.");
         }
     }
 
@@ -86,15 +88,15 @@ public class VectorStoreService {
                     null
             ).get();
             if (points.isEmpty()) {
-                throw new ProductNotFoundException(productCode);
+                throw new VectorNotFoundException(productCode);
             }
             float[] vector = getVector(points);
             log.info("상품 벡터 조회 완료: productCode={}", productCode);
             return vector;
-        } catch (ProductNotFoundException e) {
+        } catch (VectorNotFoundException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("벡터 조회 중 오류 발생", e);
+            throw new VectorStoreException("벡터 조회 중 오류가 발생했습니다.");
         }
     }
 
@@ -111,7 +113,7 @@ public class VectorStoreService {
             log.info("상품 벡터 삭제 완료: productCode={}", productCode);
         } catch (Exception e) {
             log.error("상품 벡터 삭제 실패: productCode={}", productCode, e);
-            throw new RuntimeException("벡터 삭제 중 오류 발생", e);
+            throw new VectorStoreException("벡터 삭제 중 오류가 발생했습니다.");
         }
     }
 
@@ -144,7 +146,7 @@ public class VectorStoreService {
         } catch (ProductNotFoundException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("벡터 조회 중 오류 발생", e);
+            throw new VectorStoreException("벡터 조회 중 오류가 발생했습니다.");
         }
     }
 

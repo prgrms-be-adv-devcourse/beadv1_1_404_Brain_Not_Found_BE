@@ -7,6 +7,7 @@ import com.ll.products.domain.product.repository.ProductRepository;
 import com.ll.products.domain.recommendation.document.ProductVectorDocument;
 import com.ll.products.domain.recommendation.document.ProductVectorPoint;
 import com.ll.products.domain.recommendation.dto.RecommendationResponse;
+import com.ll.products.domain.recommendation.exception.VectorNotFoundException;
 import io.qdrant.client.grpc.JsonWithInt;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -139,7 +140,7 @@ public class RecommendationService {
                 .filter(embedding -> embedding != null)
                 .toList();
         if (embeddings.isEmpty()) {
-            throw new RuntimeException("조회 가능한 벡터가 없습니다");
+            throw new VectorNotFoundException();
         }
         int vectorSize = embeddings.getFirst().length;
         float[] average = new float[vectorSize];

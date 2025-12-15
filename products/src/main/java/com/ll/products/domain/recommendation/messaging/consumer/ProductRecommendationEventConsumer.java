@@ -3,6 +3,7 @@ package com.ll.products.domain.recommendation.messaging.consumer;
 import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
 import com.ll.core.model.vo.kafka.ProductEvent;
 import com.ll.core.model.vo.kafka.enums.ProductEventType;
+import com.ll.products.domain.recommendation.exception.VectorIndexException;
 import com.ll.products.domain.recommendation.service.VectorIndexService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +32,7 @@ public class ProductRecommendationEventConsumer {
             log.info("벡터 인덱싱 완료: productCode={}", event.productCode());
         } catch (Exception e) {
             log.error("벡터 인덱싱 실패: error={}", e.getMessage(), e);
-            throw new RuntimeException("벡터 인덱싱 중 오류 발생", e);
+            throw new VectorIndexException("벡터 인덱싱 중 오류가 발생했습니다.");
         }
     }
 

@@ -1,5 +1,6 @@
 package com.ll.products.domain.recommendation.service;
 
+import com.ll.products.domain.recommendation.exception.EmbeddingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -26,7 +27,7 @@ public class EmbeddingService {
             return embedding;
         } catch (Exception e) {
             log.error("임베딩 생성 실패", e);
-            throw new RuntimeException("임베딩 생성 중 오류 발생: " + e.getMessage(), e);
+            throw new EmbeddingException("임베딩 생성 중 오류가 발생했습니다.");
         }
     }
 
@@ -45,7 +46,7 @@ public class EmbeddingService {
             log.info("배치 임베딩 생성 완료: count={}", embeddings.size());
             return embeddings;
         } catch (Exception e) {
-            throw new RuntimeException("배치 임베딩 생성 중 오류 발생: " + e.getMessage(), e);
+            throw new EmbeddingException("배치 임베딩 생성 중 오류가 발생했습니다.");
         }
     }
 
@@ -61,12 +62,12 @@ public class EmbeddingService {
     // 임베딩 검증 및 반환(단일)
     private float[] getEmbeddingFromResponse(EmbeddingResponse response) {
         if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
-            throw new RuntimeException("임베딩 응답이 비어있습니다");
+            throw new EmbeddingException("임베딩 응답이 비어있습니다.");
         }
 
         float[] embedding = response.getResults().getFirst().getOutput();
         if (embedding == null || embedding.length == 0) {
-            throw new RuntimeException("임베딩 벡터가 비어있습니다");
+            throw new EmbeddingException("임베딩 벡터가 비어있습니다.");
         }
         return embedding;
     }
@@ -75,14 +76,14 @@ public class EmbeddingService {
     // 임베딩 검증 및 반환(다중)
     private List<float[]> getEmbeddingsFromResponse(EmbeddingResponse response, int expectedCount) {
         if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
-            throw new RuntimeException("임베딩 응답이 비어있습니다");
+            throw new EmbeddingException("임베딩 응답이 비어있습니다.");
         }
         List<float[]> embeddings = response.getResults().stream()
                 .map(result -> result.getOutput())
                 .toList();
 
         if (embeddings.size() != expectedCount) {
-            throw new RuntimeException("임베딩 개수가 일치하지 않습니다");
+            throw new EmbeddingException("임베딩 개수가 일치하지 않습니다.");
         }
         return embeddings;
     }
