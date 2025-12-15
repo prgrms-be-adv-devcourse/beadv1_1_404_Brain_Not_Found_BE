@@ -53,7 +53,7 @@ public class SwaggerConfig {
 
             if (target != null) {
                 target.in(ParameterIn.HEADER.toString());
-                target.setRequired(true);
+                target.setRequired(false);
                 target.setName("X-User-Code");
                 target.setDescription("사용자 고유 코드");
                 target.schema(new StringSchema().type("string").example("X-User-Code ex) 019a90ab-fcf3-7413-af08-7121cc99378b"));
