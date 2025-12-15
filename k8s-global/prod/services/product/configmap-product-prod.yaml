@@ -4,4 +4,5 @@ metadata:
   name: product-config-prod
 data:
   PRODUCT_DB_URL: jdbc:mysql://product-db-svc-prod:3311/product_db
+  OPENAI_EMBEDDING_ENABLED: "false"
   SPRING_PROFILES_ACTIVE : prod
