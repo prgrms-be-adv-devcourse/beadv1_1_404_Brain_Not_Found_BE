@@ -12,6 +12,8 @@ dependencies {
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
     implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
 
+    implementation "com.slack.api:slack-api-client:1.46.0"
+
     implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"

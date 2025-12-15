@@ -35,3 +35,6 @@ custom:
       size: 100
     skip:
       limit: 10
+
+slack:
+  webhook-url: ${SLACK_WEBHOOK_URL}

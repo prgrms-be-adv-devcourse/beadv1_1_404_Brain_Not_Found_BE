@@ -1,5 +1,6 @@
 package com.ll.core.config.kafka;
 
+import com.ll.core.infra.slack.SlackWebhookService;
 import com.ll.core.logging.kafka.KafkaProducerLoggingListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,7 @@ public class KafkaCommonConfiguration {
     private Integer reconnectBackoffMaxMs;
 
     private final KafkaProperties properties;
+    private final SlackWebhookService slackWebhookService;
 
     // Producer Configuration
     @Bean
@@ -109,6 +111,7 @@ public class KafkaCommonConfiguration {
                 (record, ex) -> {
                     // Todo : DLQ 토픽 발생시 Slack Kafka DLQ Alert 구현 고려
                     log.info("DLQ Error 원인 : {}", ex.getCause().getMessage());
+                    slackWebhookService.sendMessage(record, ex);
                     return new TopicPartition(record.topic() + ".dlq", record.partition());
                 }
         );
