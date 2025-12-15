@@ -40,7 +40,6 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class ProductService {
-    // TODO : 모든 재고 차감 성공 확인 / 차감 실패 시 결제 취소 / 재고 차감 성공 "후" 주문 완료 <- 이 부분 처리 필요
 
     private final UserClient userClient;
 
@@ -162,16 +161,8 @@ public class ProductService {
                 return;
             }
         }
-
-        log.info("========== 락 쿼리 실행 시작 ==========");
-        log.info("상품 코드: {}, 비관적 락(PESSIMISTIC_WRITE) 적용하여 조회");
-        log.info("ProductRepository.findByCodeWithLock() 호출 -> SELECT ... FOR UPDATE 쿼리 실행");
-        
         Product product = productRepository.findByCodeWithLock(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
-        
-        log.info("========== 락 쿼리 실행 완료 ==========");
-        log.info("상품 코드: {}, 락 획득 완료, 현재 재고: {}", code, product.getQuantity());
 
         // 재고 변동 전 수량 저장
         Integer beforeQuantity = product.getQuantity();
