@@ -24,7 +24,6 @@ public class SlackWebhookService {
         String message = getMessage(record, ex);
 
         try {
-            System.out.println(message);
             slack.send(slackWebhookUrl, Payload.builder().text(message).build());
         } catch (Exception e) {
             log.error("Failed to send Slack webhook message : {}", message, e);
