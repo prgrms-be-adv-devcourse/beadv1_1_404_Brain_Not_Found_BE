@@ -25,6 +25,8 @@ public class EmbeddingService {
             float[] embedding = getEmbeddingFromResponse(response);
             log.debug("임베딩 생성 완료");
             return embedding;
+        } catch (EmbeddingException e) {
+            throw e;
         } catch (Exception e) {
             log.error("임베딩 생성 실패", e);
             throw new EmbeddingException("임베딩 생성 중 오류가 발생했습니다.");
@@ -45,7 +47,10 @@ public class EmbeddingService {
             List<float[]> embeddings = getEmbeddingsFromResponse(response, validatedTexts.size());
             log.info("배치 임베딩 생성 완료: count={}", embeddings.size());
             return embeddings;
+        } catch (EmbeddingException e) {
+            throw e;
         } catch (Exception e) {
+            log.error("배치 임베딩 생성 실패", e);
             throw new EmbeddingException("배치 임베딩 생성 중 오류가 발생했습니다.");
         }
     }

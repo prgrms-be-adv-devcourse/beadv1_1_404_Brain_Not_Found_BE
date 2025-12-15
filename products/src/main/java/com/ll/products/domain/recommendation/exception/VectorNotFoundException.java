@@ -1,6 +1,5 @@
 package com.ll.products.domain.recommendation.exception;
 
-import com.ll.core.model.exception.BaseErrorCode;
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.exception.ErrorCode;
 
