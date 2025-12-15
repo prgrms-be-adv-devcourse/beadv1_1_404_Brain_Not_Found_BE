@@ -8,5 +8,9 @@ spec:
     app: auth-dev
   ports:
     - protocol: TCP
+      name: http
       port: 8084       # 내부 서비스 포트
       targetPort: 8084 # 컨테이너 포트
+    - name: metrics
+      port: 8881
+      targetPort: 8881
