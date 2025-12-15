@@ -10,3 +10,6 @@ spec:
     - protocol: TCP
       port: 8000
       targetPort: 8000
+    - name: metrics
+      port: 8881
+      targetPort: 8881
