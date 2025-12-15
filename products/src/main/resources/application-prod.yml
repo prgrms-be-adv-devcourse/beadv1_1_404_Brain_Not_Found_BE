@@ -30,7 +30,7 @@ spring:
 
   data:
     redis:
-      host: redis-svc-pred.default.svc.cluster.local
+      host: redis-svc-prod.default.svc.cluster.local
       port: 6379
       timeout: 500ms
       lettuce:
