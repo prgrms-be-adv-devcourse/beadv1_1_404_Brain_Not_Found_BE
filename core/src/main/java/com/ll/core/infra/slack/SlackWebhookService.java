@@ -3,12 +3,14 @@ package com.ll.core.infra.slack;
 import com.slack.api.Slack;
 import com.slack.api.webhook.Payload;
 import com.slack.api.webhook.WebhookResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 // TODO : Slack 에 대한 내용은 차후 Notify 모듈로 분리해야 함
 @Service
+@Slf4j
 public class SlackWebhookService {
 
     @Value("${slack.webhook-url:Unknown}")
@@ -17,17 +19,15 @@ public class SlackWebhookService {
     private final Slack slack = Slack.getInstance();
 
     public void sendMessage(ConsumerRecord<?, ?> record, Exception ex) {
-        try {
-            WebhookResponse response = slack.send(slackWebhookUrl, Payload.builder().text(getMessage(record, ex)).build());
+        if ( "Unknown".equals(slackWebhookUrl) ) {
+            return;
+        }
+        String message = getMessage(record, ex);
 
-            if (response.getCode() != 200 || !"ok".equals(response.getBody())) {
-                throw new IllegalStateException(
-                        "Slack webhook failed. code=" + response.getCode()
-                                + ", body=" + response.getBody()
-                );
-            }
+        try {
+            WebhookResponse response = slack.send(slackWebhookUrl, Payload.builder().text(message).build());
         } catch (Exception e) {
-            throw new RuntimeException("Failed to send Slack message", e);
+            log.error("Failed to send Slack webhook message : {}", message, e);
         }
     }
 
