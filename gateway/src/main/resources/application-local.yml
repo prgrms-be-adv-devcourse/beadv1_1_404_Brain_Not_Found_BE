@@ -125,7 +125,7 @@ spring:
             - id: auth-route-public
               uri: http://localhost:8084
               predicates:
-                - Path=/api/auth
+                - Path=/api/auth, /api/auth/**
                 - Method=POST
             # Login
             - id: auth-route-login
