@@ -35,12 +35,12 @@ public abstract class BaseEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         BaseEntity that = (BaseEntity) o;
-        return Objects.equals(id, that.id) && Objects.equals(code, that.code);
+        return Objects.equals(code, that.code);
     }
 
     @Override
     public int hashCode() {
-        return getClass().hashCode();
+        return Objects.hash(code);
     }
 
 }
