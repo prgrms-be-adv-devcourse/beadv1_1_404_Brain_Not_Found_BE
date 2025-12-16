@@ -14,7 +14,7 @@ public enum OrderStatus {
             case CREATED -> target == PAID || target == CANCELLED || target == FAILED;
             case PAID -> target == DELIVERY || target == CANCELLED || target == REFUNDED;
             case DELIVERY -> target == COMPLETED || target == REFUNDED;
-            case COMPLETED -> target == REFUNDED;
+            case COMPLETED -> target == REFUNDED || target == CANCELLED;
             case CANCELLED, REFUNDED -> false;
             case FAILED -> false;
         };

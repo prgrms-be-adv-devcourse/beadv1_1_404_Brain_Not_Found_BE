@@ -39,3 +39,7 @@ logging:
 current:
   domain: "http://localhost:8082"
 
+# Slack 설정 (테스트 환경에서는 Unknown 값 사용 - SlackWebhookService에서 Unknown일 경우 메시지 전송하지 않음)
+slack:
+  webhook-url: Unknown
+
