@@ -67,7 +67,7 @@ import java.lang.annotation.*;
                 description = "상품 상태 변경 성공",
                 content = @Content(
                         mediaType = "application/json",
-                        schema = @Schema(implementation = ProductResponse.class),
+                        schema = @Schema(implementation = BaseResponse.class),
                         examples = {
                                 @ExampleObject(
                                         name = "200 - 상품 상태 변경 성공",

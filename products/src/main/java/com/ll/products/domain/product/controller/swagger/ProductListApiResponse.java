@@ -82,7 +82,6 @@ import java.lang.annotation.*;
                                                         "code": "PRD001",
                                                         "name": "상품명",
                                                         "price": 10000,
-                                                        "inventory": 100,
                                                         "status": "ACTIVE"
                                                       }
                                                     ],

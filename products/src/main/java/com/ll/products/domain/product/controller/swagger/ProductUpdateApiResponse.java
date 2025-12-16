@@ -89,7 +89,7 @@ import java.lang.annotation.*;
                 description = "상품 수정 성공",
                 content = @Content(
                         mediaType = "application/json",
-                        schema = @Schema(implementation = ProductResponse.class),
+                        schema = @Schema(implementation = BaseResponse.class),
                         examples = {
                                 @ExampleObject(
                                         name = "200 - 상품 수정 성공",
@@ -104,7 +104,7 @@ import java.lang.annotation.*;
                                                     "name": "수정된 상품명",
                                                     "description": "수정된 상품 설명",
                                                     "price": 15000,
-                                                    "inventory": 100,
+                                                    "quantity": 100,
                                                     "status": "ACTIVE"
                                                   }
                                                 }
