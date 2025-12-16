@@ -3,5 +3,5 @@ kind: ConfigMap
 metadata:
   name: payment-config-prod
 data:
-  PAYMENT_DB_URL: jdbc:mysql://payment-db-svc-prod:3315/payment_db&rewriteBatchedStatements=true
+  PAYMENT_DB_URL: jdbc:mysql://payment-db-svc-prod:3315/payment_db?rewriteBatchedStatements=true
   SPRING_PROFILES_ACTIVE : prod
