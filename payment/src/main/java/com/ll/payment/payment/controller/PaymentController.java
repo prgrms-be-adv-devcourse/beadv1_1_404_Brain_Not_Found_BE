@@ -42,4 +42,12 @@ public class PaymentController {
         return BaseResponse.ok(result);
     }
 
+    @PostMapping("/deposit/charge")
+    public ResponseEntity<BaseResponse<Payment>> depositChargeWithToss(
+            @RequestBody PaymentRequest request
+    ) {
+        Payment payment = paymentService.depositChargeWithToss(request);
+        return BaseResponse.ok(payment);
+    }
+
 }

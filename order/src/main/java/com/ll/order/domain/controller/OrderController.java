@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
+import jakarta.servlet.http.HttpSession;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -23,7 +24,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
-public class OrderController implements OrderControllerSwagger { // TODO : 예치금 부족 시 토스로 예치금 충전
+public class OrderController implements OrderControllerSwagger {
 
     private final OrderService orderService;
 
@@ -124,6 +125,59 @@ public class OrderController implements OrderControllerSwagger { // TODO : 예�
                 (errorCode != null ? errorCode : "") +
                 "&errorMessage=" + (errorMessage != null ? errorMessage : "") +
                 "&orderId=" + (orderId != null ? orderId : ""));
+    }
+
+    @GetMapping("/deposit/charge/success")
+    public RedirectView depositChargeSuccess(
+            @RequestParam String paymentKey,
+            @RequestParam("orderId") String orderId,
+            @RequestParam String amount,
+            HttpSession session
+    ) {
+        try {
+            // 세션에서 userCode 가져오기
+            String userCode = (String) session.getAttribute("depositChargeUserCode");
+            if (userCode == null) {
+                throw new IllegalArgumentException("사용자 코드를 찾을 수 없습니다. 세션이 만료되었을 수 있습니다.");
+            }
+            
+            orderService.completeDepositChargeWithKey(userCode, paymentKey, Integer.parseInt(amount), orderId);
+            
+            // 세션에서 userCode 제거
+            session.removeAttribute("depositChargeUserCode");
+            
+            return new RedirectView(currentDomain + "/orders/deposit/charge/success-page?amount=" + amount);
+        } catch (Exception e) {
+            String encodedErrorMessage = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+            return new RedirectView(currentDomain + "/orders/deposit/charge/fail-page?error=" + encodedErrorMessage);
+        }
+    }
+
+    @GetMapping("/deposit/charge/fail")
+    public RedirectView depositChargeFail(
+            @RequestParam(required = false) String errorCode,
+            @RequestParam(required = false) String errorMessage
+    ) {
+        return new RedirectView(currentDomain + "/orders/deposit/charge/fail-page?errorCode=" +
+                (errorCode != null ? errorCode : "") +
+                "&errorMessage=" + (errorMessage != null ? errorMessage : ""));
+    }
+
+    @PostMapping("/deposit/charge")
+    public RedirectView initiateDepositCharge(
+            @RequestBody Map<String, Object> request,
+            @RequestHeader("X-User-Code") String userCode
+    ) {
+        Integer amount = (Integer) request.get("amount");
+        if (amount == null || amount <= 0) {
+            throw new IllegalArgumentException("충전 금액은 0보다 커야 합니다.");
+        }
+        
+        // 토스 결제 페이지로 리다이렉트
+        String redirectUrl = String.format(currentDomain + "/orders/deposit/charge?amount=%d&userCode=%s",
+                amount,
+                URLEncoder.encode(userCode, StandardCharsets.UTF_8));
+        return new RedirectView(redirectUrl);
     }
 
 }

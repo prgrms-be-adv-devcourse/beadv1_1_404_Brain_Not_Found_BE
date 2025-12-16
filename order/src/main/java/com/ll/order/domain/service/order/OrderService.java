@@ -28,6 +28,9 @@ public interface OrderService {
 //     paymentKey를 받아서 주문 결제를 완료 처리합니다.
     void completePaymentWithKey(String orderCode, String paymentKey);
 
+    // paymentKey를 받아서 예치금 충전을 완료 처리합니다.
+    void completeDepositChargeWithKey(String userCode, String paymentKey, Integer amount, String tossOrderId);
+
     String getOrderCodeById(Long orderId);
 
     // 결제 타입에 따라 리다이렉트 URL을 생성합니다. 리다이렉트가 필요하지 않은 경우 Optional.empty()를 반환합니다.

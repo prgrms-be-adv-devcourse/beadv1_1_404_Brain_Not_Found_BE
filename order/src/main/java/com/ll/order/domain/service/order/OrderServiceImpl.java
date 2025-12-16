@@ -3,6 +3,7 @@ package com.ll.order.domain.service.order;
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
+import com.ll.order.domain.client.DepositServiceClient;
 import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.client.UserServiceClient;
@@ -11,6 +12,7 @@ import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderStatus;
+import com.ll.order.domain.model.enums.order.OrderType;
 import com.ll.order.domain.model.enums.payment.PaidType;
 import com.ll.order.domain.model.enums.payment.PaymentRefundNotificationStatus;
 import com.ll.order.domain.model.vo.request.OrderCartItemRequest;
@@ -64,6 +66,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserServiceClient userServiceClient;
     private final ProductServiceClient productServiceClient;
     private final PaymentServiceClient paymentApiClient;
+    private final DepositServiceClient depositServiceClient;
 
     private final OrderValidator orderValidator;
     
@@ -285,6 +288,60 @@ public class OrderServiceImpl implements OrderService {
 
             log.error("결제 처리 실패 - orderId: {}, paymentKey: {}, error: {}", orderCode, paymentKey, e.getMessage(), e);
             throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void completeDepositChargeWithKey(String userCode, String paymentKey, Integer amount, String tossOrderId) {
+        try {
+            // 1. 사용자 정보 조회
+            UserResponse userInfo = getUserInfo(userCode);
+            
+            // 2. 예치금 충전용 Order 엔티티 생성
+            Order depositChargeOrder = Order.create(
+                    userInfo.id(), // buyerId
+                    userCode, // buyerCode
+                    OrderType.ONLINE, // orderType (예치금 충전은 온라인)
+                    "예치금 충전" // address (예치금 충전은 주소 불필요하지만 필수 필드)
+            );
+            Order savedOrder = orderJpaRepository.save(depositChargeOrder);
+            
+            // 3. 예치금 충전용 토스 결제 API 호출 (결제 승인 + 예치금 충전을 한 번에 처리)
+            // tossOrderId는 토스 결제 위젯에서 사용한 orderId로, 토스 API 승인 요청 시 동일한 값이 필요함
+            OrderPaymentRequest depositChargeRequest = new OrderPaymentRequest(
+                    savedOrder.getId(), // orderId
+                    tossOrderId, // orderCode (토스 결제 위젯에서 사용한 orderId 사용)
+                    savedOrder.getBuyerId(), // buyerId
+                    userCode, // buyerCode
+                    amount, // paidAmount
+                    PaidType.TOSS_PAYMENT, // paidType
+                    paymentKey // paymentKey
+            );
+            
+            // 4. /api/payments/deposit/charge 엔드포인트 호출 (토스 결제 승인 + 예치금 충전)
+            paymentApiClient.requestDepositChargeWithToss(depositChargeRequest);
+            
+            // 5. 주문 상태를 COMPLETED로 변경 (예치금 충전 완료)
+            savedOrder.changeStatus(OrderStatus.COMPLETED);
+            orderJpaRepository.save(savedOrder);
+            
+            // 6. 주문 이력 저장
+            OrderHistoryEntity orderHistory = OrderHistoryEntity.createPaymentSuccessHistory(
+                    savedOrder, 
+                    List.of(), // 예치금 충전은 OrderItem이 없음
+                    OrderStatus.CREATED, 
+                    "예치금 충전"
+            );
+            orderHistoryJpaRepository.save(orderHistory);
+            
+            log.debug("예치금 충전 완료 - orderId: {}, orderCode: {}, userCode: {}, amount: {}, paymentKey: {}", 
+                    savedOrder.getId(), savedOrder.getCode(), userCode, amount, paymentKey);
+            
+        } catch (Exception e) {
+            log.error("예치금 충전 실패 - userCode: {}, amount: {}, paymentKey: {}, error: {}", 
+                    userCode, amount, paymentKey, e.getMessage(), e);
+            throw new BaseException(OrderErrorCode.PAYMENT_PROCESSING_FAILED, "예치금 충전 실패: " + e.getMessage());
         }
     }
 

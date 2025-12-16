@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예치금 충전 실패</title>
+</head>
+<body>
+    <div>
+        <h2>예치금 충전 실패</h2>
+        <p th:if="${errorCode}">에러 코드: <span th:text="${errorCode}"></span></p>
+        <p th:if="${errorMessage}">에러 메시지: <span th:text="${errorMessage}"></span></p>
+        <p>예치금 충전에 실패했습니다. 다시 시도해주세요.</p>
+    </div>
+</body>
+</html>
+

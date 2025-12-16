@@ -153,6 +153,16 @@ public class DepositPaymentServiceImpl implements DepositPaymentService {
         return depositPayment;
     }
 
+    @Override
+    @Transactional
+    public void chargeDepositAfterToss(String buyerCode, int amount, String referenceCode) {
+        depositService.chargeDeposit(
+                buyerCode,
+                new DepositTransactionRequest((long) amount, referenceCode)
+        );
+        log.debug("토스 결제 후 예치금 충전 완료 - buyerCode: {}, amount: {}", buyerCode, amount);
+    }
+
     private String createReferenceCode(Long orderId) {
         return "ORDER-" + orderId + "-" + System.currentTimeMillis();
     }

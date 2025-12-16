@@ -8,6 +8,7 @@ import com.ll.order.domain.model.vo.response.order.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -114,6 +115,32 @@ public interface OrderControllerSwagger {
             @Parameter(description = "에러 코드") @RequestParam(required = false) String errorCode,
             @Parameter(description = "에러 메시지") @RequestParam(required = false) String errorMessage,
             @Parameter(description = "주문 ID") @RequestParam(required = false) String orderId
+    );
+
+    @Operation(
+            summary = "예치금 충전 성공 콜백",
+            description = """
+                    예치금 충전용 토스 결제 성공 시 토스 서버에서 자동으로 호출되는 콜백 엔드포인트입니다.
+                    결제 완료 처리 및 예치금 충전 후 성공 페이지로 리다이렉트됩니다.
+                    """
+    )
+    RedirectView depositChargeSuccess(
+            @RequestParam String paymentKey,
+            @RequestParam("orderId") String orderId,
+            @RequestParam String amount,
+            HttpSession session
+    );
+
+    @Operation(
+            summary = "예치금 충전 실패 콜백",
+            description = """
+                    예치금 충전용 토스 결제 실패 또는 취소 시 토스 서버에서 자동으로 호출되는 콜백 엔드포인트입니다.
+                    실패 페이지로 리다이렉트되며 에러 정보를 전달합니다.
+                    """
+    )
+    RedirectView depositChargeFail(
+            @Parameter(description = "에러 코드") @RequestParam(required = false) String errorCode,
+            @Parameter(description = "에러 메시지") @RequestParam(required = false) String errorMessage
     );
 }
 
