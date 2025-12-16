@@ -30,12 +30,13 @@ jobs:
           script: |
             const tags = await github.rest.repos.listTags({
               owner: context.repo.owner,
-              repo: context.repo.repo
+              repo: context.repo.repo,
+              per_page: 50
             });
             
             const service = "${{ inputs.service-name }}";
-            const release = releases.data.find(r =>
-              r.tag_name.startsWith(`${service}-v`)
+            const tag = tags.data.find(t =>
+              t.name.startsWith(`${service}-v`)
             );
             
             if (!tag) {
@@ -48,7 +49,9 @@ jobs:
             core.setOutput("sha", shortSha);
             core.setOutput("image_tag", `${tag.name}-sha-${shortSha}`);
       
-
+      
+      
+      
 
       - name: Secret 생성
         run: |
