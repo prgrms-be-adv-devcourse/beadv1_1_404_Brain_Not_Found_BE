@@ -13,7 +13,7 @@ RUN ./gradlew dependencies --no-daemon
 COPY core /app/core/
 COPY payment /app/payment/
 # 저장 경로 app/payment/build/libs/payment-<version>.jar
-RUN ./gradlew :payment :payment:bootJar -x test --no-daemon --stacktrace
+RUN ./gradlew :payment:clean :payment:bootJar -x test --no-daemon --stacktrace
 
 
 FROM azul/zulu-openjdk:21-latest
