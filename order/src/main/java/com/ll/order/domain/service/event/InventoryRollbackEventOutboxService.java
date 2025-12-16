@@ -105,7 +105,8 @@ public class InventoryRollbackEventOutboxService {
 
             orderEventProducer.sendInventoryRollback(
                     inventoryEvent.productCode(),
-                    inventoryEvent.quantity()
+                    inventoryEvent.quantity(),
+                    inventoryEvent.referenceCode()
             );
 
             log.debug("재고 롤백 이벤트 발행 성공 - outboxId: {}, referenceCode: {}, retryCount: {}",
