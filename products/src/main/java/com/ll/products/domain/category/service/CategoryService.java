@@ -1,5 +1,7 @@
 package com.ll.products.domain.category.service;
 
+import com.ll.products.domain.cart.model.enums.Role;
+import com.ll.products.domain.category.exception.CategoryPermissionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,8 @@ public class CategoryService {
 
     // 카테고리 생성
     @Transactional
-    public CategoryResponse createCategory(CategoryCreateRequest request) {
+    public CategoryResponse createCategory(CategoryCreateRequest request, String role) {
+        validateAdminRole(role);
         Category category = Category.builder()
                 .name(request.getName())
                 .build();
@@ -89,7 +92,8 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryResponse updateCategory(Long id, CategoryUpdateRequest request) {
+    public CategoryResponse updateCategory(Long id, CategoryUpdateRequest request, String role) {
+        validateAdminRole(role);
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id));
 
@@ -119,7 +123,8 @@ public class CategoryService {
     }
 
     @Transactional
-    public void deleteCategory(Long id) {
+    public void deleteCategory(Long id, String role) {
+        validateAdminRole(role);
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id));
 
@@ -171,5 +176,10 @@ public class CategoryService {
                 .build();
     }
 
-
+    // ADMIN 권한 검증
+    private void validateAdminRole(String role) {
+        if (!Role.ADMIN.name().equals(role)) {
+            throw new CategoryPermissionException();
+        }
+    }
 }

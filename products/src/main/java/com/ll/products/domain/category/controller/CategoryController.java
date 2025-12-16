@@ -24,8 +24,10 @@ public class CategoryController {
 
     @Operation(summary = "카테고리 생성")
     @PostMapping
-    public ResponseEntity<BaseResponse<CategoryResponse>> createCategory(@Valid @RequestBody CategoryCreateRequest request) {
-        CategoryResponse response = categoryService.createCategory(request);
+    public ResponseEntity<BaseResponse<CategoryResponse>> createCategory(
+            @Valid @RequestBody CategoryCreateRequest request,
+            @RequestHeader("X-Role") String role) {
+        CategoryResponse response = categoryService.createCategory(request, role);
         return BaseResponse.created(response);
     }
 
@@ -61,15 +63,18 @@ public class CategoryController {
     @PutMapping("/{id}")
     public ResponseEntity<BaseResponse<CategoryResponse>> updateCategory(
             @PathVariable Long id,
-            @Valid @RequestBody CategoryUpdateRequest request) {
-        CategoryResponse response = categoryService.updateCategory(id, request);
+            @Valid @RequestBody CategoryUpdateRequest request,
+            @RequestHeader("X-Role") String role) {
+        CategoryResponse response = categoryService.updateCategory(id, request, role);
         return BaseResponse.ok(response);
     }
 
     @Operation(summary = "카테고리 삭제")
     @DeleteMapping("/{id}")
-    public ResponseEntity<BaseResponse<Void>> deleteCategory(@PathVariable Long id) {
-        categoryService.deleteCategory(id);
+    public ResponseEntity<BaseResponse<Void>> deleteCategory(
+            @PathVariable Long id,
+            @RequestHeader("X-Role") String role) {
+        categoryService.deleteCategory(id, role);
         return BaseResponse.ok(null);
     }
 }
