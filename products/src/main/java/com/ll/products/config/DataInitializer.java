@@ -23,7 +23,7 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 @Order(1)
-@Profile("!prod")
+//@Profile("!prod")
 public class DataInitializer implements CommandLineRunner {
 
     private final ProductRepository productRepository;

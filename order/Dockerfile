@@ -13,7 +13,7 @@ RUN ./gradlew dependencies --no-daemon
 COPY core /app/core/
 COPY order /app/order/
 # 저장 경로 app/order/build/libs/order-<version>.jar
-RUN ./gradlew clean :order:bootJar -x test --no-daemon --stacktrace
+RUN ./gradlew :order:clean :order:bootJar -x test --no-daemon --stacktrace
 
 
 FROM azul/zulu-openjdk:21-latest

@@ -13,6 +13,10 @@ spec:
 #      pod 정의
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8881"
       labels:
         app: order-prod
 #        컨테이너 정의

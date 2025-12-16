@@ -1,0 +1,6 @@
+# prometheus-sa.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-sa
+  namespace: dev # dev 네임스페이스에 생성

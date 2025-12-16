@@ -10,3 +10,6 @@ spec:
     - protocol: TCP
       port: 8085       # 내부 서비스 포트
       targetPort: 8085 # 컨테이너 포트
+    - name: metrics
+      port: 8881
+      targetPort: 8881

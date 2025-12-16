@@ -1,0 +1,12 @@
+# authdb-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: authdb-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # authdb에 필요한 예상 용량으로 조정하세요 (예: 10Gi)
+      storage: 3Gi

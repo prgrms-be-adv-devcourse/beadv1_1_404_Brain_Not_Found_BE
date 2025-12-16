@@ -45,8 +45,10 @@ spring:
         options:
           model: text-embedding-3-large
           dimensions: 3072
-#          model: text-embedding-3-small
-#          dimensions: 1536
+      chat:
+        options:
+          model: gpt-4.1
+          temperature: 0.6
 
 api:
   user:
@@ -74,7 +76,8 @@ management:
   zipkin:
     tracing:
       endpoint: http://zipkin-svc-dev.dev.svc.cluster.local:9411/api/v2/spans
-
+  server:
+    port: 8881
 # Qdrant 설정
 qdrant:
   host: qdrant-svc-dev.dev.svc.cluster.local
@@ -83,5 +86,4 @@ qdrant:
 
 swagger:
   servers:
-    - "http://gateway-svc-dev.dev.svc.cluster.local:8000"
-    - "http://product-svc-dev.dev.svc.cluster.local:8085"
+    - "http://localhost"

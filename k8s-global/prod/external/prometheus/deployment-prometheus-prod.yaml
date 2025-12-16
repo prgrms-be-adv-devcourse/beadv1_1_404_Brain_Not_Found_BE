@@ -32,4 +32,5 @@ spec:
             name: prometheus-config-prod
         # Prometheus 데이터 저장을 위한 임시 볼륨입니다. (운영 환경에서는 PVC 사용)
         - name: prometheus-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: prometheus-data-pvc
