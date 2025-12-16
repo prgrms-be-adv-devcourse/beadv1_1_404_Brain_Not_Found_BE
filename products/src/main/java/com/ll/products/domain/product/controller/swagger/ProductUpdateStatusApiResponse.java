@@ -26,7 +26,7 @@ import java.lang.annotation.*;
                 
                 - 판매자는 본인의 상품 상태만 변경 가능합니다.
                 - 관리자는 모든 상품의 상태를 변경할 수 있습니다.
-                - 상태: ACTIVE, INACTIVE, DELETED
+                - 상태: WAITING, ON_SALE, SOLD_OUT
                 """
 )
 @Parameters({
