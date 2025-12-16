@@ -42,13 +42,12 @@ class CategoryServiceTest {
         testParentCategory = Category.builder()
                 .name("전자제품")
                 .build();
-
         testCategory = Category.builder()
                 .name("스마트폰")
                 .build();
     }
 
-    @DisplayName("1. 카테고리 생성 성공 - ADMIN 권한")
+    @DisplayName("1. 카테고리 생성 성공")
     @Test
     void createCategory() {
         // given
@@ -62,7 +61,6 @@ class CategoryServiceTest {
                 .name("스마트폰")
                 .build();
         savedCategory.setParent(parentCategory);
-
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(parentCategory));
         when(categoryRepository.save(any(Category.class))).thenReturn(savedCategory);
 
@@ -82,21 +80,21 @@ class CategoryServiceTest {
         assertThat(capturedCategory.getDepth()).isEqualTo(2);
     }
 
-    @DisplayName("1-1. 카테고리 생성 실패 - 권한 없음")
+    @DisplayName("1-1. 카테고리 생성 실패 (권한)")
     @Test
     void createCategoryFailNoPermission() {
         // given
         String role = "USER";
         CategoryCreateRequest request = new CategoryCreateRequest("스마트폰", 1L);
 
-        // when & then
+        // when
+        // then
         assertThatThrownBy(() -> categoryService.createCategory(request, role))
                 .isInstanceOf(CategoryPermissionException.class);
-
         verify(categoryRepository, never()).save(any());
     }
 
-    @DisplayName("카테고리 상세조회")
+    @DisplayName("2. 카테고리 상세 조회")
     @Test
     void getCategory() {
         // given
@@ -116,7 +114,7 @@ class CategoryServiceTest {
         verify(categoryRepository).findById(1L);
     }
 
-    @DisplayName("Root 카테고리 목록 조회")
+    @DisplayName("3. Root 카테고리 목록 조회")
     @Test
     void getRootCategories() {
         // given
@@ -124,7 +122,6 @@ class CategoryServiceTest {
         rootCategories.add(Category.builder().name("전자제품").build());
         rootCategories.add(Category.builder().name("의류").build());
         rootCategories.add(Category.builder().name("식품").build());
-
         when(categoryRepository.findByParentIsNull()).thenReturn(rootCategories);
 
         // when
@@ -134,11 +131,10 @@ class CategoryServiceTest {
         assertThat(result).hasSize(3);
         assertThat(result).extracting(CategoryResponse::getName)
                 .containsExactly("전자제품", "의류", "식품");
-
         verify(categoryRepository).findByParentIsNull();
     }
 
-    @DisplayName("전체 카테고리 조회")
+    @DisplayName("4. 전체 카테고리 조회")
     @Test
     void getAllCategoriesFlat() {
         // given
@@ -146,7 +142,6 @@ class CategoryServiceTest {
         allCategories.add(Category.builder().name("전자제품").build());
         allCategories.add(Category.builder().name("스마트폰").build());
         allCategories.add(Category.builder().name("노트북").build());
-
         when(categoryRepository.findAll()).thenReturn(allCategories);
 
         // when
@@ -156,11 +151,10 @@ class CategoryServiceTest {
         assertThat(result).hasSize(3);
         assertThat(result).extracting(CategoryResponse::getName)
                 .containsExactly("전자제품", "스마트폰", "노트북");
-
         verify(categoryRepository).findAll();
     }
 
-    @DisplayName("4. 카테고리명 수정 성공 - ADMIN 권한")
+    @DisplayName("5. 카테고리명 수정 성공")
     @Test
     void updateCategoryName() {
         // given
@@ -168,9 +162,7 @@ class CategoryServiceTest {
         Category category = Category.builder()
                 .name("전자제품")
                 .build();
-
         CategoryUpdateRequest request = new CategoryUpdateRequest("전자기기", null);
-
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
         when(categoryRepository.save(any(Category.class))).thenReturn(category);
 
@@ -179,30 +171,28 @@ class CategoryServiceTest {
 
         // then
         assertThat(result).isNotNull();
-
         ArgumentCaptor<Category> categoryCaptor = ArgumentCaptor.forClass(Category.class);
         verify(categoryRepository).save(categoryCaptor.capture());
         Category capturedCategory = categoryCaptor.getValue();
-
         assertThat(capturedCategory.getName()).isEqualTo("전자기기");
     }
 
-    @DisplayName("4-1. 카테고리 수정 실패 - 권한 없음")
+    @DisplayName("5-1. 카테고리 수정 실패 (권한)")
     @Test
     void updateCategoryFailNoPermission() {
         // given
         String role = "SELLER";
         CategoryUpdateRequest request = new CategoryUpdateRequest("전자기기", null);
 
-        // when & then
+        // when
+        // then
         assertThatThrownBy(() -> categoryService.updateCategory(1L, request, role))
                 .isInstanceOf(CategoryPermissionException.class);
-
         verify(categoryRepository, never()).findById(any());
         verify(categoryRepository, never()).save(any());
     }
 
-    @DisplayName("5. 부모 카테고리 변경 성공")
+    @DisplayName("5-2. 부모 카테고리 변경 성공")
     @Test
     void updateParentCategory() {
         // given
@@ -210,18 +200,14 @@ class CategoryServiceTest {
         Category oldParent = Category.builder()
                 .name("전자제품")
                 .build();
-
         Category category = Category.builder()
                 .name("스마트폰")
                 .build();
         category.setParent(oldParent);
-
         Category newParent = Category.builder()
                 .name("모바일 기기")
                 .build();
-
         CategoryUpdateRequest request = new CategoryUpdateRequest("스마트폰", 2L);
-
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
         when(categoryRepository.findById(2L)).thenReturn(Optional.of(newParent));
         when(categoryRepository.save(any(Category.class))).thenReturn(category);
@@ -231,15 +217,13 @@ class CategoryServiceTest {
 
         // then
         assertThat(result).isNotNull();
-
         ArgumentCaptor<Category> categoryCaptor = ArgumentCaptor.forClass(Category.class);
         verify(categoryRepository).save(categoryCaptor.capture());
         Category capturedCategory = categoryCaptor.getValue();
-
         assertThat(capturedCategory.getParent()).isEqualTo(newParent);
     }
 
-    @DisplayName("6. 카테고리 삭제 성공 - ADMIN 권한")
+    @DisplayName("6. 카테고리 삭제 성공")
     @Test
     void deleteCategory() {
         // given
@@ -248,7 +232,6 @@ class CategoryServiceTest {
                 .name("전자제품")
                 .children(new ArrayList<>())
                 .build();
-
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
 
         // when
@@ -258,13 +241,14 @@ class CategoryServiceTest {
         verify(categoryRepository).delete(category);
     }
 
-    @DisplayName("6-1. 카테고리 삭제 실패 - 권한 없음")
+    @DisplayName("6-1. 카테고리 삭제 실패 (권한)")
     @Test
     void deleteCategoryFailNoPermission() {
         // given
         String role = "USER";
 
-        // when & then
+        // when
+        // then
         assertThatThrownBy(() -> categoryService.deleteCategory(1L, role))
                 .isInstanceOf(CategoryPermissionException.class);
 
