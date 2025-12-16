@@ -2,6 +2,11 @@
 slack:
   webhook-url: http://localhost/dummy
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration # Context가 Datasource를 못찾는 경우 방지
   jpa:
     hibernate:
       ddl-auto: create-drop
