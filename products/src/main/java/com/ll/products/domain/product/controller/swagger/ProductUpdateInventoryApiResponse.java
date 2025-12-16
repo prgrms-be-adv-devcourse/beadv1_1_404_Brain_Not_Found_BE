@@ -73,14 +73,14 @@ import java.lang.annotation.*;
                 )
         ),
         @ApiResponse(
-                responseCode = "400",
+                responseCode = "422",
                 description = "잘못된 요청",
                 content = @Content(
                         mediaType = "application/json",
                         schema = @Schema(implementation = BaseResponse.class),
                         examples = {
                                 @ExampleObject(
-                                        name = "400 - 재고 부족",
+                                        name = "422 - 재고 부족",
                                         description = "재고가 부족하여 감소할 수 없는 경우",
                                         value = """
                                                 {
