@@ -5,13 +5,13 @@ import com.ll.payment.settlement.batch.listener.SettlementBatchStepLogger;
 import com.ll.payment.settlement.batch.listener.SettlementSkipListener;
 import com.ll.payment.settlement.batch.processor.ValidateDepositProcessor;
 import com.ll.payment.settlement.batch.processor.SettlementSuccessProcessor;
+import com.ll.payment.settlement.batch.reader.SettlementPagingItemReader;
 import com.ll.payment.settlement.model.entity.Settlement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.database.JpaPagingItemReader;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.support.CompositeItemProcessor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,10 +34,10 @@ public class SettlementStepConfiguration {
     public Step SettlementStep(
             JobRepository jobRepository,
             PlatformTransactionManager transactionManager,
-            @Qualifier("pagingSettlementReader") JpaPagingItemReader<Settlement> settlementReader,
+            @Qualifier("pagingSettlementReader") SettlementPagingItemReader settlementReader,
             @Qualifier("validateDepositProcessor") ValidateDepositProcessor validateDepositProcessor,
             @Qualifier("settlementSuccessProcessor") SettlementSuccessProcessor settlementSuccessProcessor,
-            @Qualifier("settlementWriter") ItemWriter<Settlement> settlementWriter,
+            @Qualifier("settlementJdbcWriter") JdbcBatchItemWriter<Settlement> settlementJdbcWriter,
             SettlementBatchStepLogger logger,
             SettlementSkipListener skipListener
     ) {
@@ -45,7 +45,7 @@ public class SettlementStepConfiguration {
                 .<Settlement, Settlement>chunk(CHUNK_SIZE, transactionManager)
                 .reader(settlementReader)
                 .processor(settlementProcessor(validateDepositProcessor, settlementSuccessProcessor))
-                .writer(settlementWriter)
+                .writer(settlementJdbcWriter)
                 .listener(logger)
                 .faultTolerant()
                 .skip(BaseException.class)

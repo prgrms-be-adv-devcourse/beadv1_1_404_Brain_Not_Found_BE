@@ -6,17 +6,17 @@ import com.ll.payment.settlement.model.vo.SettlementProcessDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
 
 @Slf4j
-@Component("settlementSuccessProcessor")
+@Configuration("settlementSuccessProcessor")
 @RequiredArgsConstructor
 public class SettlementSuccessProcessor implements ItemProcessor<SettlementProcessDTO, Settlement> {
 
     private final DepositService depositService;
 
     @Override
-    public Settlement process(SettlementProcessDTO dto) throws Exception {
+    public Settlement process(SettlementProcessDTO dto) {
         dto.settlement().done();
         depositService.settlementDeposit(dto.settlement().getSellerCode(), dto.request());
         return dto.settlement();
