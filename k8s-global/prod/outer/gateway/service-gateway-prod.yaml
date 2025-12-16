@@ -8,6 +8,7 @@ spec:
     app: gateway-prod
   ports:
     - protocol: TCP
+      name: http
       port: 8000
       targetPort: 8000
     - name: metrics
