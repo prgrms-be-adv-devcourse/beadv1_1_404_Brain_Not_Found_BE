@@ -140,3 +140,8 @@ management:
 
 current:
   domain: "https://gooream.chlab.org"
+
+swagger:
+  servers:
+    - "http://gateway-svc-prod.default.svc.cluster.local:8000"
+    - "http://order-svc-prod.default.svc.cluster.local:8002"

@@ -1,0 +1,81 @@
+name: CD-WORKFLOW
+
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+permissions:
+  contents: read
+
+env:
+  REGISTRY: docker.io
+  DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+jobs:
+  deploy:
+    name: 쿠버네티스 배포
+    runs-on: self-hosted
+
+    steps:
+      - name: 깃 브랜치 연결
+        uses: actions/checkout@v5
+
+      - name: 서비스별 최신 Tag 조회
+        id: latest_tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tags = await github.rest.repos.listTags({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 50
+            });
+            
+            const service = "${{ inputs.service-name }}";
+            const tag = tags.data.find(t =>
+              t.name.startsWith(`${service}-v`)
+            );
+            
+            if (!tag) {
+              throw new Error(`No tag found for ${service}`);
+            }
+            
+            const shortSha = tag.commit.sha.substring(0, 7);
+            
+            core.setOutput("semver", tag.name);
+            core.setOutput("sha", shortSha);
+            core.setOutput("image_tag", `${tag.name}-sha-${shortSha}`);
+      
+
+      - name: 이미지 교체
+        run: |
+          kubectl set image deployment.apps/${{ inputs.service-name }}-dpy-prod \
+          ${{ inputs.service-name }}-pod-prod=${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ steps.latest_tag.outputs.image_tag }}
+
+      - name: Secret 생성
+        run: |
+          if [[ "${{ inputs.service-name }}" == "auth" ]]; then
+            echo "${{ secrets.SECRET_AUTH_PROD }}" | kubectl apply -f -
+          fi
+          
+          if [[ "${{ inputs.service-name }}" == "product" ]]; then
+            kubectl delete secret product-secret-prod --ignore-not-found
+            echo "${{ secrets.SECRET_PRODUCT_PROD }}" | kubectl apply -f -
+          fi
+          echo "${{ secrets.SECRET_COMMON_PROD }}" | kubectl apply -f -
+          
+
+      - name: 롤링 업데이트 진행
+        run: |
+          kubectl rollout status deployment.apps/${{ inputs.service-name }}-dpy-prod
+
+      - name: 배포 상태 검증
+        run: |
+          kubectl get pods -l app=${{ inputs.service-name }}
+#          rm -f secret-auth-prod.yaml || true
+#          rm -f secret-product-prod.yaml || true
+#          rm -f secret-common-prod.yaml || true
+          

@@ -4,3 +4,4 @@ metadata:
   name: order-db-config-dev
 data:
   SPRING_PROFILES_ACTIVE: dev
+  MYSQL_DATABASE: order_db
