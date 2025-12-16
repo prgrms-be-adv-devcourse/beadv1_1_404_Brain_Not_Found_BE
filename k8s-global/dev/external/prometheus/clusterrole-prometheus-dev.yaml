@@ -9,7 +9,6 @@ rules:
       - services
       - endpoints
       - pods
-      - secrets # 필요한 경우
     verbs: ["get", "list", "watch"]
   - apiGroups: ["extensions"]
     resources:
