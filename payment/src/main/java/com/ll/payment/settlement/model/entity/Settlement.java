@@ -93,9 +93,6 @@ public class Settlement extends BaseEntity {
     }
 
     public void done() {
-        if (this.settlementStatus != SettlementStatus.CREATED) {
-            throw new SettlementStateTransitionException("SUCCESS 상태로 전환할 수 없습니다.");
-        }
         this.settlementStatus = SettlementStatus.SUCCESS;
         this.settlementDate = LocalDateTime.now();
     }
