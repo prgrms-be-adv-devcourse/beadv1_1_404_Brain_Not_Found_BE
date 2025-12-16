@@ -4,24 +4,20 @@ spring:
       server:
         webflux:
           routes:
-            # Category (PRODUCTS)         #카테고리 CUD 인증
+            # Category (PRODUCTS)       CUD 요청 멱등성 없는 요청
             - id: category-route-protected
               uri: http://product-svc-dev.dev.svc.cluster.local:8085
               predicates:
                 - Path=/api/categories, /api/categories/**
                 - Method=PUT, POST, DELETE
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: productServiceCB
                     fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
 
-            - id: category-route-public     #카테고리들 조회
+            - id: category-route-public    # 멱등성 있는 요청
               uri: http://product-svc-dev.dev.svc.cluster.local:8085
               predicates:
                 - Path=/api/categories, /api/categories/**
@@ -29,8 +25,7 @@ spring:
               filters:
                 - name: Retry
                   args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
+                    name: productServiceRetry
                 - name: CircuitBreaker
                   args:
                     name: productServiceCB
@@ -43,48 +38,26 @@ spring:
                 - Path=/api/carts, /api/carts/**
                 - Method=GET, POST, DELETE
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: productServiceCB
                     fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
 
-            - id: product-route-getAll-protected  # 상품 목록 조회 R 관리자용 인증
-              uri: http://product-svc-dev.dev.svc.cluster.local:8085
-              predicates:
-                - Path=/api/products
-                - Method=GET
-              order: 1
-              filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
-                - name: CircuitBreaker
-                  args:
-                    name: productServiceCB
-                    fallbackUri: forward:/fallback/product
-
             - id: product-route-public          #상품 조회
               uri: http://product-svc-dev.dev.svc.cluster.local:8085
               predicates:
-                - Path=/api/products/**
+                - Path=/api/products/**, /api/products
                 - Method=GET
               filters:
                 - name: Retry
                   args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
+                    name: productServiceRetry
                 - name: CircuitBreaker
                   args:
                     name: productServiceCB
                     fallbackUri: forward:/fallback/product
-              order: 2
-
+              order: 1
 
             - id: product-route-protected     #상품 수정 및 삭제 인증
               uri: http://product-svc-dev.dev.svc.cluster.local:8085
@@ -92,10 +65,6 @@ spring:
                 - Path=/api/products, /api/products/**
                 - Method=PATCH, PUT, POST, DELETE
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: productServiceCB
@@ -110,8 +79,7 @@ spring:
               filters:
               - name: Retry
                 args:
-                  retries: 10
-                  statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
+                  name: productServiceRetry
               - name: CircuitBreaker
                 args:
                   name: productServiceCB
@@ -123,10 +91,6 @@ spring:
                 - Path=/api/images/presigned-url, /api/images/presigned-url/**
                 - Method=GET
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: productServiceCB
@@ -141,8 +105,7 @@ spring:
               filters:
                 - name: Retry
                   args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
+                    name: productServiceRetry
                 - name: CircuitBreaker
                   args:
                     name: productServiceCB
@@ -154,10 +117,6 @@ spring:
               predicates:
                 - Path=/orders/**, /orders/payment/**, /api/orders/payment/**, /api/orders/payment
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: orderServiceCB
@@ -170,10 +129,6 @@ spring:
                 - Path=/api/orders/**, /api/orders
                 - Method=POST, GET, PATCH, DELETE
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: orderServiceCB
@@ -181,39 +136,31 @@ spring:
                 - name: TokenAuthenticationFilter
               order: 2
 
-            # Payment
-            - id: payment-route-public
-              uri: http://payment-svc-dev.dev.svc.cluster.local:8087
-              predicates:
-                - Path=/api/payments/toss/**
-                - Method=GET
-              filters:
-              - name: Retry
-                args:
-                  retries: 10
-                  statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
-              - name: CircuitBreaker
-                args:
-                  name: paymentServiceCB
-                  fallbackUri: forward:/fallback/payment
-              order: 1
+#             Payment
+#            - id: payment-route-public
+#              uri: http://payment-svc-dev.dev.svc.cluster.local:8087
+#              predicates:
+#                - Path=/api/payments/toss/**
+#                - Method=GET
+#              filters:
+#              - name: CircuitBreaker
+#                args:
+#                  name: paymentServiceCB
+#                  fallbackUri: forward:/fallback/payment
+#              order: 1
 
-            - id: payment-route-protected
-              uri: http://payment-svc-dev.dev.svc.cluster.local:8087
-              predicates:
-                - Path=/api/payments/**, /api/payments
-                - Method=POST
-              filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
-                - name: CircuitBreaker
-                  args:
-                    name: paymentServiceCB
-                    fallbackUri: forward:/fallback/payment
-                - name: TokenAuthenticationFilter
-              order: 2
+#            - id: payment-route-protected
+#              uri: http://payment-svc-dev.dev.svc.cluster.local:8087
+#              predicates:
+#                - Path=/api/payments/**, /api/payments
+#                - Method=POST
+#              filters:
+#                - name: CircuitBreaker
+#                  args:
+#                    name: paymentServiceCB
+#                    fallbackUri: forward:/fallback/payment
+#                - name: TokenAuthenticationFilter
+#              order: 2
 
             #  Deposit (PAYMENT)
             - id: deposit-route-protected
@@ -222,10 +169,6 @@ spring:
                 - Path=/api/deposits, /api/deposits/**    #deposit은 모두 인증
                 - Method=POST, GET, PATCH, DELETE
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: paymentServiceCB
@@ -241,8 +184,7 @@ spring:
               filters:
                 - name: Retry
                   args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
+                    name: authServiceRetry
                 - name: CircuitBreaker
                   args:
                     name: authServiceCB
@@ -255,10 +197,6 @@ spring:
                 - Path=/api/users/**
                 - Method=POST, GET, PATCH, DELETE
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: authServiceCB
@@ -280,10 +218,6 @@ spring:
                 - Path=/api/auth
                 - Method=POST
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: authServiceCB
@@ -296,10 +230,6 @@ spring:
                 - Path=/api/auth/logout
                 - Method=POST
               filters:
-                - name: Retry
-                  args:
-                    retries: 10
-                    statuses: [BAD_GATEWAY, SERVICE_UNAVAILABLE]
                 - name: CircuitBreaker
                   args:
                     name: authServiceCB
@@ -350,6 +280,8 @@ management:
   zipkin:
     tracing:
       endpoint: http://zipkin-svc-dev.dev.svc.cluster.local:9411/api/v2/spans
+  server:
+    port: 8881
 
 springdoc:
   swagger-ui:
@@ -367,43 +299,61 @@ resilience4j:
   circuitbreaker:
     configs:
       default:
-        # DNS 해석 지연을 해결하기 위해, 최소 요청 횟수 설정을 사용할 것이므로 COUNT_BASED가 적절합니다.
         slidingWindowType: COUNT_BASED
-        # 슬라이딩 윈도우 크기. 기본적으로 이 횟수만큼 요청이 들어와야 실패율을 계산합니다.
         slidingWindowSize: 100
-        # 서킷이 열릴지 말지 결정하기 위해 필요한 최소 호출 횟수 (핵심 설정!)
-        # 이 설정이 minimumNumberOfCalls입니다.
-        # 예를 들어, 10개 미만의 요청은 실패하더라도 서킷 상태에 영향을 주지 않음.
         minimumNumberOfCalls: 10
-        # 실패율 임계값. 이 비율을 초과하면 서킷이 열립니다. (기본 50.0%)
-        failureRateThreshold: 50
-        # 서킷이 열린(OPEN) 상태에서 부분적으로 열린(HALF_OPEN) 상태로 전환되기까지 대기하는 시간
-        waitDurationInOpenState: 60s
-        # 느린 호출(Slow Call)로 간주하는 시간 임계값
-        slowCallDurationThreshold: 15s
-        # 느린 호출 비율 임계값. 이 비율을 초과하면 서킷이 열립니다.
-        slowCallRateThreshold: 100 # 초기 DNS 지연이 매우 길면 모든 요청이 느린 호출로 간주될 수 있으므로 일단 100으로 설정 (느린 호출로 인한 서킷 열림 방지)
+        failureRateThreshold: 80
+        waitDurationInOpenState: 120s
+        slowCallDurationThreshold: 35s
+        slowCallRateThreshold: 100
 
     instances:
-      # productServiceCB 인스턴스에 default 설정을 적용
       productServiceCB:
         baseConfig: default
+        # 상품 조회/수정 등 대부분 안전한 요청
+        minimumNumberOfCalls: 10
+        slowCallDurationThreshold: 35s
+        waitDurationInOpenState: 120s
 
-      # orderServiceCB 인스턴스에 default 설정을 적용
       orderServiceCB:
         baseConfig: default
+        minimumNumberOfCalls: 5
+        slowCallDurationThreshold: 35s
+        waitDurationInOpenState: 60s
+        failureRateThreshold: 80
 
-      # paymentServiceCB 인스턴스에 default 설정을 적용
       paymentServiceCB:
         baseConfig: default
+        minimumNumberOfCalls: 5
+        slowCallDurationThreshold: 35s
+        waitDurationInOpenState: 60s
+        failureRateThreshold: 80
 
-      # authServiceCB 인스턴스에 default 설정을 적용
       authServiceCB:
         baseConfig: default
-        # 최소 호출 횟수를 더 많이 늘립니다.
         minimumNumberOfCalls: 30
-        # 초기 DNS 해석에 충분한 시간을 주기 위해, 타임아웃 설정을 관대하게 적용합니다.
-        # 느린 호출로 간주하는 시간을 10초로 설정 (기본 5초)
-        slowCallDurationThreshold: 15s
-        # 서킷이 열린 상태에서 대기하는 시간을 1분 30초로 늘립니다.
-        waitDurationInOpenState: 90s
+        slowCallDurationThreshold: 35s
+        waitDurationInOpenState: 60s
+        failureRateThreshold: 80
+
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 2s
+        retryExceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+      no-retry:
+        maxAttempts: 1  # 사실상 Retry 제거
+    instances:
+      # 멱등성 없는 요청에는 Retry 제거
+      orderServiceRetry:
+        baseConfig: no-retry
+      paymentServiceRetry:
+        baseConfig: no-retry
+      authServiceRetry:
+        baseConfig: no-retry
+      # 상품 조회, 카테고리 등 안전한 요청만 Retry 유지
+      productServiceRetry:
+        baseConfig: default
