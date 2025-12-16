@@ -3,6 +3,9 @@ import com.ll.core.model.response.BaseResponse;
 import com.ll.products.domain.history.service.HistoryFacadeService;
 import com.ll.products.domain.search.dto.ProductSearchResponse;
 import com.ll.products.domain.search.service.ProductSearchService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -11,6 +14,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Search", description = "상품 검색 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/products")
@@ -20,6 +24,9 @@ public class ProductSearchController {
     private final ProductSearchService productSearchService;
     private final HistoryFacadeService historyFacadeService;
 
+    @Operation(
+            summary = "상품 목록 검색"
+    )
     @GetMapping("/search")
     public ResponseEntity<BaseResponse<Page<ProductSearchResponse>>> search(
             @RequestParam(required = false) String keyword,
@@ -27,8 +34,8 @@ public class ProductSearchController {
             @RequestParam(required = false) Integer minPrice,
             @RequestParam(required = false) Integer maxPrice,
             @RequestParam(required = false) String status,
-            @RequestHeader(value = "X-User-Code",required = false ) String userCode,
-            @PageableDefault(size = 20) Pageable pageable
+            @RequestHeader(value = "X-User-Code", required = false ) String userCode,
+            @ParameterObject() @PageableDefault(size = 20) Pageable pageable
     ) {
         if(userCode != null){
             historyFacadeService.saveSearch(userCode,keyword);
