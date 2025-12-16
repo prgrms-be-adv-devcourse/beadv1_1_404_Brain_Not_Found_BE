@@ -1,5 +1,6 @@
 package com.ll.products.domain.category.service;
 
+import com.ll.products.domain.cart.model.enums.Role;
 import com.ll.products.domain.category.exception.CategoryPermissionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -177,9 +178,8 @@ public class CategoryService {
 
     // ADMIN 권한 검증
     private void validateAdminRole(String role) {
-        if (!"ADMIN".equals(role)) {
+        if (!Role.ADMIN.name().equals(role)) {
             throw new CategoryPermissionException();
         }
     }
-
 }
