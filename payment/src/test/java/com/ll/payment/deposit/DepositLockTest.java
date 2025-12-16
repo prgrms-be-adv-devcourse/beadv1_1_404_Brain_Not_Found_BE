@@ -2,20 +2,24 @@ package com.ll.payment.deposit;
 
 import com.ll.payment.deposit.model.entity.Deposit;
 import com.ll.payment.deposit.repository.DepositRepository;
+import com.ll.payment.support.MySQLTestContainer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.concurrent.CountDownLatch;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 // Lock 은 실제 DB 에서만 기능하기 때문에 Mock 을 사용하지 않은 통합 테스트로 작성합니다.
 @SpringBootTest
+@ActiveProfiles("ci-test")
 @DisplayName("findByUserCode 에 걸린 Lock 검증 테스트")
-public class DepositLockTest {
+public class DepositLockTest extends MySQLTestContainer {
 
     @Autowired
     private DepositRepository depositRepository;

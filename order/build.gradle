@@ -28,7 +28,11 @@ dependencies {
     implementation 'io.github.resilience4j:resilience4j-retry'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    
+
+    // 테스트 컨테이너
+    testImplementation "org.testcontainers:junit-jupiter"
+    testImplementation "org.testcontainers:mysql"
+
     // Lombok for tests
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'

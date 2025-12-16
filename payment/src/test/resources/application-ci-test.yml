@@ -1,0 +1,14 @@
+
+slack:
+  webhook-url: http://localhost/dummy
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+payment:
+  targetUrl: https://api.tosspayments.com/v1/payments/confirm
+  createUrl: https://api.tosspayments.com/v1/payments
+  secretKey: "TEST_DASKJRHGEWJKRWEHJKFSEDHJFKH23489Y32SAD=" # 로컬에서 안되면 하드코딩해봐
+  successUrl: http://localhost:8082/api/orders/payment/success
+  failUrl: http://localhost:8082/api/orders/payment/fail
+  useMockPaymentKey: true
