@@ -3,7 +3,8 @@ name: product-CD
 on:
   push:
     branches:
-      - test/main
+#      - test/main
+      - main
     paths:
       - 'products/**' # product 폴더 변경 시
       - 'core/**' # core 폴더 변경 시
