@@ -1,8 +1,14 @@
 package com.ll.products.domain.search.service;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.*;
+import com.ll.products.domain.product.model.entity.Product;
+import com.ll.products.domain.product.repository.ProductRepository;
 import com.ll.products.domain.search.document.ProductDocument;
 import com.ll.products.domain.search.dto.ProductSearchResponse;
+import com.ll.products.domain.search.exception.EsIndexException;
+import com.ll.products.domain.search.exception.EsSearchException;
+import com.ll.products.domain.search.repository.ProductSearchRepository;
+import com.ll.products.global.util.ProductAuthValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
@@ -28,6 +35,8 @@ import java.util.List;
 public class ProductSearchService {
 
     private final ElasticsearchOperations elasticsearchOperations;
+    private final ProductRepository productRepository;
+    private final ProductSearchRepository productSearchRepository;
 
     @Value("${cloud.aws.s3.base-url}")
     private String s3BaseUrl;
@@ -42,24 +51,28 @@ public class ProductSearchService {
     ) {
         log.debug("상품 검색 요청: keyword={}, categoryId={}, price={}-{}, status={}, pageable={}",
                 keyword, categoryId, minPrice, maxPrice, status, pageable);
-        pageable = applyDefaultSort(keyword, pageable);
-        Query query = buildDynamicQuery(keyword, categoryId, minPrice, maxPrice, status);
-        NativeQuery nativeQuery = NativeQuery.builder()
-                .withQuery(query)
-                .withPageable(pageable)
-                .build();
-        SearchHits<ProductDocument> searchHits = elasticsearchOperations.search(nativeQuery, ProductDocument.class);
-        List<ProductDocument> products = searchHits.getSearchHits().stream()
-                .map(SearchHit::getContent)
-                .toList();
-        Page<ProductDocument> documents = new PageImpl<>(
-                products,
-                pageable,
-                searchHits.getTotalHits()
-        );
-        log.debug("검색 결과: totalElements={}, totalPages={}, currentPage={}, size={}",
-                documents.getTotalElements(), documents.getTotalPages(), documents.getNumber(), documents.getSize());
-        return documents.map(d -> ProductSearchResponse.from(d, s3BaseUrl));
+        try {
+            pageable = applyDefaultSort(keyword, pageable);
+            Query query = buildDynamicQuery(keyword, categoryId, minPrice, maxPrice, status);
+            NativeQuery nativeQuery = NativeQuery.builder()
+                    .withQuery(query)
+                    .withPageable(pageable)
+                    .build();
+            SearchHits<ProductDocument> searchHits = elasticsearchOperations.search(nativeQuery, ProductDocument.class);
+            List<ProductDocument> products = searchHits.getSearchHits().stream()
+                    .map(SearchHit::getContent)
+                    .toList();
+            Page<ProductDocument> documents = new PageImpl<>(
+                    products,
+                    pageable,
+                    searchHits.getTotalHits()
+            );
+            log.debug("검색 결과: totalElements={}, totalPages={}, currentPage={}, size={}",
+                    documents.getTotalElements(), documents.getTotalPages(), documents.getNumber(), documents.getSize());
+            return documents.map(d -> ProductSearchResponse.from(d, s3BaseUrl));
+        } catch (Exception e) {
+            throw new EsSearchException("ES 검색 중 오류가 발생했습니다.");
+        }
     }
 
 
@@ -191,5 +204,40 @@ public class ProductSearchService {
             boolBuilder.must(Query.of(q -> q.matchAll(m -> m)));
         }
         return Query.of(q -> q.bool(boolBuilder.build()));
+    }
+
+    @Transactional(readOnly = true)
+    public void reindexAll(String role) {
+        ProductAuthValidator.validateAdmin(role);
+        try {
+            IndexOperations indexOps = elasticsearchOperations.indexOps(ProductDocument.class);
+
+            // 기존 인덱스 삭제
+            if (indexOps.exists()) {
+                indexOps.delete();
+                log.info("기존 Elasticsearch 인덱스 삭제 완료");
+            }
+
+            // 새로운 인덱스 생성
+            indexOps.create();
+            indexOps.putMapping(indexOps.createMapping());
+            log.info("새로운 Elasticsearch 인덱스 생성 완료");
+
+            // 모든 상품 조회
+            List<Product> products = productRepository.findAllByIsDeletedFalse();
+            log.info("MySQL에서 조회된 상품 수: {}", products.size());
+
+            // ProductDocument로 변환
+            List<ProductDocument> documents = products.stream()
+                    .map(ProductDocument::from)
+                    .toList();
+
+            // es에 저장
+            productSearchRepository.saveAll(documents);
+            log.info("Elasticsearch 재색인 완료: {} 건", documents.size());
+        }catch (Exception e){
+            log.error("Elasticsearch 재색인 실패: {}", e.getMessage(), e);
+            throw new EsIndexException("es 재색인인 중 오류가 발생했습니다.");
+        }
     }
 }
