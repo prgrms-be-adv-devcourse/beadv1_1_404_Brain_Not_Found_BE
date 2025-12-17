@@ -30,6 +30,8 @@ declare -A DEFAULT_TOPICS=(
   ["inventory-event.dlq"]=1
   ["product-event"]=1
   ["product-event.dlq"]=1
+  ["payment-refund-request-event"]=1
+  ["payment-refund-request-event.dlq"]=1
   ["payment-refund-notification-event"]=1
   ["payment-refund-notification-event.dlq"]=1
 )
