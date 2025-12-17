@@ -49,11 +49,9 @@ jobs:
             core.setOutput("sha", shortSha);
             core.setOutput("image_tag", `${tag.name}-sha-${shortSha}`);
       
-
-      - name: 이미지 교체
-        run: |
-          kubectl set image deployment.apps/${{ inputs.service-name }}-dpy-prod \
-          ${{ inputs.service-name }}-pod-prod=${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ steps.latest_tag.outputs.image_tag }}
+      
+      
+      
 
       - name: Secret 생성
         run: |
@@ -67,6 +65,10 @@ jobs:
           fi
           echo "${{ secrets.SECRET_COMMON_PROD }}" | kubectl apply -f -
           
+      - name: 이미지 교체
+        run: |
+          kubectl set image deployment.apps/${{ inputs.service-name }}-dpy-prod \
+          ${{ inputs.service-name }}-pod-prod=${{ env.DOCKER_USER }}/${{ inputs.service-name }}:${{ steps.latest_tag.outputs.image_tag }}
 
       - name: 롤링 업데이트 진행
         run: |
