@@ -2,6 +2,7 @@ package com.ll.products.domain.category.service;
 
 import com.ll.products.domain.cart.model.enums.Role;
 import com.ll.products.domain.category.exception.CategoryPermissionException;
+import com.ll.products.global.util.ProductAuthValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,7 @@ public class CategoryService {
     // 카테고리 생성
     @Transactional
     public CategoryResponse createCategory(CategoryCreateRequest request, String role) {
-        validateAdminRole(role);
+        ProductAuthValidator.validateAdmin(role);
         Category category = Category.builder()
                 .name(request.getName())
                 .build();
@@ -91,9 +92,10 @@ public class CategoryService {
                 .build();
     }
 
+    // 카테고리 수정
     @Transactional
     public CategoryResponse updateCategory(Long id, CategoryUpdateRequest request, String role) {
-        validateAdminRole(role);
+        ProductAuthValidator.validateAdmin(role);
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id));
 
@@ -122,9 +124,10 @@ public class CategoryService {
         return convertToResponse(updatedCategory, false);
     }
 
+    // 카테고리 삭제
     @Transactional
     public void deleteCategory(Long id, String role) {
-        validateAdminRole(role);
+        ProductAuthValidator.validateAdmin(role);
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id));
 
@@ -174,12 +177,5 @@ public class CategoryService {
                                 .toList()
                         : null)
                 .build();
-    }
-
-    // ADMIN 권한 검증
-    private void validateAdminRole(String role) {
-        if (!Role.ADMIN.name().equals(role)) {
-            throw new CategoryPermissionException();
-        }
     }
 }

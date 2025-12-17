@@ -8,6 +8,7 @@ import com.ll.products.domain.recommendation.document.ProductVectorDocument;
 import com.ll.products.domain.recommendation.document.ProductVectorPoint;
 import com.ll.products.domain.recommendation.dto.RecommendationResponse;
 import com.ll.products.domain.recommendation.exception.VectorNotFoundException;
+import com.ll.products.global.util.ProductAuthValidator;
 import io.qdrant.client.grpc.JsonWithInt;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -81,6 +82,20 @@ public class RecommendationService {
         return excludeViewedProducts(recommendations, viewList, limit);
     }
 
+    // 6. 모든 상품 재색인
+    public void reindexAllProducts(String role) {
+        ProductAuthValidator.validateAdmin(role);
+        vectorStoreService.recreateCollection();
+        List<Product> products = productRepository.findAllByIsDeletedFalseAndStatus(ProductStatus.ON_SALE);
+        log.info("전체 상품 재색인 시작: 총 {}개", products.size());
+        if (products.isEmpty()) {
+            log.info("인덱싱할 상품이 없습니다.");
+            return;
+        }
+        IndexingResult result = indexBatchProducts(products);
+        log.info("전체 상품 재색인 완료: 성공 {}개, 실패 {}개", result.successCount, result.failCount);
+    }
+
 
 
     // 상품 인덱싱
@@ -92,19 +107,6 @@ public class RecommendationService {
         } catch (Exception e) {
             log.error("상품 색인 실패: {}", product.getCode(), e);
         }
-    }
-
-    // 모든 상품 재색인
-    public void reindexAllProducts() {
-        vectorStoreService.recreateCollection();
-        List<Product> products = productRepository.findAllByIsDeletedFalseAndStatus(ProductStatus.ON_SALE);
-        log.info("전체 상품 재색인 시작: 총 {}개", products.size());
-        if (products.isEmpty()) {
-            log.info("인덱싱할 상품이 없습니다.");
-            return;
-        }
-        IndexingResult result = indexBatchProducts(products);
-        log.info("전체 상품 재색인 완료: 성공 {}개, 실패 {}개", result.successCount, result.failCount);
     }
 
     // 벡터 point 생성

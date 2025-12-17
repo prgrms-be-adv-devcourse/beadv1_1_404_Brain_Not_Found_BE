@@ -16,6 +16,7 @@ import com.ll.products.domain.product.repository.InventoryHistoryRepository;
 import com.ll.products.domain.product.repository.ProductRepository;
 import com.ll.products.domain.s3.service.S3Service;
 import com.ll.products.global.client.UserClient;
+import com.ll.products.global.exception.ProductAuthException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -149,7 +150,7 @@ class ProductServiceTest {
         // when
         // then
         assertThatThrownBy(() -> productService.createProduct(createRequest, sellerCode, role))
-                .isInstanceOf(ProductOwnershipException.class);
+                .isInstanceOf(ProductAuthException.class);
         verify(productRepository, never()).save(any(Product.class));
     }
 
@@ -247,9 +248,10 @@ class ProductServiceTest {
         when(productRepository.findByCodeAndIsDeletedFalse("PROD-001"))
                 .thenReturn(Optional.of(testProduct));
 
-        // when & then
+        // when
+        // then
         assertThatThrownBy(() -> productService.deleteProduct("PROD-001", userCode, role))
-                .isInstanceOf(ProductOwnershipException.class);
+                .isInstanceOf(ProductAuthException.class);
 
         assertThat(testProduct.getIsDeleted()).isFalse();
     }
@@ -285,9 +287,10 @@ class ProductServiceTest {
         when(productRepository.findByCodeAndIsDeletedFalse("PROD-001"))
                 .thenReturn(Optional.of(testProduct));
 
-        // when & then
+        // when
+        // then
         assertThatThrownBy(() -> productService.updateProductStatus("PROD-001", statusRequest, userCode, role))
-                .isInstanceOf(ProductOwnershipException.class);
+                .isInstanceOf(ProductAuthException.class);
 
         assertThat(testProduct.getStatus()).isEqualTo(ProductStatus.WAITING);
     }
