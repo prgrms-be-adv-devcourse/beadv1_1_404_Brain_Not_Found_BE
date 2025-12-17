@@ -225,6 +225,12 @@ public class ProductService {
             imageDtoList.forEach(imageDto ->
                     product.addImage(imageDto.toEntity())
             );
+            long mainImageCount = product.getImages().stream()
+                    .filter(ProductImage::getIsMain)
+                    .count();
+            if (mainImageCount >= 2) {
+                throw new ImageUploadLimitException();
+            }
         }
     }
 

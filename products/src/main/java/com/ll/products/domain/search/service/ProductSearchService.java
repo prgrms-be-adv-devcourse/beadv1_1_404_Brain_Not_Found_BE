@@ -236,7 +236,7 @@ public class ProductSearchService {
             log.info("Elasticsearch 재색인 완료: {} 건", documents.size());
         }catch (Exception e){
             log.error("Elasticsearch 재색인 실패: {}", e.getMessage(), e);
-            throw new EsIndexException("es 재색인인 중 오류가 발생했습니다.");
+            throw new EsIndexException("es 재색인 중 오류가 발생했습니다.");
         }
     }
 }
