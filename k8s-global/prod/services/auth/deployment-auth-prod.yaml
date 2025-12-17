@@ -27,6 +27,9 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8084
+          env:
+            - name: JAVA_OPTS
+              value: "-Xms400M -Xmx400M" # 힙 메모리를 400MB로 고정
           envFrom:
             - configMapRef:
                 name: auth-config-prod
