@@ -2,7 +2,6 @@ package com.ll.payment.settlement.messaging.consumer;
 
 import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
 import com.ll.core.model.vo.kafka.OrderEvent;
-import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.payment.settlement.service.SettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,15 +22,6 @@ public class SettlementEventConsumer {
 
     @KafkaListener(topics = "order-event.dlq", groupId = "settlement-service")
     public void handleOrderDLQ(KafkaEventEnvelope<OrderEvent> event) {
-    }
-
-    @KafkaListener(topics = "refund-event", groupId = "settlement-service")
-    public void handleRefundEvent(KafkaEventEnvelope<RefundEvent> event) {
-        settlementService.refundSettlement(event.payload());
-    }
-
-    @KafkaListener(topics = "refund-event.dlq", groupId = "settlement-service")
-    public void handleRefundDLQ(KafkaEventEnvelope<RefundEvent> event) {
     }
 
 }
