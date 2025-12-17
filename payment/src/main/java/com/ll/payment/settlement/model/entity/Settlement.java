@@ -1,6 +1,7 @@
 package com.ll.payment.settlement.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
+import com.ll.payment.settlement.model.exception.RefundPeriodExpiredException;
 import com.ll.payment.settlement.model.exception.SettlementStateTransitionException;
 import com.ll.payment.settlement.model.vo.SettlementStatus;
 import jakarta.persistence.*;
@@ -8,7 +9,10 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
 
 @Entity
 @Getter
@@ -104,9 +108,8 @@ public class Settlement extends BaseEntity {
     }
 
     public void refund() {
-        if (this.settlementStatus != SettlementStatus.CREATED) {
-            throw new SettlementStateTransitionException("REFUNDED 상태로 전환할 수 없습니다.");
-        }
+        validateStateTransition();
+        validateRefundDate();
         this.settlementStatus = SettlementStatus.REFUNDED;
     }
 
@@ -128,5 +131,26 @@ public class Settlement extends BaseEntity {
         this.settlementBalance = balance;
     }
 
+    private void validateStateTransition() {
+        if (this.settlementStatus != SettlementStatus.CREATED) {
+            throw new SettlementStateTransitionException();
+        }
+    }
+
+    /*
+        Settlement 는 OutBox 패턴으로 인해 매 5분마다 처리
+        -> 환불 가능 기간을 3분 앞당겨 계산 함으로서 23:55 분 이후 환불 요청에 대한 컷오프 보정을 진행
+        Dlq 정책상 재시도가 가능하기 때문에, 완전히 실패할 때 까지 3분의 여유를 둠
+    */
+    private void validateRefundDate() {
+        final Duration REFUND_CUTOFF_GRACE_PERIOD = Duration.ofMinutes(3);
+
+        YearMonth currentMonth = YearMonth.now(ZoneId.of("Asia/Seoul"));
+        YearMonth orderMonth = YearMonth.from(this.getCreatedAt().minus(REFUND_CUTOFF_GRACE_PERIOD));
+
+        if (currentMonth.isAfter(orderMonth)) {
+            throw new RefundPeriodExpiredException();
+        }
+    }
 
 }
