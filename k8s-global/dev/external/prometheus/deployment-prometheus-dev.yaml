@@ -12,6 +12,7 @@ spec:
       labels:
         app: prometheus-dev
     spec:
+      serviceAccountName: prometheus-sa # SA 이름 추가
       containers:
         - name: prometheus-pod-dev
           image: prom/prometheus:v2.45.0 # 안정적인 버전 사용 권장

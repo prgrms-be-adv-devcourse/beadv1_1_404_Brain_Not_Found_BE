@@ -13,6 +13,10 @@ spec:
 #      pod 정의
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8881"
       labels:
         app: order-prod
 #        컨테이너 정의
@@ -23,6 +27,13 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8082
+          resources:
+            limits:
+              cpu: "300m" # 1 vCPU
+              memory: "500Mi"  # 메모리 제한
+            requests:
+              cpu: "200m"  # 0.5 vCPU 보장 요청
+              memory: "300Mi"  # 메모리 보장 요청
           envFrom:
             - configMapRef:
                 name: order-config-prod

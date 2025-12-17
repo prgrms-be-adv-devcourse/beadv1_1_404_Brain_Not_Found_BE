@@ -20,6 +20,13 @@ spec:
             - "--storage.tsdb.path=/prometheus"
           ports:
             - containerPort: 9090
+          resources:
+            limits:
+              cpu: "300m" # 1 vCPU
+              memory: "400Mi"  # 메모리 제한
+            requests:
+              cpu: "200m"  # 0.5 vCPU 보장 요청
+              memory: "300Mi"  # 메모리 보장 요청
           volumeMounts:
             - name: prometheus-config-volume
               mountPath: /etc/prometheus
@@ -32,4 +39,5 @@ spec:
             name: prometheus-config-prod
         # Prometheus 데이터 저장을 위한 임시 볼륨입니다. (운영 환경에서는 PVC 사용)
         - name: prometheus-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: prometheus-data-pvc
