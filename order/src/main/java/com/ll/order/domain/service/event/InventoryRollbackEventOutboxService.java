@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -140,7 +139,7 @@ public class InventoryRollbackEventOutboxService {
     }
 
     // 이벤트를 Outbox에 저장 (PENDING 상태로 저장하여 스케줄러가 발행)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void saveToOutbox(String orderCode, String productCode, Integer quantity) {
         try {
             String referenceCode = Generators.timeBasedEpochGenerator().generate().toString();
