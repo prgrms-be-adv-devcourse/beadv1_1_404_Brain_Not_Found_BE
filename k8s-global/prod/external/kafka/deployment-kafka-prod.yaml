@@ -21,6 +21,9 @@ spec:
           image: apache/kafka
           ports:
             - containerPort: 9090
+          env:
+            - name: KAFKA_TOOL_OPTIONS
+              value: "-Xms256M -Xmx256M"
           envFrom:
             - configMapRef:
                 name: kafka-config-prod

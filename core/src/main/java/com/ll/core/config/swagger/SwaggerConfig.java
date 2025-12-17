@@ -19,7 +19,7 @@ import java.util.List;
 @Configuration
 @EnableConfigurationProperties(SwaggerProperties.class)
 @RequiredArgsConstructor
-@Profile("!test") // 테스트 프로파일에서는 SwaggerConfig 비활성화
+@Profile("!test & !ci-test") // 테스트 프로파일에서는 SwaggerConfig 비활성화
 public class SwaggerConfig {
 
     private final SwaggerProperties properties;

@@ -4,7 +4,8 @@ name: payment-CI
 on:
   pull_request:
     branches:
-      - test/main
+#      - test/main
+      - main
     paths:
       - 'payment/**'
       - 'core/**'

@@ -3,7 +3,8 @@ name: AUTH-CD
 on:
   push:
     branches:
-      - test/main
+#      - test/main
+      - main
     paths:
       - 'auth/**' # auth 폴더 변경 시
       - 'core/**' # core 폴더 변경 시

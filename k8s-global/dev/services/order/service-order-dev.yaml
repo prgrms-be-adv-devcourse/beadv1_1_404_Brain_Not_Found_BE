@@ -8,5 +8,9 @@ spec:
     app: order-dev
   ports:
     - protocol: TCP
+      name: http
       port: 8082       # 내부 서비스 포트
       targetPort: 8082 # 컨테이너 포트
+    - name: metrics
+      port: 8881
+      targetPort: 8881
