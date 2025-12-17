@@ -68,4 +68,4 @@ management:
     port: 8881
 swagger:
   servers:
-    - "http://gooream.chlab.org"
+    - "https://gooream.chlab.org"
