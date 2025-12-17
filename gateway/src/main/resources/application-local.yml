@@ -57,6 +57,8 @@ spring:
                   args:
                     name: productServiceCB
                     #fallbackUri: forward:/fallback/product
+                - name: TokenExtractionFilter
+
               order: 1
 
             - id: product-route-protected     #상품 수정 및 삭제 인증
