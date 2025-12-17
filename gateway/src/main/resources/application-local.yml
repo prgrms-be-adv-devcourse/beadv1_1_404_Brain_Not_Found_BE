@@ -92,7 +92,7 @@ spring:
               predicates:
                 - Path=/api/orders/**, /api/orders
                 - Method=POST, GET, PATCH, DELETE
-                - # - name: CSRFValidationFilter
+                # - name: CSRFValidationFilter
               filters:
                 - name: TokenAuthenticationFilter
               order: 2
@@ -109,7 +109,7 @@ spring:
               uri: http://localhost:8084
               predicates:
                 - Path=/api/users/**
-                - Method=POST, GET, PATCH, DELETE
+                - Method=POST, GET, PATCH, DELETE, PATCH
               filters:
                 - name: TokenAuthenticationFilter
                   # - name: CSRFValidationFilter
