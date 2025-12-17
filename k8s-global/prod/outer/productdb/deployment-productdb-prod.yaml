@@ -27,4 +27,5 @@ spec:
               mountPath: /var/lib/mysql
       volumes:
         - name: product-db-data
-          emptyDir: {}   # 개발용, 나중에 PVC로 변경 가능
+          persistentVolumeClaim:
+            claimName: productdb-data-pvc

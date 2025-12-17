@@ -27,4 +27,5 @@ spec:
               mountPath: /var/lib/mysql
       volumes:
         - name: payment-db-data
-          emptyDir: {}   # 개발용, 나중에 PVC로 변경 가능
+          persistentVolumeClaim:
+            claimName: paymentdb-data-pvc

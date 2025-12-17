@@ -31,7 +31,8 @@ spec:
 #                  key: QDRANT_API_KEY
       volumes:
         - name: qdrant-storage
-          emptyDir: {}   # 운영에서는 PVC로 변경해야 함
+          persistentVolumeClaim:
+            claimName: qdrant-data-pvc
         - name: qdrant-config-prod
           configMap:
             name: qdrant-config-prod
