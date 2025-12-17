@@ -5,6 +5,7 @@ import com.ll.products.domain.product.exception.ImageUploadLimitException;
 import com.ll.products.domain.product.exception.ProductImageNotFoundException;
 import com.ll.products.domain.product.model.entity.ProductImage;
 import com.ll.products.domain.s3.service.S3Service;
+import com.ll.products.global.util.ProductAuthValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +18,6 @@ import com.ll.products.domain.category.exception.CategoryNotFoundException;
 import com.ll.products.domain.category.model.entity.Category;
 import com.ll.products.domain.category.repository.CategoryRepository;
 import com.ll.products.domain.product.exception.ProductNotFoundException;
-import com.ll.products.domain.product.exception.ProductOwnershipException;
 import com.ll.products.domain.product.model.dto.ProductImageDto;
 import com.ll.products.domain.product.model.dto.request.ProductCreateRequest;
 import com.ll.products.domain.product.model.dto.request.ProductUpdateStatusRequest;
@@ -58,7 +58,7 @@ public class ProductService {
     // 1. 상품 생성
     @Transactional
     public ProductResponse createProduct(ProductCreateRequest request, String sellerCode, String role) {
-        validateRole(role);
+        ProductAuthValidator.validateSellerOrAdmin(role);
         Category category = getCategory(request.categoryId());
         String sellerName = getSellerName(sellerCode);
         Product product = Product.builder()
@@ -103,7 +103,7 @@ public class ProductService {
     @Transactional
     public void deleteProduct(String code, String userCode, String role) {
         Product product = getProductByCode(code);
-        validateOwnership(product, userCode, role);
+        ProductAuthValidator.validateOwnership(product.getSellerCode(), userCode, role);
         List<String> fileKeys = product.getImages().stream().map(ProductImage::getFileKey).toList();
         deleteProductImagesFromS3(fileKeys);
         product.softDelete();
@@ -116,7 +116,7 @@ public class ProductService {
     public ProductResponse updateProduct(String code, ProductUpdateRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
         validateImageSize(request, product);
-        validateOwnership(product, userCode, role);
+        ProductAuthValidator.validateOwnership(product.getSellerCode(), userCode, role);
         deleteImages(request, product);
         setImages(request.addImages(), product);
         product.updateBasicInfo(
@@ -136,7 +136,7 @@ public class ProductService {
     @Transactional
     public ProductResponse updateProductStatus(String code, ProductUpdateStatusRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
-        validateOwnership(product, userCode, role);
+        ProductAuthValidator.validateOwnership(product.getSellerCode(), userCode, role);
         product.updateStatus(request.status());
         log.debug("상품 상태변경 완료: {} -> {} (ID: {})", product.getName(), request.status(), product.getId());
         eventPublisher.publishEvent(ProductsEvent.updatedStatus(this, product));
@@ -233,23 +233,6 @@ public class ProductService {
         Product product = productRepository.findByCodeAndIsDeletedFalse(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
         return product;
-    }
-
-    // Role 검증
-    private void validateRole(String role) {
-        if (!"SELLER".equals(role) && !"ADMIN".equals(role)) {
-            throw new ProductOwnershipException(null, "상품 생성 권한 없음");
-        }
-    }
-
-    // 상품 소유권 검증
-    private void validateOwnership(Product product, String userCode, String role) {
-        if ("ADMIN".equals(role)) {
-            return;
-        }
-        if (!userCode.equals(product.getSellerCode())) {
-            throw new ProductOwnershipException(null, product.getCode());
-        }
     }
 
     // 이미지 삭제

@@ -3,7 +3,6 @@ package com.ll.products.domain.recommendation.controller;
 import com.ll.products.domain.recommendation.controller.swagger.*;
 import com.ll.products.domain.recommendation.dto.RecommendationResponse;
 import com.ll.products.domain.recommendation.service.RecommendationService;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -79,10 +78,11 @@ public class RecommendationController {
     // 5. 전체 상품 재색인 (관리자용)
     @PostMapping("/reindex")
     @ReindexAllProductsApiResponse
-    public ResponseEntity<String> reindexAllProducts() {
+    public ResponseEntity<String> reindexAllProducts(
+            @RequestHeader("X-Role") String role) {
         log.info("전체 상품 재색인 요청");
-        recommendationService.reindexAllProducts();
-        return ResponseEntity.ok("전체 상품 재색인이 시작되었습니다.");
+        recommendationService.reindexAllProducts(role);
+        return ResponseEntity.ok("전체 상품 재색인이 완료되었습니다.");
     }
 
     // 6. 상세 조회 기록 및 llm 기반
