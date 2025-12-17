@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -156,6 +157,24 @@ public class OrderEventOutboxService {
                     orderCode, orderItemCode, orderEvent.referenceCode(), e.getMessage(), e);
             // Outbox 저장 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
         }
+    }
+
+    public boolean isCancelable(String orderCode) {
+        List<OrderEventOutbox> outboxes = orderEventOutboxRepository.findByReferenceCode(orderCode);
+
+        if (outboxes.isEmpty()) {
+            log.warn("주문 이벤트 Outbox가 없어 취소를 막습니다. orderCode: {}", orderCode);
+            return false; // 또는 예외 던지기
+        }
+
+        // 가장 이른 생성 시점을 기준으로 10분 보호 구간을 둔다
+        LocalDateTime earliestCreatedAt = outboxes.stream()
+                .map(OrderEventOutbox::getCreatedAt)
+                .min(LocalDateTime::compareTo)
+                .orElse(LocalDateTime.now());
+
+                // 아웃박스 생성 시점부터 10분 이내인지 여부를 확인
+        return LocalDateTime.now().isAfter(earliestCreatedAt.plusMinutes(10));
     }
 }
 

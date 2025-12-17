@@ -15,5 +15,9 @@ public interface OrderEventOutboxRepository extends JpaRepository<OrderEventOutb
             @Param("status") OutboxStatus status,
             @Param("maxRetryCount") Integer maxRetryCount
     );
+
+    // outbox의 referenceCode는 저장될 때 orderCode로 저장을 함
+    @Query("SELECT o FROM OrderEventOutbox o WHERE o.referenceCode = :referenceCode")
+    List<OrderEventOutbox> findByReferenceCode(@Param("referenceCode") String referenceCode);
 }
 

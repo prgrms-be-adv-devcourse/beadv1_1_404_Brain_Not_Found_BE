@@ -32,5 +32,9 @@ public class OrderEventService {
             orderEventOutboxService.saveToOutbox(orderEvent, order.getCode(), orderItem.getCode());
         }
     }
+
+    public boolean isCancelable(String orderCode) {
+        return orderEventOutboxService.isCancelable(orderCode);
+    }
 }
 
