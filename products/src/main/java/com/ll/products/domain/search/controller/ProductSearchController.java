@@ -1,4 +1,5 @@
 package com.ll.products.domain.search.controller;
+import com.ll.core.model.persistence.BaseEntity;
 import com.ll.core.model.response.BaseResponse;
 import com.ll.products.domain.history.service.HistoryFacadeService;
 import com.ll.products.domain.recommendation.controller.swagger.ReindexAllProductsApiResponse;
@@ -48,12 +49,12 @@ public class ProductSearchController {
     // 2. 전체 상품 재색인 (관리자용)
     @PostMapping("/reindex")
     @ReindexAllProductsApiResponse
-    public ResponseEntity<String> reindexAllProducts(
+    public ResponseEntity<BaseResponse<String>> reindexAllProducts(
             @RequestHeader("X-Role") String role
     ) {
         log.info("=== Elasticsearch 전체 재색인 시작 ===");
         productSearchService.reindexAll(role);
         log.info("=== Elasticsearch 전체 재색인 종료 ===");
-        return ResponseEntity.ok("재색인 완료");
+        return BaseResponse.ok("재색인 완료");
     }
 }
