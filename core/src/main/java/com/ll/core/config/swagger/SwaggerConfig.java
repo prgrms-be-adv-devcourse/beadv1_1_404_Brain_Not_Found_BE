@@ -56,7 +56,33 @@ public class SwaggerConfig {
                 target.setRequired(false);
                 target.setName("X-User-Code");
                 target.setDescription("사용자 고유 코드");
-                target.schema(new StringSchema().type("string").example("X-User-Code ex) 019a90ab-fcf3-7413-af08-7121cc99378b"));
+            }
+
+            operation.setParameters(original);
+
+            return operation;
+        };
+    }
+
+    @Bean
+    public OperationCustomizer hideUserCodeRole() {
+        return (operation, handlerMethod) -> {
+            List<Parameter> original = operation.getParameters();
+
+            if (original == null) {
+                original = new ArrayList<>();
+            }
+
+            Parameter target = original.stream()
+                    .filter(p -> "X-Role".equalsIgnoreCase(p.getName()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (target != null) {
+                target.in(ParameterIn.HEADER.toString());
+                target.setRequired(false);
+                target.setName("X-Role");
+                target.setDescription("사용자 권한 정보");
             }
 
             operation.setParameters(original);

@@ -197,7 +197,7 @@ spring:
               uri: http://localhost:8084
               predicates:
                 - Path=/api/users/**
-                - Method=POST, GET, PATCH, DELETE
+                - Method=POST, GET, PATCH, DELETE, PATCH
               filters:
                 - name: CircuitBreaker
                   args:

@@ -1,5 +1,6 @@
 package com.ll.products.domain.recommendation.service;
 
+import com.ll.products.domain.cart.model.enums.Role;
 import com.ll.products.domain.history.service.HistoryFacadeService;
 import com.ll.products.domain.product.model.entity.Product;
 import com.ll.products.domain.product.model.entity.ProductStatus;
@@ -335,7 +336,7 @@ class RecommendationServiceTest {
         doNothing().when(vectorStoreService).upsertProducts(anyList());
 
         // when
-        recommendationService.reindexAllProducts();
+        recommendationService.reindexAllProducts(Role.ADMIN.name());
 
         // then
         verify(vectorStoreService).recreateCollection();

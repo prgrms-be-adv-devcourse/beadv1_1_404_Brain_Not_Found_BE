@@ -1,6 +1,7 @@
 package com.ll.products.domain.category.service;
 
 import com.ll.products.domain.category.exception.CategoryPermissionException;
+import com.ll.products.global.exception.ProductAuthException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -90,7 +91,7 @@ class CategoryServiceTest {
         // when
         // then
         assertThatThrownBy(() -> categoryService.createCategory(request, role))
-                .isInstanceOf(CategoryPermissionException.class);
+                .isInstanceOf(ProductAuthException.class);
         verify(categoryRepository, never()).save(any());
     }
 
@@ -187,7 +188,7 @@ class CategoryServiceTest {
         // when
         // then
         assertThatThrownBy(() -> categoryService.updateCategory(1L, request, role))
-                .isInstanceOf(CategoryPermissionException.class);
+                .isInstanceOf(ProductAuthException.class);
         verify(categoryRepository, never()).findById(any());
         verify(categoryRepository, never()).save(any());
     }
@@ -250,7 +251,7 @@ class CategoryServiceTest {
         // when
         // then
         assertThatThrownBy(() -> categoryService.deleteCategory(1L, role))
-                .isInstanceOf(CategoryPermissionException.class);
+                .isInstanceOf(ProductAuthException.class);
 
         verify(categoryRepository, never()).findById(any());
         verify(categoryRepository, never()).delete(any());

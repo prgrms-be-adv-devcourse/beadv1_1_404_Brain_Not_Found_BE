@@ -24,13 +24,4 @@ public class S3Controller {
     ) {
         return BaseResponse.ok(s3Service.generatePresignedUploadUrl(filename));
     }
-
-//    @Operation(summary = "imageFile 삭제")
-//    @DeleteMapping
-//    public ResponseEntity<BaseResponse<Void>> deleteImage(
-//            @RequestParam("fileKey") String fileKey
-//    ) {
-//        s3Service.deleteImage(fileKey);
-//        return BaseResponse.ok(null);
-//    }
 }
