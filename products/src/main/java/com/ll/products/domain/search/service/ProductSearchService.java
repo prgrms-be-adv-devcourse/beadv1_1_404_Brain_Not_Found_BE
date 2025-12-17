@@ -206,7 +206,6 @@ public class ProductSearchService {
         return Query.of(q -> q.bool(boolBuilder.build()));
     }
 
-    @Transactional(readOnly = true)
     public void reindexAll(String role) {
         ProductAuthValidator.validateAdmin(role);
         try {
