@@ -177,6 +177,11 @@ public class OrderServiceImpl implements OrderService {
         String buyerCode = order.getBuyerCode();
 
         if (order.getOrderStatus() == OrderStatus.COMPLETED) {
+            // 주문 완료 Outbox 생성 시점 기준으로 10분 이내에는 취소 불가
+            if (!orderEventService.isCancelable(order.getCode())) {
+                log.warn("주문 완료 후 10분 이내에는 취소할 수 없습니다. orderCode: {}", order.getCode());
+                throw new BaseException(OrderErrorCode.ORDER_CANCEL_NOT_ALLOWED_WITHIN_GRACE_PERIOD);
+            }
             try {
                 PaymentRefundRequestEvent refundRequestEvent = PaymentRefundRequestEvent.from(
                         order.getId(),
