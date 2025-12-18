@@ -4,11 +4,11 @@ import com.ll.core.model.response.BaseResponse;
 import com.ll.products.domain.history.service.HistoryFacadeService;
 import com.ll.products.domain.product.controller.swagger.*;
 import com.ll.products.domain.product.model.dto.request.ProductUpdateInventoryRequest;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -73,7 +73,7 @@ public class ProductController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) ProductStatus status,
             @RequestParam(required = false) String name,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject() @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Page<ProductListResponse> response = productService.getProducts(
                 sellerCode, categoryId, status, name, pageable
