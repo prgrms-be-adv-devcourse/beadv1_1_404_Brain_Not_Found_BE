@@ -8,7 +8,6 @@ import com.ll.order.domain.client.UserServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
-import com.ll.order.domain.model.entity.history.OrderHistoryBuilder;
 import com.ll.order.domain.model.entity.history.OrderHistoryEntity;
 import com.ll.order.domain.model.enums.order.OrderHistoryActionType;
 import com.ll.order.domain.model.enums.order.OrderStatus;
@@ -58,8 +57,7 @@ public abstract class AbstractOrderCreationService {
     public final OrderCreateResponse createOrder(Object request, String userCode) {
         UserResponse userInfo = getUserInfo(userCode);
 
-        // 1. 주문 생성 전 재고 가용성 체크 (읽기만, 락 없음)
-        validateInventory(request, userCode); // 얘한테 userCode 생김
+        validateInventory(request, userCode);
 
         // 2. 주문 및 주문 상품 데이터 생성
         OrderCreationResult creationResult = createOrderWithItems(request, userInfo);
@@ -68,10 +66,8 @@ public abstract class AbstractOrderCreationService {
 
         createTransactionTracing(savedOrder);
 
-        // 3. 재고 차감 (주문 생성 후, 결제 전) <- 락 적용
-        updateProductInventory(savedOrder, orderItems);
+        updateProductInventory(savedOrder, orderItems); // (주문 생성 후, 결제 전) <- 락 적용
 
-        // 4. 결제 처리 (별도 트랜잭션)
         PaidType paidType = extractPaidType(request);
         switch (paidType) {
             case DEPOSIT:
@@ -169,15 +165,17 @@ public abstract class AbstractOrderCreationService {
                     // 주문 상태 변경 이력 저장 (재고 차감 실패)
                     String errorMessage = String.format("재고 차감 실패 - productCode: %s, error: %s",
                             orderItem.getProductCode(), e.getMessage());
-                    OrderHistoryEntity failHistory = OrderHistoryBuilder.builder()
-                            .order(order)
-                            .orderItems(orderItems)
-                            .actionType(OrderHistoryActionType.STATUS_CHANGE)
-                            .previousStatus(previousStatus)
-                            .reason("재고 차감 실패")
-                            .errorMessage(errorMessage)
-                            .createdBy("SYSTEM")
-                            .build();
+                    OrderHistoryEntity failHistory = OrderHistoryEntity.create(
+                            order,
+                            orderItems,
+                            OrderHistoryActionType.STATUS_CHANGE,
+                            previousStatus,
+                            "재고 차감 실패",
+                            errorMessage,
+                            null,
+                            null,
+                            "SYSTEM"
+                    );
                     orderHistoryJpaRepository.save(failHistory);
                 }
             }

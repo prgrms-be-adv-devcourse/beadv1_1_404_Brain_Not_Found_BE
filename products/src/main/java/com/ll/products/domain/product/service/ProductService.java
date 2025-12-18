@@ -1,9 +1,11 @@
 package com.ll.products.domain.product.service;
 
+import com.ll.products.domain.product.event.ProductsEvent;
 import com.ll.products.domain.product.exception.ImageUploadLimitException;
 import com.ll.products.domain.product.exception.ProductImageNotFoundException;
 import com.ll.products.domain.product.model.entity.ProductImage;
 import com.ll.products.domain.s3.service.S3Service;
+import com.ll.products.global.util.ProductAuthValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,9 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ll.products.domain.category.exception.CategoryNotFoundException;
 import com.ll.products.domain.category.model.entity.Category;
 import com.ll.products.domain.category.repository.CategoryRepository;
-import com.ll.products.domain.product.event.ProductEvent;
 import com.ll.products.domain.product.exception.ProductNotFoundException;
-import com.ll.products.domain.product.exception.ProductOwnershipException;
 import com.ll.products.domain.product.model.dto.ProductImageDto;
 import com.ll.products.domain.product.model.dto.request.ProductCreateRequest;
 import com.ll.products.domain.product.model.dto.request.ProductUpdateStatusRequest;
@@ -40,7 +40,6 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class ProductService {
-    // TODO : 모든 재고 차감 성공 확인 / 차감 실패 시 결제 취소 / 재고 차감 성공 "후" 주문 완료 <- 이 부분 처리 필요
 
     private final UserClient userClient;
 
@@ -59,7 +58,7 @@ public class ProductService {
     // 1. 상품 생성
     @Transactional
     public ProductResponse createProduct(ProductCreateRequest request, String sellerCode, String role) {
-        validateRole(role);
+        ProductAuthValidator.validateSellerOrAdmin(role);
         Category category = getCategory(request.categoryId());
         String sellerName = getSellerName(sellerCode);
         Product product = Product.builder()
@@ -76,7 +75,7 @@ public class ProductService {
         setImages(request.images(), product);
         Product savedProduct = productRepository.save(product);
         log.debug("상품 생성 완료: {} (ID: {})", savedProduct.getName(), savedProduct.getId());
-        eventPublisher.publishEvent(ProductEvent.created(this, savedProduct));
+        eventPublisher.publishEvent(ProductsEvent.created(this, savedProduct));
         return ProductResponse.from(savedProduct, s3BaseUrl);
     }
 
@@ -104,12 +103,12 @@ public class ProductService {
     @Transactional
     public void deleteProduct(String code, String userCode, String role) {
         Product product = getProductByCode(code);
-        validateOwnership(product, userCode, role);
+        ProductAuthValidator.validateOwnership(product.getSellerCode(), userCode, role);
         List<String> fileKeys = product.getImages().stream().map(ProductImage::getFileKey).toList();
         deleteProductImagesFromS3(fileKeys);
         product.softDelete();
         log.debug("상품 삭제 완료: {} (ID: {})", product.getName(), product.getId());
-        eventPublisher.publishEvent(ProductEvent.deleted(this, product));
+        eventPublisher.publishEvent(ProductsEvent.deleted(this, product));
     }
 
     // 5. 상품 수정
@@ -117,7 +116,7 @@ public class ProductService {
     public ProductResponse updateProduct(String code, ProductUpdateRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
         validateImageSize(request, product);
-        validateOwnership(product, userCode, role);
+        ProductAuthValidator.validateOwnership(product.getSellerCode(), userCode, role);
         deleteImages(request, product);
         setImages(request.addImages(), product);
         product.updateBasicInfo(
@@ -129,7 +128,7 @@ public class ProductService {
         Category category = getCategory(request.categoryId());
         product.updateCategory(category);
         log.debug("상품 수정 완료: {} (ID: {})", product.getName(), product.getId());
-        eventPublisher.publishEvent(ProductEvent.updated(this, product));
+        eventPublisher.publishEvent(ProductsEvent.updated(this, product));
         return ProductResponse.from(product, s3BaseUrl);
     }
 
@@ -137,10 +136,10 @@ public class ProductService {
     @Transactional
     public ProductResponse updateProductStatus(String code, ProductUpdateStatusRequest request, String userCode, String role) {
         Product product = getProductByCode(code);
-        validateOwnership(product, userCode, role);
+        ProductAuthValidator.validateOwnership(product.getSellerCode(), userCode, role);
         product.updateStatus(request.status());
         log.debug("상품 상태변경 완료: {} -> {} (ID: {})", product.getName(), request.status(), product.getId());
-        eventPublisher.publishEvent(ProductEvent.updated(this, product));
+        eventPublisher.publishEvent(ProductsEvent.updatedStatus(this, product));
         return ProductResponse.from(product, s3BaseUrl);
     }
 
@@ -162,7 +161,6 @@ public class ProductService {
                 return;
             }
         }
-
         Product product = productRepository.findByCodeWithLock(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
 
@@ -197,7 +195,12 @@ public class ProductService {
                 product.getName(), quantity, afterQuantity);
         log.debug("재고 이력 저장 완료 - id: {}, productCode: {}, beforeQuantity: {}, afterQuantity: {}",
                 history.getId(), code, beforeQuantity, afterQuantity);
-        eventPublisher.publishEvent(ProductEvent.updated(this, product));
+
+        // 판매상태가 변경된 경우, kafka 이벤트 발행
+        if (product.getStatus() == ProductStatus.SOLD_OUT) {
+            log.info("재고 소진으로 SOLD_OUT 상태 전환, 벡터 DB 동기화 이벤트 발행");
+            eventPublisher.publishEvent(ProductsEvent.updatedStatus(this, product));
+        }
     }
 
     // 카테고리 조회
@@ -222,6 +225,12 @@ public class ProductService {
             imageDtoList.forEach(imageDto ->
                     product.addImage(imageDto.toEntity())
             );
+            long mainImageCount = product.getImages().stream()
+                    .filter(ProductImage::getIsMain)
+                    .count();
+            if (mainImageCount >= 2) {
+                throw new ImageUploadLimitException();
+            }
         }
     }
 
@@ -230,23 +239,6 @@ public class ProductService {
         Product product = productRepository.findByCodeAndIsDeletedFalse(code)
                 .orElseThrow(() -> new ProductNotFoundException(code));
         return product;
-    }
-
-    // Role 검증
-    private void validateRole(String role) {
-        if (!"SELLER".equals(role) && !"ADMIN".equals(role)) {
-            throw new ProductOwnershipException(null, "상품 생성 권한 없음");
-        }
-    }
-
-    // 상품 소유권 검증
-    private void validateOwnership(Product product, String userCode, String role) {
-        if ("ADMIN".equals(role)) {
-            return;
-        }
-        if (!userCode.equals(product.getSellerCode())) {
-            throw new ProductOwnershipException(null, product.getCode());
-        }
     }
 
     // 이미지 삭제

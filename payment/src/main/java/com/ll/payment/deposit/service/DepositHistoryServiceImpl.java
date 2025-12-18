@@ -3,6 +3,7 @@ package com.ll.payment.deposit.service;
 import com.ll.payment.deposit.model.entity.Deposit;
 import com.ll.payment.deposit.model.entity.DepositHistory;
 import com.ll.payment.deposit.model.enums.DepositHistoryType;
+import com.ll.payment.deposit.model.exception.DepositAmountMismatchException;
 import com.ll.payment.deposit.model.exception.DuplicateDepositTransactionException;
 import com.ll.payment.deposit.model.exception.RefundTargetNotFoundException;
 import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -46,17 +48,22 @@ public class DepositHistoryServiceImpl implements DepositHistoryService {
     }
 
     @Override
-    public void validateDuplicate(String referenceCode) {
-        if (depositHistoryRepository.existsByReferenceCode(referenceCode)) {
+    public void validateDuplicate(DepositTransactionRequest request) {
+        if (depositHistoryRepository.existsByReferenceCode(request.referenceCode())) {
             throw new DuplicateDepositTransactionException();
         }
     }
 
     @Override
-    public void validateDuplicateForRefund(String referenceCode) {
-        validateDuplicate(refundCode(referenceCode));
-        if (!depositHistoryRepository.existsByReferenceCode(referenceCode)) {
+    public void validateDuplicateForRefund(DepositTransactionRequest request) {
+        validateDuplicate(new DepositTransactionRequest(request.amount(), refundCode(request.referenceCode())));
+        DepositHistory depositHistory = depositHistoryRepository.findByReferenceCode(request.referenceCode())
+                .orElseThrow(RefundTargetNotFoundException::new);
+        if (depositHistory.getHistoryType() != DepositHistoryType.PAYMENT) {
             throw new RefundTargetNotFoundException();
+        }
+        if (!Objects.equals(depositHistory.getAmount(), request.amount())) {
+            throw new DepositAmountMismatchException();
         }
     }
 

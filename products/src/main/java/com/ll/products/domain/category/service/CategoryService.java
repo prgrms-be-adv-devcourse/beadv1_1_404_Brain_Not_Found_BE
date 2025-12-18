@@ -1,5 +1,8 @@
 package com.ll.products.domain.category.service;
 
+import com.ll.products.domain.cart.model.enums.Role;
+import com.ll.products.domain.category.exception.CategoryPermissionException;
+import com.ll.products.global.util.ProductAuthValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +28,8 @@ public class CategoryService {
 
     // 카테고리 생성
     @Transactional
-    public CategoryResponse createCategory(CategoryCreateRequest request) {
+    public CategoryResponse createCategory(CategoryCreateRequest request, String role) {
+        ProductAuthValidator.validateAdmin(role);
         Category category = Category.builder()
                 .name(request.getName())
                 .build();
@@ -88,8 +92,10 @@ public class CategoryService {
                 .build();
     }
 
+    // 카테고리 수정
     @Transactional
-    public CategoryResponse updateCategory(Long id, CategoryUpdateRequest request) {
+    public CategoryResponse updateCategory(Long id, CategoryUpdateRequest request, String role) {
+        ProductAuthValidator.validateAdmin(role);
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id));
 
@@ -118,8 +124,10 @@ public class CategoryService {
         return convertToResponse(updatedCategory, false);
     }
 
+    // 카테고리 삭제
     @Transactional
-    public void deleteCategory(Long id) {
+    public void deleteCategory(Long id, String role) {
+        ProductAuthValidator.validateAdmin(role);
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id));
 
@@ -170,6 +178,4 @@ public class CategoryService {
                         : null)
                 .build();
     }
-
-
 }

@@ -40,9 +40,9 @@ out/
 
 ### VS Code ###
 .vscode/
-gradle/wrapper
-gradlew
-gradlew.bat
+#gradle/wrapper
+#gradlew
+#gradlew.bat
 
 ### Cursor ###
 .cursorignore

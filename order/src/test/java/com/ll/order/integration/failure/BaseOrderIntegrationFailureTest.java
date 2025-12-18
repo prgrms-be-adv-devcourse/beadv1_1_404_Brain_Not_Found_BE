@@ -25,6 +25,7 @@ import com.ll.order.domain.repository.TransactionTracingRepository;
 import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.event.OrderEventService;
 import com.ll.order.domain.service.order.OrderService;
+import com.ll.order.support.MySQLTestContainer;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
@@ -39,9 +42,10 @@ import java.util.List;
 
 // 공통 설정 및 헬퍼 메서드 제공
 @SpringBootTest
-@ActiveProfiles("test")
+//@ActiveProfiles("test")
+@ActiveProfiles("ci-test")
 @Slf4j
-public abstract class BaseOrderIntegrationFailureTest {
+public abstract class BaseOrderIntegrationFailureTest extends MySQLTestContainer {
 
     @Autowired
     protected OrderService orderService;
@@ -65,7 +69,9 @@ public abstract class BaseOrderIntegrationFailureTest {
 
     @BeforeEach
     void initTransactionTemplate() {
-        transactionTemplate = new TransactionTemplate(transactionManager);
+        DefaultTransactionDefinition definition = new DefaultTransactionDefinition();
+        definition.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        transactionTemplate = new TransactionTemplate(transactionManager, definition);
     }
 
     // 외부 서비스 모킹 (다른 마이크로서비스)

@@ -3,7 +3,7 @@ package com.ll.order.domain.service.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ll.core.model.vo.kafka.OrderEvent;
-import com.ll.order.domain.model.entity.OrderEventOutbox;
+import com.ll.order.domain.model.entity.event.OrderEventOutbox;
 import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.enums.order.OutboxStatus;
 import com.ll.order.domain.repository.OrderEventOutboxRepository;
@@ -11,9 +11,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -103,17 +103,14 @@ public class OrderEventOutboxService {
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("OrderEvent 역직렬화 실패 - outboxId: " + outbox.getId(), e);
             }
-
-            // 이벤트 발행 시도
-            orderEventProducer.sendOrder(orderEvent);
-
-            // 발행 성공 시 상태 변경
+            // db 먼저 반영 - 오류나면 롤백되니까
             outbox.markAsPublished();
-            orderEventOutboxRepository.save(outbox);
+
+            // 이벤트 발행
+            orderEventProducer.sendOrder(orderEvent);
 
             log.debug("이벤트 발행 성공 - outboxId: {}, referenceCode: {}, retryCount: {}",
                     outbox.getId(), outbox.getReferenceCode(), outbox.getRetryCount());
-
         } catch (Exception e) {
             // 발행 실패 시 재시도 횟수 증가
             outbox.incrementRetryCount(e.getMessage());
@@ -146,7 +143,7 @@ public class OrderEventOutboxService {
     }
 
     // 이벤트를 Outbox에 저장 (PENDING 상태로 저장하여 스케줄러가 발행)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void saveToOutbox(OrderEvent orderEvent, String orderCode, String orderItemCode) {
         try {
             OrderEventOutbox outbox = OrderEventOutbox.from(orderEvent, objectMapper);
@@ -160,6 +157,24 @@ public class OrderEventOutboxService {
                     orderCode, orderItemCode, orderEvent.referenceCode(), e.getMessage(), e);
             // Outbox 저장 실패는 로그만 남기고 계속 진행 (수동 처리 필요)
         }
+    }
+
+    public boolean isCancelable(String orderCode) {
+        List<OrderEventOutbox> outboxes = orderEventOutboxRepository.findByReferenceCode(orderCode);
+
+        if (outboxes.isEmpty()) {
+            log.warn("주문 이벤트 Outbox가 없어 취소를 막습니다. orderCode: {}", orderCode);
+            return false; // 또는 예외 던지기
+        }
+
+        // 가장 이른 생성 시점을 기준으로 10분 보호 구간을 둔다
+        LocalDateTime earliestCreatedAt = outboxes.stream()
+                .map(OrderEventOutbox::getCreatedAt)
+                .min(LocalDateTime::compareTo)
+                .orElse(LocalDateTime.now());
+
+                // 아웃박스 생성 시점부터 10분 이내인지 여부를 확인
+        return LocalDateTime.now().isAfter(earliestCreatedAt.plusMinutes(10));
     }
 }
 

@@ -4,6 +4,7 @@ import com.ll.products.domain.product.exception.InsufficientInventoryException;
 import com.ll.products.domain.product.model.entity.Product;
 import com.ll.products.domain.product.model.entity.ProductStatus;
 import com.ll.products.domain.product.repository.ProductRepository;
+import com.ll.products.support.MySQLTestContainer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,9 +33,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@ActiveProfiles("test")
+//@ActiveProfiles("test")
+@ActiveProfiles("ci-test")
 @DisplayName("상품 재고 동시성 테스트")
-class ProductInventoryConcurrencyTest {
+class ProductInventoryConcurrencyTest extends MySQLTestContainer {
 
     private static final Logger log = LoggerFactory.getLogger(ProductInventoryConcurrencyTest.class);
 
@@ -87,7 +89,7 @@ class ProductInventoryConcurrencyTest {
                 .price(10000)
                 .status(ProductStatus.ON_SALE)
                 .isDeleted(false)
-                .images(new java.util.ArrayList<>())
+                .images(new ArrayList<>())
                 .build();
         testProduct = productRepository.save(testProduct);
     }

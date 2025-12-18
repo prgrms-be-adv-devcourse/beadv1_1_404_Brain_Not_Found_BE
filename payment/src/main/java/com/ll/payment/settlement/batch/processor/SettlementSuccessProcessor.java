@@ -16,7 +16,7 @@ public class SettlementSuccessProcessor implements ItemProcessor<SettlementProce
     private final DepositService depositService;
 
     @Override
-    public Settlement process(SettlementProcessDTO dto) throws Exception {
+    public Settlement process(SettlementProcessDTO dto) {
         dto.settlement().done();
         depositService.settlementDeposit(dto.settlement().getSellerCode(), dto.request());
         return dto.settlement();

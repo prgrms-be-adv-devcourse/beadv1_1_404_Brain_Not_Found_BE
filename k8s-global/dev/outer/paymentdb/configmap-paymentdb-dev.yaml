@@ -4,3 +4,4 @@ metadata:
   name: payment-db-config-dev
 data:
   SPRING_PROFILES_ACTIVE: dev
+  MYSQL_DATABASE: payment_db

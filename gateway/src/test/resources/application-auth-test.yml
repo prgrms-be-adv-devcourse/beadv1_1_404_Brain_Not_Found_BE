@@ -1,0 +1,15 @@
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: auth-test-route
+              uri: http://localhost:9999
+              predicates:
+                - Path=/test/auth/**
+
+custom:
+  jwt:
+    secrets:
+      app-key: test-secret-key-for-gateways-must-be-very-long-and-secure-1234567890

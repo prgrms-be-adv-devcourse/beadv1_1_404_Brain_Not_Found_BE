@@ -1,0 +1,41 @@
+name: product-CI
+
+#autn, core 변동있는 경우, main 브랜치로 pr시 트리거
+on:
+  pull_request:
+    branches:
+#      - test/main
+      - main
+    paths:
+      - 'products/**'
+      - 'core/**'
+#
+#  workflow_dispatch:
+#    inputs:
+#      service-name:
+#        description: 'Service name for deployment'
+#        required: false
+#        default: 'sa-accounts-service'
+#      force-deploy:
+#        description: 'Force deployment even without changes'
+#        required: false
+#        type: boolean
+#        default: false
+permissions:
+  contents: write
+
+jobs:
+#  testing:
+#    uses: ./.github/workflows/ci-test-workflow.yml
+#    with:
+#      service-name: products
+
+  releasing:
+#    needs: testing
+    uses: ./.github/workflows/ci-workflow.yml
+    secrets: inherit
+    with:
+      service-name: product
+      service-dir: ./products
+      file-name: Dockerfile
+

@@ -37,4 +37,22 @@ public class PaymentServiceImpl implements PaymentService {
         return paymentRefundService.refundPayment(request);
     }
 
+    @Override
+    public Payment depositChargeWithToss(PaymentRequest request) {
+        // 일반 토스 결제 코드 재사용 (CHARGE 상태로 결제)
+        Payment payment = tossPaymentService.tossPayment(request, PaymentStatus.CHARGE);
+        
+        // 결제 성공 후 예치금 충전
+        String chargeReferenceCode = "CHARGE-" + (request.orderId() != null ? request.orderId() : "DEPOSIT") + "-" + System.currentTimeMillis();
+        
+        depositPaymentService.chargeDepositAfterToss(
+                request.buyerCode(),
+                request.paidAmount(),
+                chargeReferenceCode
+        );
+        
+        log.debug("예치금 충전 완료 - buyerCode: {}, amount: {}", request.buyerCode(), request.paidAmount());
+        return payment;
+    }
+
 }

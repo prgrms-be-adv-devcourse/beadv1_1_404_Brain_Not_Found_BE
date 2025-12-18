@@ -2,7 +2,10 @@ package com.ll.products.domain.product.controller;
 
 import com.ll.core.model.response.BaseResponse;
 import com.ll.products.domain.history.service.HistoryFacadeService;
+import com.ll.products.domain.product.controller.swagger.*;
 import com.ll.products.domain.product.model.dto.request.ProductUpdateInventoryRequest;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,7 @@ import com.ll.products.domain.product.service.ProductService;
 
 import java.util.List;
 
+@Tag(name = "Product", description = "상품 관리 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/products")
@@ -36,6 +40,7 @@ public class ProductController {
 
     // 1. 상품 생성
     @PostMapping
+    @ProductCreateApiResponse
     public ResponseEntity<BaseResponse<ProductResponse>> createProduct(
             @Valid @RequestBody ProductCreateRequest request,
             @RequestHeader("X-User-Code") String sellerCode,
@@ -47,9 +52,10 @@ public class ProductController {
 
     // 2. 상품 상세조회
     @GetMapping("/{code}")
+    @ProductGetApiResponse
     public ResponseEntity<BaseResponse<ProductResponse>> getProduct(
             @PathVariable String code,
-            @RequestHeader(value = "X-User-Code",required = false) String userCode) {
+            @RequestHeader(value = "X-User-Code", required = false) String userCode) {
 
         ProductResponse response = productService.getProduct(code);
         if(userCode != null){
@@ -61,6 +67,7 @@ public class ProductController {
 
     // 3. 상품 목록조회
     @GetMapping
+    @ProductListApiResponse
     public ResponseEntity<BaseResponse<Page<ProductListResponse>>> getProducts(
             @RequestParam(required = false) String sellerCode,
             @RequestParam(required = false) Long categoryId,
@@ -76,6 +83,7 @@ public class ProductController {
 
     // 4. 상품 삭제(soft delete)
     @DeleteMapping("/{code}")
+    @ProductDeleteApiResponse
     public ResponseEntity<BaseResponse<Void>> deleteProduct(
             @PathVariable String code,
             @RequestHeader("X-User-Code") String userCode,
@@ -87,6 +95,7 @@ public class ProductController {
 
     // 5. 상품 수정
     @PutMapping("/{code}")
+    @ProductUpdateApiResponse
     public ResponseEntity<BaseResponse<ProductResponse>> updateProduct(
             @PathVariable String code,
             @Valid @RequestBody ProductUpdateRequest request,
@@ -99,6 +108,7 @@ public class ProductController {
 
     // 6. 상품 상태변경
     @PatchMapping("/{code}/status")
+    @ProductUpdateStatusApiResponse
     public ResponseEntity<BaseResponse<ProductResponse>> updateProductStatus(
             @PathVariable String code,
             @Valid @RequestBody ProductUpdateStatusRequest request,
@@ -111,6 +121,7 @@ public class ProductController {
 
     // 7. 재고 변동 ( 증가/감소 )
     @PatchMapping("/{code}/inventory")
+    @ProductUpdateInventoryApiResponse
     public ResponseEntity<BaseResponse<Void>> updateInventory(
             @PathVariable String code,
             @Valid @RequestBody ProductUpdateInventoryRequest request

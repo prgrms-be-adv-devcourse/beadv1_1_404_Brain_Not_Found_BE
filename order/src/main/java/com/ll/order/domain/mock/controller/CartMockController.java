@@ -12,20 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Cart Service Mock Controller
- * 로컬 개발 환경에서 장바구니 정보를 모킹하는 컨트롤러
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/carts")
 public class CartMockController {
 
-    /**
-     * 장바구니 조회 Mock API
-     * GET /api/carts/cartItems
-     * Header: X-User-Code
-     */
     @GetMapping("/cartItems")
     public ResponseEntity<BaseResponse<CartItemsResponse>> getCartItems(
             @RequestHeader("X-User-Code") String userCode

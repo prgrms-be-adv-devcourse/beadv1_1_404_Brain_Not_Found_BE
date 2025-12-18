@@ -1,0 +1,6 @@
+# prometheus-sa.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-sa
+  namespace: default

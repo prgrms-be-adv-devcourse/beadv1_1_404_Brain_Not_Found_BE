@@ -13,4 +13,7 @@ public interface PaymentService {
 
     Payment refundPayment(PaymentRefundRequest request);
 
+    // 예치금 충전용 토스 결제 (일반 토스 결제 코드 재사용)
+    Payment depositChargeWithToss(PaymentRequest request);
+
 }

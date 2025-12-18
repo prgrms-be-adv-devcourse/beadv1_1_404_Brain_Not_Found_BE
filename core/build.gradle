@@ -12,6 +12,8 @@ dependencies {
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
     implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
 
+    implementation "com.slack.api:slack-api-client:1.46.0"
+
     implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
@@ -25,7 +27,7 @@ dependencies {
     api 'org.modelmapper:modelmapper:3.2.0'
 
     // swagger
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14")
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
 
     testImplementation 'org.springframework.kafka:spring-kafka-test'
 }

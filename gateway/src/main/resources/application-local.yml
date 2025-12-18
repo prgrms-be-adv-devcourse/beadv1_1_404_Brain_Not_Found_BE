@@ -1,23 +1,9 @@
 spring:
-  eureka:
-    client:
-      enabled: false     # Eureka 서버에 등록하지 않음
   cloud:
-    discovery:
-      enabled: false   # Eureka 클라이언트 비활성화
     gateway:
       server:
         webflux:
           routes:
-            # Deposit
-            - id: deposit-route-protected
-              uri: http://localhost:8086
-              predicates:
-                - Path=/api/deposits, /api/deposits/**    #deposit은 모두 인증
-                - Method=POST, GET, PATCH, DELETE
-              filters:
-                - name: TokenAuthenticationFilter
-
             # Category (PRODUCTS)         #카테고리 CUD 인증
             - id: category-route-protected
               uri: http://localhost:8085
@@ -25,33 +11,55 @@ spring:
                 - Path=/api/categories, /api/categories/**
                 - Method=PUT, POST, DELETE
               filters:
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCB
+                    #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
 
-            - id: category-route-public     #카테고리들 조회
+            - id: category-route-public    # 멱등성 있는 요청
               uri: http://localhost:8085
               predicates:
                 - Path=/api/categories, /api/categories/**
                 - Method=GET
+              filters:
+                - name: Retry
+                  args:
+                    name: productServiceRetry
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCB
+                    #fallbackUri: forward:/fallback/product
 
             # Product (PRODUCTS)
-            - id: product-route-getAll-protected  # 상품 목록 조회 R 관리자용 인증
+            - id: cart-route-protected
               uri: http://localhost:8085
               predicates:
-                - Path=/api/products
-                - Method=GET
-              order: 1
+                - Path=/api/carts, /api/carts/**
+                - Method=GET, POST, DELETE
               filters:
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCB
+                    #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
 
             - id: product-route-public          #상품 조회
               uri: http://localhost:8085
               predicates:
-                - Path=/api/products/**
+                - Path=/api/products/**, /api/products
                 - Method=GET
-              order: 2
               filters:
+                - name: Retry
+                  args:
+                    name: productServiceRetry
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCB
+                    #fallbackUri: forward:/fallback/product
                 - name: TokenExtractionFilter
 
+              order: 1
 
             - id: product-route-protected     #상품 수정 및 삭제 인증
               uri: http://localhost:8085
@@ -59,6 +67,10 @@ spring:
                 - Path=/api/products, /api/products/**
                 - Method=PATCH, PUT, POST, DELETE
               filters:
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCB
+                    #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
 
             - id: product-es-route-public   #상품 es 검색
@@ -67,67 +79,25 @@ spring:
                 - Path=/api/search/**
                 - Method=GET
               filters:
-                - name: TokenExtractionFilter
+                - name: Retry
+                  args:
+                    name: productServiceRetry
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCB
+                    #fallbackUri: forward:/fallback/product
 
             - id: product-images-route-protected   #이미지 업로드 인증
               uri: http://localhost:8085
               predicates:
-                - Path=/api/images/**
-                - Method=POST
-              filters:
-                - name: TokenAuthenticationFilter
-
-            # Order
-            - id: order-route-pg
-              uri: http://localhost:8082
-              predicates:
-                - Path=/api/orders/payment/**, /api/orders/payment, /orders/payment /orders/payment/**
+                - Path=/api/images/presigned-url, /api/images/presigned-url/**
                 - Method=GET
-              order: 1
-            - id: order-route-protected
-              uri: http://localhost:8082
-              predicates:
-                - Path=/api/orders/**, /api/orders
-                - Method=POST, GET, PATCH, DELETE
               filters:
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCB
+                    #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
-              order: 2
-            - id: payment-route-protected
-              uri: http://localhost:8087
-              predicates:
-                - Path=/api/payments/**, /api/payments
-                - Method=POST
-              filters:
-                - name: TokenAuthenticationFilter
-            # User
-            - id: user-route-protected
-              uri: http://localhost:8084
-              predicates:
-                - Path=/api/users/**
-                - Method=POST, GET, PATCH, DELETE
-              filters:
-                - name: TokenAuthenticationFilter
-              order: 2
-
-            - id: user-route-public
-              uri: http://localhost:8084
-              predicates:
-                - Path=/api/users
-                - Method=GET
-              order: 1
-            # Auth
-            - id: auth-route-public
-              uri: http://localhost:8084
-              predicates:
-                - Path=/api/auth
-                - Method=POST
-            # Login
-            - id: auth-route-login
-              uri: http://localhost:8084
-              predicates:
-                - Path=/api/login, /api/login/**, /login/**, /oauth2/**
-                - Method=GET
-
             # History
             - id: history-route
               uri: http://localhost:8085
@@ -135,7 +105,141 @@ spring:
                 - Path=/api/history, /api/history/**
                 - Method=GET
               filters:
+                - name: Retry
+                  args:
+                    name: productServiceRetry
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCB
+                    #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
+            # Order
+            - id: order-route-pg
+              uri: http://localhost:8082
+              predicates:
+                - Path=/orders/**, /orders/payment/**, /api/orders/payment/**, /api/orders/payment
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: orderServiceCB
+                    #fallbackUri: forward:/fallback/order
+              order: 1
+
+            - id: order-route-protected
+              uri: http://localhost:8082
+              predicates:
+                - Path=/api/orders/**, /api/orders
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: orderServiceCB
+                    #fallbackUri: forward:/fallback/order
+                - name: TokenAuthenticationFilter
+              order: 2
+
+            #             Payment
+            #            - id: payment-route-public
+            #              uri: http://localhostpayment-svc-dev.dev.svc.cluster.local:8087
+            #              predicates:
+            #                - Path=/api/payments/toss/**
+            #                - Method=GET
+            #              filters:
+            #              - name: CircuitBreaker
+            #                args:
+            #                  name: paymentServiceCB
+            #                  #fallbackUri: forward:/fallback/payment
+            #              order: 1
+
+            #            - id: payment-route-protected
+            #              uri: http://localhostpayment-svc-dev.dev.svc.cluster.local:8087
+            #              predicates:
+            #                - Path=/api/payments/**, /api/payments
+            #                - Method=POST
+            #              filters:
+            #                - name: CircuitBreaker
+            #                  args:
+            #                    name: paymentServiceCB
+            #                    #fallbackUri: forward:/fallback/payment
+            #                - name: TokenAuthenticationFilter
+            #              order: 2
+
+            #  Deposit (PAYMENT)
+            - id: deposit-route-protected
+              uri: http://localhost:8087
+              predicates:
+                - Path=/api/deposits, /api/deposits/**    #deposit은 모두 인증
+                - Method=POST, GET, PATCH, DELETE
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: paymentServiceCB
+                    #fallbackUri: forward:/fallback/payment
+                - name: TokenAuthenticationFilter
+
+            # User (AUTH)
+            - id: user-route-public
+              uri: http://localhost:8084
+              predicates:
+                - Path=/api/users
+                - Method=GET
+              filters:
+                - name: Retry
+                  args:
+                    name: authServiceRetry
+                - name: CircuitBreaker
+                  args:
+                    name: authServiceCB
+                    #fallbackUri: forward:/fallback/auth
+              order: 1
+
+            - id: user-route-protected
+              uri: http://localhost:8084
+              predicates:
+                - Path=/api/users/**
+                - Method=POST, GET, PATCH, DELETE, PATCH
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: authServiceCB
+                    #fallbackUri: forward:/fallback/auth
+                - name: TokenAuthenticationFilter
+              order: 2
+
+            # Auth
+            - id: auth-route-login
+              uri: http://localhost:8084
+              predicates:
+                - Path=/login/**, /oauth2/**
+                - Method=GET
+              order: 1
+
+            - id: auth-route-public
+              uri: http://localhost:8084
+              predicates:
+                - Path=/api/auth
+                - Method=POST
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: authServiceCB
+                    #fallbackUri: forward:/fallback/auth
+              order: 2
+
+            - id: auth-route-protected
+              uri: http://localhost:8084
+              predicates:
+                - Path=/api/auth/logout
+                - Method=POST
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: authServiceCB
+                    #fallbackUri: forward:/fallback/auth
+                - name: TokenAuthenticationFilter
+              order: 3
+
+
             # Swagger
             - id: user-api-docs
               uri: http://localhost:8084
@@ -165,9 +269,6 @@ spring:
               filters:
                 - RewritePath=/v3/api-docs/order, /v3/api-docs
 
-
-
-# JWT 설정
 custom:
   jwt:
     secrets:
@@ -176,6 +277,13 @@ custom:
 logging:
   level:
     root: debug
+
+management:
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+  server:
+    port: 8881
 
 springdoc:
   swagger-ui:
@@ -189,3 +297,64 @@ springdoc:
         url: /v3/api-docs/order
       - name: payment-service
         url: /v3/api-docs/payment
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 100
+        minimumNumberOfCalls: 10
+        failureRateThreshold: 80
+        waitDurationInOpenState: 120s
+        slowCallDurationThreshold: 35s
+        slowCallRateThreshold: 100
+
+    instances:
+      productServiceCB:
+        baseConfig: default
+        # 상품 조회/수정 등 대부분 안전한 요청
+        minimumNumberOfCalls: 10
+        slowCallDurationThreshold: 35s
+
+      orderServiceCB:
+        baseConfig: default
+        minimumNumberOfCalls: 5
+        slowCallDurationThreshold: 35s
+        waitDurationInOpenState: 120s
+        failureRateThreshold: 80
+
+      paymentServiceCB:
+        baseConfig: default
+        minimumNumberOfCalls: 5
+        slowCallDurationThreshold: 35s
+        waitDurationInOpenState: 120s
+        failureRateThreshold: 80
+
+      authServiceCB:
+        baseConfig: default
+        minimumNumberOfCalls: 30
+        slowCallDurationThreshold: 35s
+        waitDurationInOpenState: 90s
+        failureRateThreshold: 80
+
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 2s
+        retryExceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+      no-retry:
+        maxAttempts: 1  # 사실상 Retry 제거
+    instances:
+      # 멱등성 없는 요청에는 Retry 제거
+      orderServiceRetry:
+        baseConfig: no-retry
+      paymentServiceRetry:
+        baseConfig: no-retry
+      authServiceRetry:
+        baseConfig: no-retry
+      # 상품 조회, 카테고리 등 안전한 요청만 Retry 유지
+      productServiceRetry:
+        baseConfig: default

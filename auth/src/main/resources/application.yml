@@ -14,19 +14,21 @@ management:
         exclude: beans, env, mappings                # 노출하지 않을 엔드포인트
       base-path: /actuator                            # 엔드포인트 기본 경로
   endpoint:
+    prometheus:
+      access: read_only
     health:
-      show-details: always                            # 헬스체크 상세 정보
+      show-details: always                           # 헬스체크 상세 정보
     info:
-      enabled: true
-  health:
-    redis:
-      enabled: false
+      access: read_only
   tracing:
     sampling:
       probability: 1.0
     propagation:
       consume: b3
       produce: b3_multi
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 jwt:
   secret: ${JWT_SECRET}
@@ -36,3 +38,6 @@ jwt:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+slack:
+  webhook-url: ${SLACK_WEBHOOK_URL}

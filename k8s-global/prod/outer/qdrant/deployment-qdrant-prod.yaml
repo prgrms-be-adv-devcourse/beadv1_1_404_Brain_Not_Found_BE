@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qdrant-dpy-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qdrant-prod
+  template:
+    metadata:
+      labels:
+        app: qdrant-prod
+    spec:
+      containers:
+        - name: qdrant-pod-prod
+          image: qdrant/qdrant:latest
+          ports:
+            - containerPort: 6333
+            - containerPort: 6334
+          volumeMounts:
+            - name: qdrant-storage
+              mountPath: /qdrant/storage
+            - name: qdrant-config-prod
+              mountPath: /qdrant/config
+#          env:
+#            - name: QDRANT__SERVICE__API_KEY
+#              valueFrom:
+#                secretKeyRef:
+#                  name: qdrant-secret
+#                  key: QDRANT_API_KEY
+      volumes:
+        - name: qdrant-storage
+          persistentVolumeClaim:
+            claimName: qdrant-data-pvc
+        - name: qdrant-config-prod
+          configMap:
+            name: qdrant-config-prod

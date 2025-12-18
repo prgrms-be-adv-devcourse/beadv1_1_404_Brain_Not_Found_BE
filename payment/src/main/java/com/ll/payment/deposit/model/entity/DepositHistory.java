@@ -65,7 +65,7 @@ public class DepositHistory extends BaseEntity {
                 .amount(amount)
                 .balanceBefore(balanceBefore)
                 .balanceAfter(balanceAfter)
-                .referenceCode(referenceCode + "_FAILED_" + System.currentTimeMillis() + "_" + e.getClass().getSimpleName())
+                .referenceCode(referenceCode + "_FAILED_" + System.currentTimeMillis() + "_" + e.getMessage())
                 .historyType(historyType)
                 .transactionStatus(TransactionStatus.FAILED)
                 .build();

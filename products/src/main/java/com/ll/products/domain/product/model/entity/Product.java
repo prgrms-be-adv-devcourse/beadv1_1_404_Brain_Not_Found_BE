@@ -82,6 +82,9 @@ public class Product extends BaseEntity {
     public void updateQuantity(Integer quantity) {
         validateUpdateQuantity(quantity);
         this.quantity += quantity;
+        if(this.quantity == 0) {
+            this.status = ProductStatus.SOLD_OUT;
+        }
     }
 
     public void softDelete() {

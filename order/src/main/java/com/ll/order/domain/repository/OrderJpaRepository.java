@@ -16,7 +16,7 @@ public interface OrderJpaRepository extends JpaRepository<Order, Long> {
     Page<Order> findByBuyerId(Long buyerId, Pageable pageable);
 
     @Query("""
-               SELECT DISTINCT o FROM Order o 
+               SELECT DISTINCT o FROM Order o
                JOIN OrderItem oi ON oi.order = o
                WHERE o.buyerId = :buyerId
                AND oi.productName LIKE %:keyword%

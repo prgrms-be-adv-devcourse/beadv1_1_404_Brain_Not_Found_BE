@@ -9,12 +9,12 @@ COPY gradle /app/gradle/
 RUN chmod +x gradlew
 
 # 의존성만 먼저 빌드
-#RUN ./gradlew dependencies --no-daemon
+RUN ./gradlew dependencies --no-daemon
 COPY core /app/core/
 COPY products /app/products/
 # 빌드 (배포 시 -x 옵션 제거 필수!)
 # 저장 경로 app/products/build/libs/products-<version>.jar
-#RUN ./gradlew :products:bootJar -x test --no-daemon --stacktrace
+RUN ./gradlew :products:clean :products:bootJar -x test --no-daemon --stacktrace
 
 FROM azul/zulu-openjdk:21-latest
 WORKDIR /app
