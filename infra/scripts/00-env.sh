@@ -26,12 +26,14 @@ declare -A DEFAULT_TOPICS=(
   ["user-create-event.dlq"]=1
   ["order-event"]=1
   ["order-event.dlq"]=1
-  ["refund-event"]=1
-  ["refund-event.dlq"]=1
   ["inventory-event"]=1
   ["inventory-event.dlq"]=1
   ["product-event"]=1
   ["product-event.dlq"]=1
+  ["payment-refund-request-event"]=1
+  ["payment-refund-request-event.dlq"]=1
+  ["payment-refund-notification-event"]=1
+  ["payment-refund-notification-event.dlq"]=1
 )
 
 # 시간 포맷
