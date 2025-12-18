@@ -18,6 +18,7 @@ import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.event.OrderEventService;
 import com.ll.order.domain.service.order.OrderService;
+import com.ll.order.support.MySQLTestContainer;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,9 +28,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 // 공통 설정 및 헬퍼 메서드 제공
 @SpringBootTest
-@ActiveProfiles("test")
+//@ActiveProfiles("test")
+@ActiveProfiles("ci-test")
 @Slf4j
-public abstract class BaseOrderIntegrationSuccessTest {
+public abstract class BaseOrderIntegrationSuccessTest extends MySQLTestContainer {
 
     @Autowired
     protected OrderService orderService;

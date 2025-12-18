@@ -1,6 +1,8 @@
 package com.ll.products.domain.search.controller;
+import com.ll.core.model.persistence.BaseEntity;
 import com.ll.core.model.response.BaseResponse;
 import com.ll.products.domain.history.service.HistoryFacadeService;
+import com.ll.products.domain.recommendation.controller.swagger.ReindexAllProductsApiResponse;
 import com.ll.products.domain.search.dto.ProductSearchResponse;
 import com.ll.products.domain.search.service.ProductSearchService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Search", description = "상품 검색 API")
 @Slf4j
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/products/search")
 @RequiredArgsConstructor
 public class ProductSearchController {
 
@@ -27,7 +29,7 @@ public class ProductSearchController {
     @Operation(
             summary = "상품 목록 검색"
     )
-    @GetMapping("/search")
+    @GetMapping()
     public ResponseEntity<BaseResponse<Page<ProductSearchResponse>>> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
@@ -40,11 +42,19 @@ public class ProductSearchController {
         if(userCode != null){
             historyFacadeService.saveSearch(userCode,keyword);
         }
-        log.debug("상품 검색 API 호출: keyword={}, categoryId={}, price={}-{}, status={}, pageable={}",
-                keyword, categoryId, minPrice, maxPrice, status, pageable);
         Page<ProductSearchResponse> result = productSearchService.search(keyword, categoryId, minPrice, maxPrice, status, pageable);
-        log.debug("검색 결과: totalElements={}, totalPages={}, currentPage={}, size={}",
-                result.getTotalElements(), result.getTotalPages(), result.getNumber(), result.getSize());
         return BaseResponse.ok(result);
+    }
+
+    // 2. 전체 상품 재색인 (관리자용)
+    @PostMapping("/reindex")
+    @ReindexAllProductsApiResponse
+    public ResponseEntity<BaseResponse<String>> reindexAllProducts(
+            @RequestHeader("X-Role") String role
+    ) {
+        log.info("=== Elasticsearch 전체 재색인 시작 ===");
+        productSearchService.reindexAll(role);
+        log.info("=== Elasticsearch 전체 재색인 종료 ===");
+        return BaseResponse.ok("재색인 완료");
     }
 }

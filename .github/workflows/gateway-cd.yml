@@ -3,7 +3,8 @@ name: GATEWAY-CD
 on:
   push:
     branches:
-      - test/main
+#      - test/main
+      - main
     paths:
       - 'gateway/**' # gateway 폴더 변경 시
 permissions:

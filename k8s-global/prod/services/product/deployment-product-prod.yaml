@@ -13,6 +13,10 @@ spec:
 #      pod 정의
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8881"
       labels:
         app: product-prod
 #        컨테이너 정의
@@ -23,6 +27,16 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8085
+          resources:
+            limits:
+              cpu: "300m" # 1 vCPU
+              memory: "600Mi"  # 메모리 제한
+            requests:
+              cpu: "200m"  # 0.5 vCPU 보장 요청
+              memory: "300Mi"  # 메모리 보장 요청
+          env:
+            - name: JAVA_OPTS
+              value: "-Xms400M -Xmx400M" # 힙 메모리를 400MB로 고정
           envFrom:
             - configMapRef:
                 name: product-config-prod

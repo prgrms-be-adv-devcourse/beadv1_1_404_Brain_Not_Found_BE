@@ -4,7 +4,8 @@ name: GATEWAY-CI
 on:
   pull_request:
     branches:
-      - test/main
+#      - test/main
+      - main
     paths:
       - 'gateway/**'
 #

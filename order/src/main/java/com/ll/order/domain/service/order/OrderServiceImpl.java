@@ -1,7 +1,7 @@
 package com.ll.order.domain.service.order;
 
 import com.ll.core.model.exception.BaseException;
-import com.ll.core.model.vo.kafka.RefundEvent;
+//import com.ll.core.model.vo.kafka.RefundEvent;
 import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
 import com.ll.order.domain.client.DepositServiceClient;
 import com.ll.order.domain.client.PaymentServiceClient;
@@ -32,7 +32,7 @@ import com.ll.order.domain.service.compensation.CompensationService;
 import com.ll.order.domain.service.event.InventoryRollbackEventOutboxService;
 import com.ll.order.domain.service.event.OrderEventService;
 import com.ll.order.domain.service.event.PaymentRefundRequestEventOutboxService;
-import com.ll.order.domain.service.event.RefundEventOutboxService;
+//import com.ll.order.domain.service.event.RefundEventOutboxService;
 import com.ll.order.domain.service.inventory.OrderInventoryService;
 import com.ll.order.domain.service.order.create.strategy.CartOrderCreationStrategy;
 import com.ll.order.domain.service.order.create.strategy.DirectOrderCreationStrategy;
@@ -73,7 +73,7 @@ public class OrderServiceImpl implements OrderService {
     private final CompensationService compensationService;
     private final OrderEventService orderEventService;
     private final OrderInventoryService orderInventoryService;
-    private final RefundEventOutboxService refundEventOutboxService;
+//    private final RefundEventOutboxService refundEventOutboxService;
     private final PaymentRefundRequestEventOutboxService paymentRefundRequestEventOutboxService;
     private final InventoryRollbackEventOutboxService inventoryRollbackEventOutboxService;
 
@@ -177,6 +177,11 @@ public class OrderServiceImpl implements OrderService {
         String buyerCode = order.getBuyerCode();
 
         if (order.getOrderStatus() == OrderStatus.COMPLETED) {
+            // 주문 완료 Outbox 생성 시점 기준으로 10분 이내에는 취소 불가
+            if (!orderEventService.isCancelable(order.getCode())) {
+                log.warn("주문 완료 후 10분 이내에는 취소할 수 없습니다. orderCode: {}", order.getCode());
+                throw new BaseException(OrderErrorCode.ORDER_CANCEL_NOT_ALLOWED_WITHIN_GRACE_PERIOD);
+            }
             try {
                 PaymentRefundRequestEvent refundRequestEvent = PaymentRefundRequestEvent.from(
                         order.getId(),
@@ -198,27 +203,27 @@ public class OrderServiceImpl implements OrderService {
         }
 
         for (OrderItem orderItem : orderItems) {
-            if (buyerCode != null) {
-                RefundEvent refundEvent = RefundEvent.from(
-                        buyerCode,
-                        orderItem.getCode(),
-                        order.getCode(),
-                        (long) orderItem.getPrice() * orderItem.getQuantity()
-                );
-                // 스케쥴
-                try {
-                    // 정산 서비스로 환불 이벤트 발행
-                    refundEventOutboxService.saveToOutbox(refundEvent, order.getCode());
-                    log.debug("환불 이벤트 Outbox 저장 완료 - orderCode: {}, orderItemCode: {}, amount: {}",
-                            order.getCode(), orderItem.getCode(), refundEvent.amount());
-                } catch (Exception e) {
-                    String errorMessage = String.format("환불 이벤트 Outbox 저장 실패 - orderCode: %s, orderItemCode: %s, error: %s",
-                            order.getCode(), orderItem.getCode(), e.getMessage());
-                    log.error(errorMessage, e);
-                    // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
-                    compensationService.compensationFailed(order.getCode(), errorMessage);
-                }
-            }
+//            if (buyerCode != null) {
+//                RefundEvent refundEvent = RefundEvent.from(
+//                        buyerCode,
+//                        orderItem.getCode(),
+//                        order.getCode(),
+//                        (long) orderItem.getPrice() * orderItem.getQuantity()
+//                );
+//                // 스케쥴
+//                try {
+//                    // 정산 서비스로 환불 이벤트 발행
+//                    refundEventOutboxService.saveToOutbox(refundEvent, order.getCode());
+//                    log.debug("환불 이벤트 Outbox 저장 완료 - orderCode: {}, orderItemCode: {}, amount: {}",
+//                            order.getCode(), orderItem.getCode(), refundEvent.amount());
+//                } catch (Exception e) {
+//                    String errorMessage = String.format("환불 이벤트 Outbox 저장 실패 - orderCode: %s, orderItemCode: %s, error: %s",
+//                            order.getCode(), orderItem.getCode(), e.getMessage());
+//                    log.error(errorMessage, e);
+//                    // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
+//                    compensationService.compensationFailed(order.getCode(), errorMessage);
+//                }
+//            }
 
             // 재고 복구 이벤트 발행 
             try {

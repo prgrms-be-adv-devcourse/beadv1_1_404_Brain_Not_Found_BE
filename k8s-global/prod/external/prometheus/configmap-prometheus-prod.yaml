@@ -32,3 +32,41 @@ data:
         tls_config:
           insecure_skip_verify: true
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      # 3. 모든 Spring Boot 애플리케이션 모니터링
+      - job_name: 'microservices-spring-boot'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          # Pod에 'prometheus.io/scrape: "true"' 레이블이 있는 엔드포인트만 유지합니다.
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          
+          # 메트릭 경로를 /actuator/prometheus로 설정
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: "(.+)"
+
+          # 포트 이름이 'metrics'인 경우에만 타겟을 유지합니다.
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: "metrics"
+
+          # __address__의 포트 부분을 '8881'로 덮어씁니다.
+          # (Pod IP는 유지하고 포트만 변경)
+          - source_labels: [__address__]
+            action: replace
+            target_label: __address__
+            regex: "(.+):(\\d+)" # IP와 포트 캡처
+            replacement: "$1:8881" # IP는 유지하고 포트를 8881로 변경
+          
+          # job 이름을 Service 이름으로 대체하여 그룹화합니다.
+          - source_labels: [__meta_kubernetes_service_name]
+            action: replace
+            target_label: job
+          
+          # Pod의 app 레이블을 인스턴스 레이블로 추가
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: replace
+            target_label: instance

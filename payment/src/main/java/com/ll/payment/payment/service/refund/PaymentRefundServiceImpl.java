@@ -160,15 +160,14 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
                     payment.getId(), payment.getOrderId());
             throw new BaseException(PaymentErrorCode.PAYMENT_KEY_REQUIRED);
         }
-
+        String cancelUrl = "https://api.tosspayments.com/v1/payments/" + paymentKey + "/cancel";
         Map<String, Object> cancelRequest = new HashMap<>();
-        cancelRequest.put("paymentKey", paymentKey);
         cancelRequest.put("cancelAmount", refundAmount);
         cancelRequest.put("cancelReason", cancelReason);
 
         try {
             var requestSpec = restClient.post()
-                    .uri(targetUrl + "/cancel")
+                    .uri(cancelUrl)
                     .headers(headers -> headers.set("Authorization", createAuthorizationHeader()))
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(cancelRequest)

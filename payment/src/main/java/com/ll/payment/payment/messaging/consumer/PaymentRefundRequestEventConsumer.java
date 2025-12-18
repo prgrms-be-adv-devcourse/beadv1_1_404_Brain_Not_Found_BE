@@ -2,13 +2,14 @@ package com.ll.payment.payment.messaging.consumer;
 
 import com.ll.core.model.exception.BaseException;
 import com.ll.core.model.vo.kafka.KafkaEventEnvelope;
+import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
 import com.ll.payment.payment.exception.PaymentErrorCode;
-import com.ll.payment.payment.model.vo.PaymentRefundRequestEvent;
 import com.ll.payment.payment.model.entity.Payment;
 import com.ll.payment.payment.model.enums.PaymentStatus;
 import com.ll.payment.payment.model.vo.request.PaymentRefundRequest;
 import com.ll.payment.payment.repository.PaymentJpaRepository;
 import com.ll.payment.payment.service.refund.PaymentRefundService;
+import com.ll.payment.settlement.service.SettlementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -22,6 +23,7 @@ public class PaymentRefundRequestEventConsumer {
 
     private final PaymentRefundService paymentRefundService;
     private final PaymentJpaRepository paymentJpaRepository;
+    private final SettlementService settlementService;
 
     @KafkaListener(topics = "payment-refund-request-event", groupId = "payment-service")
     @Transactional
@@ -31,6 +33,9 @@ public class PaymentRefundRequestEventConsumer {
                 requestEvent.orderCode(), requestEvent.refundAmount());
 
         try {
+            // 정산 환불 처리
+            settlementService.refundSettlement(requestEvent);
+
             // Payment 엔티티 조회 (COMPLETED 상태의 결제만 환불 가능)
             Payment payment = paymentJpaRepository.findByOrderIdAndPaymentStatus(
                             requestEvent.orderId(),
