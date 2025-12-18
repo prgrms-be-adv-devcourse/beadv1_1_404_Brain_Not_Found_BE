@@ -9,6 +9,13 @@ spec:
       app: gateway-dev
   template:
     metadata:
+      annotations:
+        # 이 Pod를 스크랩하도록 Prometheus에게 지시
+        prometheus.io/scrape: "true"
+        # 메트릭 경로 지정
+        prometheus.io/path: "/actuator/prometheus"
+        # 메트릭 포트 지정 (Service targetPort와 일치)
+        prometheus.io/port: "8881"
       labels:
         app: gateway-dev
     spec:
@@ -22,5 +29,5 @@ spec:
             - configMapRef:
                 name: gateway-config-dev
             - secretRef:
-                name: gateway-secret-dev
+                name: secret-common-dev
       restartPolicy: Always

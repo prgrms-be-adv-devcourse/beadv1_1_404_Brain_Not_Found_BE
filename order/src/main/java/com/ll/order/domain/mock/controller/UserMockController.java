@@ -15,20 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 
-/**
- * User Service Mock Controller
- * 로컬 개발 환경에서 사용자 정보를 모킹하는 컨트롤러
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/users")
 public class UserMockController {
 
-    /**
-     * 사용자 정보 조회 Mock API
-     * GET /api/users/info
-     * Header: X-User-Code
-     */
     @GetMapping("/info")
     public ResponseEntity<BaseResponse<UserResponse>> getUserInfo(
             @RequestHeader("X-User-Code") String userCode

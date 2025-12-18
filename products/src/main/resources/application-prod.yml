@@ -28,7 +28,27 @@ spring:
       properties:
         allow.auto.create.topics: false
 
-
+  data:
+    redis:
+      host: redis-svc-prod.default.svc.cluster.local
+      port: 6379
+      timeout: 500ms
+      lettuce:
+        pool:
+          max-active: 5
+        shutdown-timeout: 100ms
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      embedding:
+        enabled: ${OPENAI_EMBEDDING_ENABLED}
+        options:
+          model: text-embedding-3-large
+          dimensions: 3072
+      chat:
+        options:
+          model: gpt-4.1
+          temperature: 0.6
 
 api:
   user:
@@ -56,3 +76,14 @@ management:
   zipkin:
     tracing:
       endpoint: http://zipkin-svc-prod.default.svc.cluster.local:9411/api/v2/spans
+  server:
+    port: 8881
+# Qdrant 설정
+qdrant:
+  host: qdrant-svc-prod.default.svc.cluster.local
+  port: 6334
+  collection-name: products
+
+swagger:
+  servers:
+    - "https://gooream.chlab.org"

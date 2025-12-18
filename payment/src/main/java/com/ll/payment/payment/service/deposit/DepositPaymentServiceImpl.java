@@ -68,26 +68,26 @@ public class DepositPaymentServiceImpl implements DepositPaymentService {
 
         // 예치금이 부족한 경우 : 토스 결제로 금액 충전 + 예치금으로 전체 결제
         int shortageAmount = requestedAmount - currentBalance;
-        log.debug("예치금 부족 - 현재 잔액: {}, 요청 금액: {}, 부족 금액: {}", 
+        log.debug("예치금 부족 - 현재 잔액: {}, 요청 금액: {}, 부족 금액: {}",
                 currentBalance, requestedAmount, shortageAmount);
-        
+
         Payment chargeTossPayment = null;
         try {
             // 토스 결제로 예치금 충전
             chargeTossPayment = tossPaymentService.chargeDepositWithToss(payment, shortageAmount);
-            log.debug("토스 충전 완료 - paymentId: {}, amount: {}", 
+            log.debug("토스 충전 완료 - paymentId: {}, amount: {}",
                     chargeTossPayment.getId(), shortageAmount);
         } catch (Exception e) {
-            log.error("토스 결제로 예치금 충전 실패 - orderId: {}, shortageAmount: {}, error: {}", 
+            log.error("토스 충전 실패 - orderId: {}, shortageAmount: {}, error: {}",
                     payment.orderId(), shortageAmount, e.getMessage(), e);
-            
+
             // 토스 결제는 성공했지만 예치금 충전 실패한 경우 토스 환불
             if (chargeTossPayment != null && chargeTossPayment.getPaymentStatus() == PaymentStatus.CHARGE) {
                 try {
                     paymentRefundService.processTossRefundForCharge(chargeTossPayment, shortageAmount);
                     log.debug("예치금 충전 실패로 인한 토스 결제 환불 완료 - paymentId: {}", chargeTossPayment.getId());
                 } catch (Exception refundException) {
-                    log.error("토스 결제 환불 실패 - paymentId: {}, error: {}", 
+                    log.error("토스 결제 환불 실패 - paymentId: {}, error: {}",
                             chargeTossPayment.getId(), refundException.getMessage(), refundException);
                     // 환불도 실패한 경우는 수동 처리 필요
                 }
@@ -111,15 +111,15 @@ public class DepositPaymentServiceImpl implements DepositPaymentService {
                         payment.orderId(),
                         PaymentStatus.COMPLETED
                 );
-        
+
         if (existingPayment.isPresent()) {
             log.warn("이미 결제 완료된 주문입니다. orderId: {}, paymentId: {}",
                     payment.orderId(), existingPayment.get().getId());
             return existingPayment.get();
         }
-        
+
         // 2. 예치금 차감 (락 유지 중)
-        depositService.withdrawDeposit(
+        depositService.paymentDeposit(
                 payment.buyerCode(),
                 new DepositTransactionRequest((long) amount, createReferenceCode(payment.orderId()))
         );
@@ -151,6 +151,16 @@ public class DepositPaymentServiceImpl implements DepositPaymentService {
         paymentHistoryJpaRepository.save(paymentHistory);
 
         return depositPayment;
+    }
+
+    @Override
+    @Transactional
+    public void chargeDepositAfterToss(String buyerCode, int amount, String referenceCode) {
+        depositService.chargeDeposit(
+                buyerCode,
+                new DepositTransactionRequest((long) amount, referenceCode)
+        );
+        log.debug("토스 결제 후 예치금 충전 완료 - buyerCode: {}, amount: {}", buyerCode, amount);
     }
 
     private String createReferenceCode(Long orderId) {

@@ -1,0 +1,13 @@
+# prometheus-clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-cluster-binding
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-sa # 1단계에서 생성한 SA
+    namespace: dev
+roleRef:
+  kind: ClusterRole
+  name: prometheus-cluster-reader # 2단계에서 정의한 CR
+  apiGroup: rbac.authorization.k8s.io

@@ -19,7 +19,7 @@ spec:
             - configMapRef:
                 name: product-db-config-prod
             - secretRef:
-                name: product-db-secret-prod
+                name: secret-common-prod
           ports:
             - containerPort: 3306
           volumeMounts:
@@ -27,4 +27,5 @@ spec:
               mountPath: /var/lib/mysql
       volumes:
         - name: product-db-data
-          emptyDir: {}   # 개발용, 나중에 PVC로 변경 가능
+          persistentVolumeClaim:
+            claimName: productdb-data-pvc

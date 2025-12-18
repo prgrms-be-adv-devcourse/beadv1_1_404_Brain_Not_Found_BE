@@ -135,7 +135,12 @@ management:
   zipkin:
     tracing:
       endpoint: http://zipkin-svc-dev.dev.svc.cluster.local:9411/api/v2/spans
-
+  server:
+    port: 8881
 
 current:
   domain: "http://localhost"
+
+swagger:
+  servers:
+    - "http://localhost"

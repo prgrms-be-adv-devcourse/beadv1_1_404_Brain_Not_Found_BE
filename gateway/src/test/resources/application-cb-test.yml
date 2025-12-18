@@ -1,0 +1,32 @@
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: product-cb-test
+              uri: http://localhost:${wiremock.server.port}
+              predicates:
+                - Path=/test/products/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCB
+                    fallbackUri: forward:/fallback/product
+          httpclient:
+            response-timeout: 2s
+
+custom:
+  jwt:
+    secrets:
+      app-key: test-secret-key-for-gateways-must-be-very-long-and-secure-1234567890
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      productServiceCB:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 2
+        minimumNumberOfCalls: 2
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s

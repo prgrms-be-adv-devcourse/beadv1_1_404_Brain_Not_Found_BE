@@ -1,17 +1,18 @@
 package com.ll.order.domain.service.compensation;
 
 import com.ll.core.model.exception.BaseException;
-import com.ll.order.domain.client.PaymentServiceClient;
 import com.ll.order.domain.exception.OrderErrorCode;
-import com.ll.order.domain.messaging.producer.OrderEventProducer;
 import com.ll.order.domain.model.entity.Order;
 import com.ll.order.domain.model.entity.OrderItem;
 import com.ll.order.domain.model.entity.TransactionTracing;
 import com.ll.order.domain.model.enums.transaction.CompensationStatus;
 import com.ll.order.domain.model.enums.order.OrderStatus;
+import com.ll.core.model.vo.kafka.PaymentRefundRequestEvent;
 import com.ll.order.domain.repository.OrderItemJpaRepository;
 import com.ll.order.domain.repository.OrderJpaRepository;
 import com.ll.order.domain.repository.TransactionTracingRepository;
+import com.ll.order.domain.service.event.InventoryRollbackEventOutboxService;
+import com.ll.order.domain.service.event.PaymentRefundRequestEventOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,14 +31,14 @@ public class CompensationRetryService {
     private final OrderJpaRepository orderJpaRepository;
     private final OrderItemJpaRepository orderItemJpaRepository;
 
-    private final OrderEventProducer orderEventProducer;
-    private final PaymentServiceClient paymentServiceClient;
     private final CompensationService compensationService;
+    private final InventoryRollbackEventOutboxService inventoryRollbackEventOutboxService;
+    private final PaymentRefundRequestEventOutboxService paymentRefundRequestEventOutboxService;
 
     @Value("${order.compensation.max-retry-count:5}")
     private Integer maxRetryCount;
 
-//     실패한 보상 로직을 재시도합니다.
+    //     실패한 보상 로직을 재시도합니다.
     @Transactional
     public int retryFailedCompensations() {
         // 재시도 대상 조회: 보상 상태가 FAILED이고, 재시도 횟수가 최대값 미만인 것
@@ -72,9 +73,9 @@ public class CompensationRetryService {
     @Transactional
     public void retryCompensation(TransactionTracing tracing) {
         String orderCode = tracing.getOrderCode();
-        
+
         // 보상 시작 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
-        compensationService.markCompensationStarted(orderCode);
+        compensationService.compensationStarted(orderCode);
 
         try {
             Order order = Optional.ofNullable(orderJpaRepository.findByCode(orderCode))
@@ -86,36 +87,36 @@ public class CompensationRetryService {
             List<OrderItem> orderItems = orderItemJpaRepository.findByOrderId(order.getId());
 
             // 보상 로직 실행
-            boolean compensationSuccess = executeCompensation(order, orderItems, tracing);
+            boolean compensationSuccess = executeCompensation(order, orderItems, orderCode);
 
             if (compensationSuccess) {
                 // 보상 완료 상태로 변경 - 별도 트랜잭션으로 업데이트 (롤백 방지)
-                compensationService.markCompensationCompleted(orderCode);
-                
+                compensationService.compensationCompleted(orderCode);
+
                 log.debug("보상 로직 재시도 성공 - orderCode: {}", orderCode);
             } else {
                 // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
-                compensationService.markCompensationFailed(orderCode, "보상 로직 실행 중 일부 실패");
-                
+                compensationService.compensationFailed(orderCode, "보상 로직 실행 중 일부 실패");
+
                 log.warn("보상 로직 재시도 부분 실패 - orderCode: {}", orderCode);
                 throw new RuntimeException("보상 로직 실행 중 일부 실패");
             }
 
         } catch (Exception e) {
             // 보상 실패 상태로 변경 (재시도 횟수 증가) - 별도 트랜잭션으로 업데이트
-            compensationService.markCompensationFailed(orderCode, e.getMessage());
-            
+            compensationService.compensationFailed(orderCode, e.getMessage());
+
             log.error("보상 로직 재시도 실패 - orderCode: {}, error: {}",
                     orderCode, e.getMessage(), e);
             throw e;
         }
     }
 
-    private boolean executeCompensation(Order order, List<OrderItem> orderItems, TransactionTracing tracing) {
+    private boolean executeCompensation(Order order, List<OrderItem> orderItems, String orderCode) {
         boolean allSuccess = true;
 
         // 1. 재고 롤백 (항상 필요)
-        boolean inventoryRollbackSuccess = rollbackInventory(orderItems);
+        boolean inventoryRollbackSuccess = rollbackInventory(orderItems, orderCode);
         if (!inventoryRollbackSuccess) {
             allSuccess = false;
         }
@@ -131,22 +132,35 @@ public class CompensationRetryService {
         return allSuccess;
     }
 
-    private boolean rollbackInventory(List<OrderItem> orderItems) {
+    private boolean rollbackInventory(List<OrderItem> orderItems, String orderCode) {
         boolean allSuccess = true;
+        boolean hasFailure = false;
+        String lastErrorMessage = null;
 
         for (OrderItem orderItem : orderItems) {
             try {
-                orderEventProducer.sendInventoryRollback(
+                // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
+                // 별도 프로세스가 Outbox를 읽어서 Kafka에 발행
+                inventoryRollbackEventOutboxService.saveToOutbox(
+                        orderCode,
                         orderItem.getProductCode(),
                         orderItem.getQuantity()
                 );
-                log.debug("재고 롤백 이벤트 재발행 성공 - productCode: {}, quantity: {}",
-                        orderItem.getProductCode(), orderItem.getQuantity());
+                log.debug("재고 롤백 이벤트 Outbox 저장 완료 - orderCode: {}, productCode: {}, quantity: {}",
+                        orderCode, orderItem.getProductCode(), orderItem.getQuantity());
             } catch (Exception e) {
                 allSuccess = false;
-                log.error("재고 롤백 이벤트 재발행 실패 - productCode: {}, quantity: {}, error: {}",
-                        orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage(), e);
+                hasFailure = true;
+                lastErrorMessage = String.format(
+                        "재고 롤백 이벤트 Outbox 저장 실패 - orderCode: %s, productCode: %s, quantity: %d, error: %s",
+                        orderCode, orderItem.getProductCode(), orderItem.getQuantity(), e.getMessage());
+                log.error(lastErrorMessage, e);
             }
+        }
+
+        // Outbox 저장 실패 시 TransactionTracing에 실패 상태 저장
+        if (hasFailure && orderCode != null) {
+            compensationService.compensationFailed(orderCode, lastErrorMessage);
         }
 
         return allSuccess;
@@ -154,18 +168,20 @@ public class CompensationRetryService {
 
     private boolean refundPayment(Order order) {
         try {
-            paymentServiceClient.requestRefund(
+            PaymentRefundRequestEvent refundRequestEvent = PaymentRefundRequestEvent.from(
                     order.getId(),
                     order.getCode(),
                     order.getBuyerCode(),
                     order.getTotalPrice(),
                     "보상 로직 재시도 - 주문 취소"
             );
-            log.debug("환불 처리 재시도 성공 - orderCode: {}, amount: {}",
+            // 이벤트 발행으로 환불 요청 (일관성 유지)
+            paymentRefundRequestEventOutboxService.saveToOutbox(refundRequestEvent, order.getCode());
+            log.debug("환불 요청 이벤트 Outbox 저장 완료 (보상 재시도) - orderCode: {}, amount: {}",
                     order.getCode(), order.getTotalPrice());
             return true;
         } catch (Exception e) {
-            log.error("환불 처리 재시도 실패 - orderCode: {}, amount: {}, error: {}",
+            log.error("환불 요청 이벤트 Outbox 저장 실패 (보상 재시도) - orderCode: {}, amount: {}, error: {}",
                     order.getCode(), order.getTotalPrice(), e.getMessage(), e);
             return false;
         }

@@ -3,6 +3,8 @@ package com.ll.products.domain.recommendation.service;
 import com.ll.products.domain.product.exception.ProductNotFoundException;
 import com.ll.products.domain.recommendation.document.ProductVectorPoint;
 import com.ll.products.domain.recommendation.dto.RecommendationResponse;
+import com.ll.products.domain.recommendation.exception.VectorNotFoundException;
+import com.ll.products.domain.recommendation.exception.VectorStoreException;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.Collections.*;
 import io.qdrant.client.grpc.Points.*;
@@ -29,7 +31,6 @@ public class VectorStoreService {
     private final String qdrantCollectionName;
 
     private static final int VECTOR_DIMENSION_SIZE = 3072;
-//    private static final int VECTOR_DIMENSION_SIZE = 1536;
 
     // 1. 상품 벡터 저장(단일)
     public void upsertProduct(ProductVectorPoint productVectorPoint) {
@@ -39,7 +40,7 @@ public class VectorStoreService {
             log.info("상품 벡터 저장 완료: productCode={}", productVectorPoint.getDocument().getProductCode());
         } catch (Exception e) {
             log.error("상품 벡터 저장 실패: productCode={}", productVectorPoint.getDocument().getProductCode(), e);
-            throw new RuntimeException("벡터 저장 중 오류 발생", e);
+            throw new VectorStoreException("벡터 저장 중 오류가 발생했습니다.");
         }
     }
 
@@ -57,21 +58,14 @@ public class VectorStoreService {
             log.info("배치 상품 벡터 저장 완료: count={}", productVectorPoints.size());
         } catch (Exception e) {
             log.error("배치 상품 벡터 저장 실패: count={}", productVectorPoints.size(), e);
-            throw new RuntimeException("배치 벡터 저장 중 오류 발생", e);
+            throw new VectorStoreException("배치 벡터 저장 중 오류가 발생했습니다.");
         }
     }
 
     // 3. 유사 상품 검색
     public List<RecommendationResponse> searchSimilarProducts(float[] embedding, int limit) {
         try {
-            List<ScoredPoint> scoredPoints = qdrantClient.searchAsync(
-                    SearchPoints.newBuilder()
-                            .setCollectionName(qdrantCollectionName)
-                            .addAllVector(convertToList(embedding))
-                            .setLimit(limit)
-                            .setWithPayload(WithPayloadSelector.newBuilder().setEnable(true).build())
-                            .build()
-            ).get();
+            List<ScoredPoint> scoredPoints = getScoredPoints(embedding, limit);
             List<RecommendationResponse> results = scoredPoints.stream()
                     .map(this::convertToRecommendation)
                     .toList();
@@ -79,7 +73,7 @@ public class VectorStoreService {
             return results;
         } catch (Exception e) {
             log.error("유사 상품 검색 실패", e);
-            throw new RuntimeException("벡터 검색 중 오류 발생", e);
+            throw new VectorStoreException("벡터 검색 중 오류가 발생했습니다.");
         }
     }
 
@@ -94,15 +88,15 @@ public class VectorStoreService {
                     null
             ).get();
             if (points.isEmpty()) {
-                throw new ProductNotFoundException(productCode);
+                throw new VectorNotFoundException(productCode);
             }
             float[] vector = getVector(points);
             log.info("상품 벡터 조회 완료: productCode={}", productCode);
             return vector;
-        } catch (ProductNotFoundException e) {
+        } catch (VectorNotFoundException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("벡터 조회 중 오류 발생", e);
+            throw new VectorStoreException("벡터 조회 중 오류가 발생했습니다.");
         }
     }
 
@@ -119,7 +113,7 @@ public class VectorStoreService {
             log.info("상품 벡터 삭제 완료: productCode={}", productCode);
         } catch (Exception e) {
             log.error("상품 벡터 삭제 실패: productCode={}", productCode, e);
-            throw new RuntimeException("벡터 삭제 중 오류 발생", e);
+            throw new VectorStoreException("벡터 삭제 중 오류가 발생했습니다.");
         }
     }
 
@@ -129,7 +123,32 @@ public class VectorStoreService {
         createCollection();
     }
 
+    // 7. 상품 코드로 Payload 조회
+    public Map<String, Value> getPayloadByProductCode(String productCode) {
+        RetrievedPoint point = getPointByProductCode(productCode);
+        if (point == null) {
+            return Map.of();
+        }
+        return point.getPayloadMap();
+    }
 
+    // 상품 코드로 point 조회
+    public RetrievedPoint getPointByProductCode(String productCode) {
+        try {
+            List<RetrievedPoint> points = qdrantClient.retrieveAsync(
+                    qdrantCollectionName,
+                    List.of(id(UUID.fromString(productCode))),
+                    true,
+                    true,
+                    null
+            ).get();
+            return points.isEmpty() ? null : points.get(0);
+        } catch (ProductNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new VectorStoreException("벡터 조회 중 오류가 발생했습니다.");
+        }
+    }
 
     // point 내 vector 조회
     private static float[] getVector(List<RetrievedPoint> points) {
@@ -213,5 +232,22 @@ public class VectorStoreService {
             list.add(val);
         }
         return list;
+    }
+
+    // 유사 상품 조회(점수 포함)
+    private List<ScoredPoint> getScoredPoints(float[] embedding, int limit) throws Exception {
+        Filter filter = Filter.newBuilder()
+                .addMust(matchKeyword("status", "ON_SALE"))
+                .build();
+        List<ScoredPoint> scoredPoints = qdrantClient.searchAsync(
+                SearchPoints.newBuilder()
+                        .setCollectionName(qdrantCollectionName)
+                        .addAllVector(convertToList(embedding))
+                        .setLimit(limit)
+                        .setFilter(filter)
+                        .setWithPayload(WithPayloadSelector.newBuilder().setEnable(true).build())
+                        .build()
+        ).get();
+        return scoredPoints;
     }
 }

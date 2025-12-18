@@ -1,10 +1,13 @@
 package com.ll.order.domain.mock.controller;
 
 import com.ll.core.model.response.BaseResponse;
+import com.ll.order.domain.client.ProductServiceClient;
 import com.ll.order.domain.model.enums.product.ProductStatus;
 import com.ll.order.domain.model.vo.response.product.ProductImageDto;
 import com.ll.order.domain.model.vo.response.product.ProductResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,19 +15,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Product Service Mock Controller
- * 로컬 개발 환경에서 상품 정보를 모킹하는 컨트롤러
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/products")
 public class ProductMockController {
 
-    /**
-     * 상품 정보 조회 Mock API
-     * GET /api/products/{productCode}
-     */
     @GetMapping("/{productCode}")
     public ResponseEntity<BaseResponse<ProductResponse>> getProduct(
             @PathVariable String productCode
@@ -65,11 +60,6 @@ public class ProductMockController {
         return BaseResponse.error(com.ll.core.model.exception.ErrorCode.NOT_FOUND);
     }
 
-    /**
-     * 재고 차감 Mock API
-     * PATCH /api/products/{productCode}/inventory
-     * Body: { "quantity": -2 } (음수로 전달하여 차감)
-     */
     @PatchMapping("/{productCode}/inventory")
     public ResponseEntity<Void> decreaseInventory(
             @PathVariable String productCode,

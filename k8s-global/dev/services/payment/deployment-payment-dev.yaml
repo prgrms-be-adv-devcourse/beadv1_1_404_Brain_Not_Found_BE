@@ -13,6 +13,13 @@ spec:
 #      pod 정의
   template:
     metadata:
+      annotations:
+        # 이 Pod를 스크랩하도록 Prometheus에게 지시
+        prometheus.io/scrape: "true"
+        # 메트릭 경로 지정
+        prometheus.io/path: "/actuator/prometheus"
+        # 메트릭 포트 지정 (Service targetPort와 일치)
+        prometheus.io/port: "8881"
       labels:
         app: payment-dev
 #        컨테이너 정의
@@ -27,7 +34,5 @@ spec:
             - configMapRef:
                 name: payment-config-dev
             - secretRef:
-                name: payment-secret-dev
-            - secretRef:
-                name: payment-secret-key-dev
+                name: secret-common-dev
       restartPolicy: Always

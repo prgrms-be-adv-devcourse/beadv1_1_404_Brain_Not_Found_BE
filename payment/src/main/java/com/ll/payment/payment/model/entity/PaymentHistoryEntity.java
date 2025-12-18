@@ -1,6 +1,7 @@
 package com.ll.payment.payment.model.entity;
 
 import com.ll.core.model.persistence.BaseEntity;
+import com.ll.payment.payment.model.enums.PaidType;
 import com.ll.payment.payment.model.enums.PaymentHistoryActionType;
 import com.ll.payment.payment.model.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -93,5 +94,62 @@ public class PaymentHistoryEntity extends BaseEntity {
         paymentHistory.refundedAt = refundedAt;
         
         return paymentHistory;
+    }
+
+    public static PaymentHistoryEntity createRefundRequestHistory(Payment payment, Integer refundAmount) {
+        String pgName = payment.getPaidType() == PaidType.TOSS_PAYMENT ? "TOSS" : "DEPOSIT";
+        
+        return create(
+                payment.getId(),
+                PaymentHistoryActionType.REFUND_REQUEST,
+                PaymentStatus.REFUNDED,
+                pgName,
+                payment.getPaymentKey(),
+                null, // transactionId
+                refundAmount,
+                null, // failCode
+                null, // failMessage
+                null, // metadata
+                null, // approvedAt
+                null  // refundedAt
+        );
+    }
+
+    public static PaymentHistoryEntity createRefundDoneHistory(Payment payment, Integer refundAmount, String refundResponse) {
+        String pgName = payment.getPaidType() == PaidType.TOSS_PAYMENT ? "TOSS" : "DEPOSIT";
+        
+        return create(
+                payment.getId(),
+                PaymentHistoryActionType.REFUND_DONE,
+                PaymentStatus.REFUNDED,
+                pgName,
+                payment.getPaymentKey(),
+                null, // transactionId
+                refundAmount,
+                null, // failCode
+                null, // failMessage
+                refundResponse, // metadata (토스 환불 응답)
+                null, // approvedAt
+                LocalDateTime.now() // refundedAt
+        );
+    }
+
+    public static PaymentHistoryEntity createRefundFailHistory(Payment payment, Integer refundAmount, String errorMessage) {
+        String pgName = payment.getPaidType() == PaidType.TOSS_PAYMENT ? "TOSS" : "DEPOSIT";
+        
+        return create(
+                payment.getId(),
+                PaymentHistoryActionType.FAIL,
+                PaymentStatus.REFUNDED,
+                pgName,
+                payment.getPaymentKey(),
+                null, // transactionId
+                refundAmount,
+                null, // failCode
+                errorMessage, // failMessage
+                null, // metadata
+                null, // approvedAt
+                null  // refundedAt
+        );
     }
 }

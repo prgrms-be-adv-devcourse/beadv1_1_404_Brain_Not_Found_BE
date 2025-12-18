@@ -35,13 +35,7 @@ public class AuthService {
     }
 
     public Tokens refreshToken(TokenValidRequest request) {
-
-        if (request.refreshToken() == null || request.refreshToken().isEmpty()) {
-            throw new TokenNotProvidedException();
-        }
-        if (request.deviceCode() == null || request.deviceCode().isEmpty()) {
-            throw new DeviceCodeNotProvidedException();
-        }
+        ValidateTokenRequest(request);
 
         try {
             if (!redisService.validRefreshToken(request.refreshToken(), request.deviceCode())) {
@@ -91,15 +85,16 @@ public class AuthService {
         return tokens;
     }
 
-    public void logoutUser(String refreshToken , String deviceCode){
+    public void logoutUser(TokenValidRequest request){
+        ValidateTokenRequest(request);
         try{
-            redisService.deleteRefreshToken(refreshToken,deviceCode);
+            redisService.deleteRefreshToken(request.refreshToken(),request.deviceCode());
         }
         catch(Exception e){
             log.error(e.getMessage());
         }
         finally {
-            authAsyncService.asyncDelete(refreshToken);
+            authAsyncService.asyncDelete(request.refreshToken());
         }
 
     }
@@ -110,5 +105,14 @@ public class AuthService {
         }
     }
 
+    private void ValidateTokenRequest(TokenValidRequest request){
+        if (request.refreshToken() == null || request.refreshToken().isEmpty()) {
+            throw new TokenNotProvidedException();
+        }
+        if (request.deviceCode() == null || request.deviceCode().isEmpty()) {
+            throw new DeviceCodeNotProvidedException();
+        }
+
+    }
 
 }

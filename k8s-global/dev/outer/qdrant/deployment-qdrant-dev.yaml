@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qdrant-dpy-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qdrant-dev
+  template:
+    metadata:
+      labels:
+        app: qdrant-dev
+    spec:
+      containers:
+        - name: qdrant-pod-dev
+          image: qdrant/qdrant:latest
+          ports:
+            - containerPort: 6333
+            - containerPort: 6334
+          volumeMounts:
+            - name: qdrant-storage
+              mountPath: /qdrant/storage
+            - name: qdrant-config-dev
+              mountPath: /qdrant/config
+#          env:
+#            - name: QDRANT__SERVICE__API_KEY
+#              valueFrom:
+#                secretKeyRef:
+#                  name: qdrant-secret
+#                  key: QDRANT_API_KEY
+      volumes:
+        - name: qdrant-storage
+          emptyDir: {}   # 운영에서는 PVC로 변경해야 함
+        - name: qdrant-config-dev
+          configMap:
+            name: qdrant-config-dev

@@ -7,19 +7,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/**
- * Payment Service Mock Controller
- * 로컬 개발 환경에서 결제 정보를 모킹하는 컨트롤러
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/payments")
 public class PaymentMockController {
-
-    /**
-     * 예치금 결제 Mock API
-     * POST /api/payments/deposit
-     */
     @PostMapping("/deposit")
     public ResponseEntity<String> requestDepositPayment(
             @RequestBody OrderPaymentRequest request
@@ -31,11 +22,6 @@ public class PaymentMockController {
         log.info("Mock Payment Service - 예치금 결제 성공: orderCode={}", request.orderCode());
         return ResponseEntity.ok("결제 완료");
     }
-
-    /**
-     * 토스 결제 Mock API
-     * POST /api/payments/toss
-     */
     @PostMapping("/toss")
     public ResponseEntity<String> requestTossPayment(
             @RequestBody OrderPaymentRequest request
@@ -48,10 +34,6 @@ public class PaymentMockController {
         return ResponseEntity.ok("결제 완료");
     }
 
-    /**
-     * 환불 Mock API
-     * POST /api/payments/refund
-     */
     @PostMapping("/refund")
     public ResponseEntity<String> requestRefund(
             @RequestBody Map<String, Object> request

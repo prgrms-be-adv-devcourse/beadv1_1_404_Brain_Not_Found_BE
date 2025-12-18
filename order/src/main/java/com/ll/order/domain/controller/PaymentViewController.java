@@ -1,6 +1,7 @@
 package com.ll.order.domain.controller;
 
 import com.ll.order.domain.service.order.OrderService;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -76,6 +77,53 @@ public class PaymentViewController {
     @GetMapping("/create-form")
     public String orderFormPage() {
         return "order-form";
+    }
+
+    // 예치금 충전 폼 페이지
+    @GetMapping("/deposit/charge-form")
+    public String depositChargeFormPage() {
+        return "deposit-charge-form";
+    }
+
+    // 예치금 충전 페이지 (토스 결제)
+    @GetMapping("/deposit/charge")
+    public String depositChargePage(
+            @RequestParam Integer amount,
+            @RequestParam String userCode,
+            @RequestParam(required = false, defaultValue = "고객") String customerName,
+            HttpSession session,
+            Model model
+    ) {
+        // 세션에 userCode 저장 (결제 성공 시 사용)
+        session.setAttribute("depositChargeUserCode", userCode);
+        
+        model.addAttribute("amount", amount);
+        model.addAttribute("customerName", customerName);
+        model.addAttribute("userCode", userCode);
+        model.addAttribute("clientKey", widgetClientKey);
+        model.addAttribute("successUrl", successUrl.replace("/payment/success", "/deposit/charge/success"));
+        model.addAttribute("failUrl", failUrl.replace("/payment/fail", "/deposit/charge/fail"));
+        return "deposit-charge";
+    }
+
+    @GetMapping("/deposit/charge/success-page")
+    public String depositChargeSuccessPage(
+            @RequestParam String amount,
+            Model model
+    ) {
+        model.addAttribute("amount", amount);
+        return "deposit-charge-success";
+    }
+
+    @GetMapping("/deposit/charge/fail-page")
+    public String depositChargeFailPage(
+            @RequestParam(required = false) String errorCode,
+            @RequestParam(required = false) String errorMessage,
+            Model model
+    ) {
+        model.addAttribute("errorCode", errorCode);
+        model.addAttribute("errorMessage", errorMessage);
+        return "deposit-charge-fail";
     }
 }
 

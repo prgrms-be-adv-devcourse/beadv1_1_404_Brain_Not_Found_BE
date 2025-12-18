@@ -133,7 +133,7 @@ public class TossPaymentServiceImpl implements TossPaymentService {
             TossPaymentResponse tossPaymentResponse = parseTossResponse(response);
             validateTossResponse(request, tossPaymentResponse);
 
-            payment.markSuccess(
+            payment.success(
                     finalStatus,
                     tossPaymentResponse.approvedAt() != null
                             ? tossPaymentResponse.approvedAt().toLocalDateTime()

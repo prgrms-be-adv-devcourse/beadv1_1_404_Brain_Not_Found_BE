@@ -3,17 +3,16 @@ package com.ll.payment.payment.service.refund;
 import com.ll.core.model.exception.BaseException;
 import com.ll.payment.deposit.model.vo.request.DepositTransactionRequest;
 import com.ll.payment.deposit.service.DepositService;
-import com.ll.payment.global.client.OrderServiceClient;
 import com.ll.payment.payment.exception.PaymentErrorCode;
 import com.ll.payment.payment.model.entity.Payment;
 import com.ll.payment.payment.model.entity.PaymentHistoryEntity;
-import com.ll.payment.payment.model.enums.PaidType;
-import com.ll.payment.payment.model.enums.PaymentHistoryActionType;
+import com.ll.payment.payment.model.enums.PaymentRefundNotificationStatus;
 import com.ll.payment.payment.model.enums.PaymentStatus;
 import com.ll.payment.payment.model.vo.request.PaymentRefundRequest;
 import com.ll.payment.payment.repository.PaymentHistoryJpaRepository;
 import com.ll.payment.payment.repository.PaymentJpaRepository;
 import com.ll.payment.payment.service.PaymentValidator;
+import com.ll.payment.payment.service.event.PaymentRefundNotificationOutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +36,7 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
     private final PaymentHistoryJpaRepository paymentHistoryJpaRepository;
     private final DepositService depositService;
     private final PaymentValidator paymentValidator;
-    private final OrderServiceClient orderServiceClient;
+    private final PaymentRefundNotificationOutboxService paymentRefundNotificationOutboxService;
     private final RestClient restClient;
 
     @Value("${payment.secretKey}")
@@ -49,23 +48,10 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
     @Transactional
     public Payment refundPayment(PaymentRefundRequest request) {
         Payment payment = findPaymentForRefund(request);
-        int refundAmount = paymentValidator.validateRefundEligibility(payment, request);
+        int refundAmount = paymentValidator.validateRefund(payment, request);
 
         // 환불 요청 이력 저장
-        PaymentHistoryEntity refundRequestHistory = PaymentHistoryEntity.create(
-                payment.getId(),
-                PaymentHistoryActionType.REFUND_REQUEST,
-                PaymentStatus.REFUNDED,
-                payment.getPaidType() == PaidType.TOSS_PAYMENT ? "TOSS" : "DEPOSIT",
-                payment.getPaymentKey(),
-                null, // transactionId
-                refundAmount,
-                null, // failCode
-                null, // failMessage
-                null, // metadata
-                null, // approvedAt
-                null  // refundedAt
-        );
+        PaymentHistoryEntity refundRequestHistory = PaymentHistoryEntity.createRefundRequestHistory(payment, refundAmount);
         paymentHistoryJpaRepository.save(refundRequestHistory);
 
         try {
@@ -79,45 +65,37 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
                 }
             }
 
-            payment.markRefund(LocalDateTime.now());
+            payment.refund(LocalDateTime.now());
             paymentJpaRepository.save(payment);
 
             // 환불 완료 이력 저장
-            PaymentHistoryEntity refundDoneHistory = PaymentHistoryEntity.create(
-                    payment.getId(),
-                    PaymentHistoryActionType.REFUND_DONE,
-                    PaymentStatus.REFUNDED,
-                    payment.getPaidType() == PaidType.TOSS_PAYMENT ? "TOSS" : "DEPOSIT",
-                    payment.getPaymentKey(),
-                    null, // transactionId
-                    refundAmount,
-                    null, // failCode
-                    null, // failMessage
-                    refundResponse, // metadata (토스 환불 응답)
-                    null, // approvedAt
-                    LocalDateTime.now() // refundedAt
-            );
+            PaymentHistoryEntity refundDoneHistory = PaymentHistoryEntity.createRefundDoneHistory(payment, refundAmount, refundResponse);
             paymentHistoryJpaRepository.save(refundDoneHistory);
 
-            notifyOrderRefund(request.orderCode());
+            // Outbox 패턴: 트랜잭션 내에서 먼저 Outbox에 저장 (PENDING 상태)
+            // 별도 프로세스가 Outbox를 읽어서 주문 서비스에 알림 전송
+            paymentRefundNotificationOutboxService.saveToOutbox(
+                    request.orderCode(), 
+                    PaymentRefundNotificationStatus.REFUNDED.getValue()
+            );
+            
             return payment;
         } catch (Exception e) {
             // 환불 실패 이력 저장
-            PaymentHistoryEntity refundFailHistory = PaymentHistoryEntity.create(
-                    payment.getId(),
-                    PaymentHistoryActionType.FAIL,
-                    PaymentStatus.REFUNDED,
-                    payment.getPaidType() == PaidType.TOSS_PAYMENT ? "TOSS" : "DEPOSIT",
-                    payment.getPaymentKey(),
-                    null, // transactionId
-                    refundAmount,
-                    null, // failCode
-                    e.getMessage(), // failMessage
-                    null, // metadata
-                    null, // approvedAt
-                    null  // refundedAt
-            );
+            PaymentHistoryEntity refundFailHistory = PaymentHistoryEntity.createRefundFailHistory(payment, refundAmount, e.getMessage());
             paymentHistoryJpaRepository.save(refundFailHistory);
+
+            // 환불 실패하면 order 모듈에게 알림 전송하여 보상 로직 트리거 작동
+            try {
+                paymentRefundNotificationOutboxService.saveToOutbox(
+                        request.orderCode(), 
+                        PaymentRefundNotificationStatus.REFUND_FAILED.getValue()
+                );
+                log.debug("환불 실패 알림 Outbox 저장 완료 - orderCode: {}, error: {}", request.orderCode(), e.getMessage());
+            } catch (Exception notificationException) {
+                log.error("환불 실패 알림 Outbox 저장 실패 - orderCode: {}, error: {}", 
+                        request.orderCode(), notificationException.getMessage(), notificationException);
+            }
 
             throw e;
         }
@@ -125,33 +103,9 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
 
     @Override
     public void processTossRefundForCharge(Payment payment, int refundAmount) {
-        String paymentKey = payment.getPaymentKey();
-        if (paymentKey == null || paymentKey.isBlank()) {
-            log.warn("토스 환불에는 paymentKey가 필요합니다. paymentId: {}, orderId: {}", 
-                    payment.getId(), payment.getOrderId());
-            throw new BaseException(PaymentErrorCode.PAYMENT_KEY_REQUIRED);
-        }
-
-        Map<String, Object> cancelRequest = new HashMap<>();
-        cancelRequest.put("paymentKey", paymentKey);
-        cancelRequest.put("cancelAmount", refundAmount);
-        cancelRequest.put("cancelReason", "예치금 충전 실패로 인한 환불");
-
-        try {
-            restClient.post()
-                    .uri(targetUrl + "/cancel")
-                    .headers(headers -> headers.set("Authorization", createAuthorizationHeader()))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(cancelRequest)
-                    .retrieve()
-                    .toBodilessEntity();
-            log.debug("충전 실패로 인한 토스 결제 환불 성공 - paymentKey: {}, refundAmount: {}", 
-                    paymentKey, refundAmount);
-        } catch (Exception e) {
-            log.error("충전 실패로 인한 토스 결제 환불 요청에 실패했습니다. paymentKey: {}, refundAmount: {}", 
-                    paymentKey, refundAmount, e);
-            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_REFUND_FAILED);
-        }
+        tossRefund(payment, refundAmount, "예치금 충전 실패로 인한 환불", false);
+        log.debug("충전 실패로 인한 토스 결제 환불 성공 - paymentId: {}, refundAmount: {}", 
+                payment.getId(), refundAmount);
     }
 
     private Payment findPaymentForRefund(PaymentRefundRequest request) {
@@ -191,43 +145,44 @@ public class PaymentRefundServiceImpl implements PaymentRefundService {
     }
 
     private String processTossRefund(Payment payment, PaymentRefundRequest request, int refundAmount) {
+        String cancelReason = request.reason() != null && !request.reason().isBlank()
+                ? request.reason()
+                : "USER_REFUND";
+        String refundResponse = tossRefund(payment, refundAmount, cancelReason, true);
+        log.debug("토스 결제 환불 성공 - paymentId: {}, refundAmount: {}", payment.getId(), refundAmount);
+        return refundResponse;
+    }
+
+    private String tossRefund(Payment payment, int refundAmount, String cancelReason, boolean returnResponse) {
         String paymentKey = payment.getPaymentKey();
         if (paymentKey == null || paymentKey.isBlank()) {
             log.warn("토스 환불에는 paymentKey가 필요합니다. paymentId: {}, orderId: {}", 
                     payment.getId(), payment.getOrderId());
             throw new BaseException(PaymentErrorCode.PAYMENT_KEY_REQUIRED);
         }
-
+        String cancelUrl = "https://api.tosspayments.com/v1/payments/" + paymentKey + "/cancel";
         Map<String, Object> cancelRequest = new HashMap<>();
-        cancelRequest.put("paymentKey", paymentKey);
         cancelRequest.put("cancelAmount", refundAmount);
-        cancelRequest.put("cancelReason", request.reason() != null && !request.reason().isBlank()
-                ? request.reason()
-                : "USER_REFUND");
+        cancelRequest.put("cancelReason", cancelReason);
 
         try {
-            String refundResponse = restClient.post()
-                    .uri(targetUrl + "/cancel")
+            var requestSpec = restClient.post()
+                    .uri(cancelUrl)
                     .headers(headers -> headers.set("Authorization", createAuthorizationHeader()))
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(cancelRequest)
-                    .retrieve()
-                    .body(String.class);
-            log.debug("토스 결제 환불 성공 - paymentKey: {}, refundAmount: {}", paymentKey, refundAmount);
-            return refundResponse;
-        } catch (Exception e) {
-            log.error("토스 결제 환불 요청에 실패했습니다. paymentKey: {}, refundAmount: {}", 
-                    paymentKey, refundAmount, e);
-            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_REFUND_FAILED);
-        }
-    }
+                    .retrieve();
 
-    private void notifyOrderRefund(String orderCode) {
-        try {
-            orderServiceClient.updateOrderStatus(orderCode, "REFUNDED");
+            if (returnResponse) {
+                return requestSpec.body(String.class);
+            } else {
+                requestSpec.toBodilessEntity();
+                return null;
+            }
         } catch (Exception e) {
-            log.error("주문 서비스에 환불 상태를 전달하는 데 실패했습니다. orderCode: {}", orderCode, e);
-            throw new BaseException(PaymentErrorCode.ORDER_SERVICE_NOTIFICATION_FAILED);
+            log.error("토스 결제 환불 요청에 실패했습니다. paymentKey: {}, refundAmount: {}, cancelReason: {}", 
+                    paymentKey, refundAmount, cancelReason, e);
+            throw new BaseException(PaymentErrorCode.TOSS_PAYMENT_REFUND_FAILED);
         }
     }
 

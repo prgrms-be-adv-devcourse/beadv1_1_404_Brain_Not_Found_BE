@@ -88,12 +88,12 @@ public class Payment extends BaseEntity {
         );
     }
 
-    public void markSuccess(PaymentStatus status, LocalDateTime approvedAt) {
+    public void success(PaymentStatus status, LocalDateTime approvedAt) {
         this.paymentStatus = status;
         this.paidAt = approvedAt;
     }
 
-    public void markRefund(LocalDateTime refundedAt) {
+    public void refund(LocalDateTime refundedAt) {
         this.paymentStatus = PaymentStatus.REFUNDED;
         this.paidAt = refundedAt;
     }

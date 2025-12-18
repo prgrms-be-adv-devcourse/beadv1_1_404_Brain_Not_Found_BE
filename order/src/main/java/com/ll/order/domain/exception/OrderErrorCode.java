@@ -21,6 +21,7 @@ public enum OrderErrorCode implements BaseErrorCode {
     // 409 — 충돌 발생
     ORDER_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 주문입니다."),
     INVALID_ORDER_STATUS_TRANSITION(HttpStatus.CONFLICT, "해당 상태로 전환할 수 없습니다."),
+    ORDER_CANCEL_NOT_ALLOWED_WITHIN_GRACE_PERIOD(HttpStatus.CONFLICT, "주문 완료 후 10분 이내에는 취소할 수 없습니다."),
 
     // 422 — 처리 불가능한 엔티티
     INSUFFICIENT_INVENTORY(HttpStatus.UNPROCESSABLE_ENTITY, "재고가 부족합니다."),
