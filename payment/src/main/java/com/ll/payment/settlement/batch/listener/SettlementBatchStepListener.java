@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class SettlementBatchStepLogger implements StepExecutionListener {
+public class SettlementBatchStepListener implements StepExecutionListener {
     private long start;
     private final SettlementErrorCapture errorCapture;
     private final SettlementRepository settlementRepository;

@@ -1,6 +1,6 @@
 package com.ll.payment.settlement.batch.config;
 
-import com.ll.payment.settlement.batch.listener.SettlementBatchJobLogger;
+import com.ll.payment.settlement.batch.listener.SettlementBatchJobListener;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -19,10 +19,10 @@ public class SettlementJobConfiguration {
     public Job settlementsJob(
             JobRepository jobRepository,
             @Qualifier("settlementStep") Step settlementStep,
-            SettlementBatchJobLogger logger
+            SettlementBatchJobListener listener
     ) {
         return new JobBuilder("settlementsJob", jobRepository)
-                .listener(logger)
+                .listener(listener)
                 .start(settlementStep)
                 .build();
     }

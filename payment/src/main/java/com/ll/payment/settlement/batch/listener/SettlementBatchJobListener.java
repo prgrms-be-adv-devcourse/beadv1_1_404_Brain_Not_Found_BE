@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class SettlementBatchJobLogger implements JobExecutionListener {
+public class SettlementBatchJobListener implements JobExecutionListener {
 
     private long start;
 
