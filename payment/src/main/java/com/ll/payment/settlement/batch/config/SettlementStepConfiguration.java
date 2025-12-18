@@ -1,7 +1,7 @@
 package com.ll.payment.settlement.batch.config;
 
 import com.ll.core.model.exception.BaseException;
-import com.ll.payment.settlement.batch.listener.SettlementBatchStepLogger;
+import com.ll.payment.settlement.batch.listener.SettlementBatchStepListener;
 import com.ll.payment.settlement.batch.listener.SettlementSkipListener;
 import com.ll.payment.settlement.batch.processor.ValidateDepositProcessor;
 import com.ll.payment.settlement.batch.processor.SettlementSuccessProcessor;
@@ -38,7 +38,7 @@ public class SettlementStepConfiguration {
             @Qualifier("validateDepositProcessor") ValidateDepositProcessor validateDepositProcessor,
             @Qualifier("settlementSuccessProcessor") SettlementSuccessProcessor settlementSuccessProcessor,
             @Qualifier("settlementJdbcWriter") JdbcBatchItemWriter<Settlement> settlementJdbcWriter,
-            SettlementBatchStepLogger logger,
+            SettlementBatchStepListener listener,
             SettlementSkipListener skipListener
     ) {
         return new StepBuilder("settlementStep", jobRepository)
@@ -46,7 +46,7 @@ public class SettlementStepConfiguration {
                 .reader(settlementReader)
                 .processor(settlementProcessor(validateDepositProcessor, settlementSuccessProcessor))
                 .writer(settlementJdbcWriter)
-                .listener(logger)
+                .listener(listener)
                 .faultTolerant()
                 .skip(BaseException.class)
                 .skipLimit(SKIP_LIMIT)
