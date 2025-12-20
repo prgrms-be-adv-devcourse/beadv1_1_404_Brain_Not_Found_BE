@@ -33,8 +33,15 @@ spec:
           envFrom:
             - configMapRef:
                 name: els-config-prod
+          volumeMounts:
+            - name: els-data
+              mountPath: /usr/share/elasticsearch/data
           command: ["bash", "-c"]
           args:
             - |
               bin/elasticsearch-plugin list | grep -q analysis-nori || bin/elasticsearch-plugin install analysis-nori --batch;
               /usr/local/bin/docker-entrypoint.sh
+      volumes:
+        - name: els-data
+          persistentVolumeClaim:
+            claimName: els-pvc-prod

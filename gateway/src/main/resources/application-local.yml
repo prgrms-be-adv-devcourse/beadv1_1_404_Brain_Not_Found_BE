@@ -11,9 +11,9 @@ spring:
                 - Path=/api/categories, /api/categories/**
                 - Method=PUT, POST, DELETE
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: productServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: productServiceCB
                     #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
 
@@ -23,12 +23,12 @@ spring:
                 - Path=/api/categories, /api/categories/**
                 - Method=GET
               filters:
-                - name: Retry
-                  args:
-                    name: productServiceRetry
-                - name: CircuitBreaker
-                  args:
-                    name: productServiceCB
+#                - name: Retry
+#                  args:
+#                    name: productServiceRetry
+#                - name: CircuitBreaker
+#                  args:
+#                    name: productServiceCB
                     #fallbackUri: forward:/fallback/product
 
             # Product (PRODUCTS)
@@ -38,9 +38,9 @@ spring:
                 - Path=/api/carts, /api/carts/**
                 - Method=GET, POST, DELETE
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: productServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: productServiceCB
                     #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
 
@@ -50,12 +50,12 @@ spring:
                 - Path=/api/products/**, /api/products
                 - Method=GET
               filters:
-                - name: Retry
-                  args:
-                    name: productServiceRetry
-                - name: CircuitBreaker
-                  args:
-                    name: productServiceCB
+#                - name: Retry
+#                  args:
+#                    name: productServiceRetry
+#                - name: CircuitBreaker
+#                  args:
+#                    name: productServiceCB
                     #fallbackUri: forward:/fallback/product
                 - name: TokenExtractionFilter
 
@@ -67,9 +67,9 @@ spring:
                 - Path=/api/products, /api/products/**
                 - Method=PATCH, PUT, POST, DELETE
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: productServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: productServiceCB
                     #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
 
@@ -79,12 +79,12 @@ spring:
                 - Path=/api/search/**
                 - Method=GET
               filters:
-                - name: Retry
-                  args:
-                    name: productServiceRetry
-                - name: CircuitBreaker
-                  args:
-                    name: productServiceCB
+#                - name: Retry
+#                  args:
+#                    name: productServiceRetry
+#                - name: CircuitBreaker
+#                  args:
+#                    name: productServiceCB
                     #fallbackUri: forward:/fallback/product
 
             - id: product-images-route-protected   #이미지 업로드 인증
@@ -93,9 +93,9 @@ spring:
                 - Path=/api/images/presigned-url, /api/images/presigned-url/**
                 - Method=GET
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: productServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: productServiceCB
                     #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
             # History
@@ -105,12 +105,12 @@ spring:
                 - Path=/api/history, /api/history/**
                 - Method=GET
               filters:
-                - name: Retry
-                  args:
-                    name: productServiceRetry
-                - name: CircuitBreaker
-                  args:
-                    name: productServiceCB
+#                - name: Retry
+#                  args:
+#                    name: productServiceRetry
+#                - name: CircuitBreaker
+#                  args:
+#                    name: productServiceCB
                     #fallbackUri: forward:/fallback/product
                 - name: TokenAuthenticationFilter
             # Order
@@ -119,9 +119,9 @@ spring:
               predicates:
                 - Path=/orders/**, /orders/payment/**, /api/orders/payment/**, /api/orders/payment
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: orderServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: orderServiceCB
                     #fallbackUri: forward:/fallback/order
               order: 1
 
@@ -131,9 +131,9 @@ spring:
                 - Path=/api/orders/**, /api/orders
                 - Method=POST, GET, PATCH, DELETE
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: orderServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: orderServiceCB
                     #fallbackUri: forward:/fallback/order
                 - name: TokenAuthenticationFilter
               order: 2
@@ -171,9 +171,9 @@ spring:
                 - Path=/api/deposits, /api/deposits/**    #deposit은 모두 인증
                 - Method=POST, GET, PATCH, DELETE
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: paymentServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: paymentServiceCB
                     #fallbackUri: forward:/fallback/payment
                 - name: TokenAuthenticationFilter
 
@@ -184,12 +184,12 @@ spring:
                 - Path=/api/users
                 - Method=GET
               filters:
-                - name: Retry
-                  args:
-                    name: authServiceRetry
-                - name: CircuitBreaker
-                  args:
-                    name: authServiceCB
+#                - name: Retry
+#                  args:
+#                    name: authServiceRetry
+#                - name: CircuitBreaker
+#                  args:
+#                    name: authServiceCB
                     #fallbackUri: forward:/fallback/auth
               order: 1
 
@@ -199,9 +199,9 @@ spring:
                 - Path=/api/users/**
                 - Method=POST, GET, PATCH, DELETE, PATCH
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: authServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: authServiceCB
                     #fallbackUri: forward:/fallback/auth
                 - name: TokenAuthenticationFilter
               order: 2
@@ -220,9 +220,9 @@ spring:
                 - Path=/api/auth
                 - Method=POST
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: authServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: authServiceCB
                     #fallbackUri: forward:/fallback/auth
               order: 2
 
@@ -232,9 +232,9 @@ spring:
                 - Path=/api/auth/logout
                 - Method=POST
               filters:
-                - name: CircuitBreaker
-                  args:
-                    name: authServiceCB
+#                - name: CircuitBreaker
+#                  args:
+#                    name: authServiceCB
                     #fallbackUri: forward:/fallback/auth
                 - name: TokenAuthenticationFilter
               order: 3
