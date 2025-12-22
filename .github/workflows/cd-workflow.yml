@@ -28,26 +28,51 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const tags = await github.rest.repos.listTags({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              per_page: 50
-            });
-            
             const service = "${{ inputs.service-name }}";
-            const tag = tags.data.find(t =>
-              t.name.startsWith(`${service}-v`)
-            );
+            const perPage = 100;
+            let page = 1;
+            let serviceTags = [];
             
-            if (!tag) {
-              throw new Error(`No tag found for ${service}`);
+            while (serviceTags.length < 20) {
+              const res = await github.rest.repos.listTags({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: perPage,
+                page
+              });
+            
+              if (res.data.length === 0) break;
+            
+              const filtered = res.data.filter(t =>
+                t.name.startsWith(`${service}-v`)
+              );
+            
+              serviceTags.push(...filtered);
+              page++;
             }
             
-            const shortSha = tag.commit.sha.substring(0, 7);
+            if (serviceTags.length === 0) {
+              throw new Error(`No tag found for service: ${service}`);
+            }
             
-            core.setOutput("semver", tag.name);
+            // SemVer 기준 정렬
+            serviceTags.sort((a, b) => {
+              const pa = a.name.replace(`${service}-v`, '').split('.').map(Number);
+              const pb = b.name.replace(`${service}-v`, '').split('.').map(Number);
+            
+              for (let i = 0; i < 3; i++) {
+                if (pa[i] !== pb[i]) return pb[i] - pa[i];
+              }
+              return 0;
+            });
+            
+            const latestTag = serviceTags[0];
+            const shortSha = latestTag.commit.sha.substring(0, 7);
+            
+            core.setOutput("semver", latestTag.name);
             core.setOutput("sha", shortSha);
-            core.setOutput("image_tag", `${tag.name}-sha-${shortSha}`);
+            core.setOutput("image_tag", `${latestTag.name}-sha-${shortSha}`);
+      
       
       
       
